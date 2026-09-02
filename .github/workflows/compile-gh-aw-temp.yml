@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   compile:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,13 +35,14 @@ jobs:
           ! grep -q 'GH_AW_REQUIRED_ROLES' .github/workflows/issue-classification.lock.yml
           ! grep -q 'check_membership.cjs' .github/workflows/issue-classification.lock.yml
 
-      - name: Commit generated lock and remove temporary compiler workflow
+      - name: Publish generated blob outside workflows directory
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p .gh-aw-generated
+          cp .github/workflows/issue-classification.lock.yml .gh-aw-generated/issue-classification.lock.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/issue-classification.lock.yml .github/workflows/issue-classification.md
-          git rm .github/workflows/compile-gh-aw-temp.yml
-          git commit -m 'fix: compile all-actors issue triage'
+          git add .gh-aw-generated/issue-classification.lock.yml
+          git commit -m 'ci: stage generated issue triage lock'
           git push origin HEAD:fix/issue-triage-external-actors
