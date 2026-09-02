@@ -18,6 +18,9 @@ jobs:
   metadata:
     name: Assign owner and route metadata
     runs-on: ubuntu-latest
+    concurrency:
+      group: central-metadata-${{ github.repository }}-${{ inputs.item-kind }}-${{ inputs.item-number }}
+      cancel-in-progress: false
     permissions:
       issues: write
       pull-requests: write
@@ -43,13 +46,25 @@ jobs:
             local name="$1"
             local color="$2"
             local description="$3"
-            if ! grep -Fxq "$name" <<<"$EXISTING_LABELS"; then
-              gh label create "$name" \
-                --repo "$REPOSITORY" \
-                --color "$color" \
-                --description "$description"
-              EXISTING_LABELS+=$'\n'"$name"
+
+            if grep -Fxq "$name" <<<"$EXISTING_LABELS"; then
+              return 0
             fi
+
+            # Different issues can initialize the shared label set concurrently.
+            # If another run wins the create race, verify that the label now exists.
+            if ! gh label create "$name" \
+              --repo "$REPOSITORY" \
+              --color "$color" \
+              --description "$description"; then
+              if ! gh label list --repo "$REPOSITORY" --limit 1000 --json name --jq '.[].name' \
+                | grep -Fxq "$name"; then
+                echo "Failed to ensure label: $name" >&2
+                exit 1
+              fi
+            fi
+
+            EXISTING_LABELS+=$'\n'"$name"
           }
 
           EXISTING_LABELS="$(gh label list --repo "$REPOSITORY" --limit 1000 --json name --jq '.[].name')"
