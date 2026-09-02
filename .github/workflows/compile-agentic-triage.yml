@@ -9,7 +9,7 @@ on:
       - .github/workflows/compile-agentic-triage.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   compile:
@@ -26,9 +26,14 @@ jobs:
       - name: Compile workflow
         run: gh aw compile .github/workflows/issue-classification.md
 
-      - name: Upload compiled lockfile
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: issue-classification-lock
-          path: .github/workflows/issue-classification.lock.yml
-          if-no-files-found: error
+      - name: Commit compiled lockfile
+        run: |
+          set -euo pipefail
+          git add .github/workflows/issue-classification.lock.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: compile agentic issue classification"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
