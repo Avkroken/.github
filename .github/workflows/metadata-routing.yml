@@ -1,0 +1,170 @@
+name: Central metadata routing
+
+on:
+  workflow_call:
+    inputs:
+      item-kind:
+        description: "GitHub item type: issue or pull_request"
+        required: true
+        type: string
+      item-number:
+        description: "Issue or pull request number"
+        required: true
+        type: number
+
+permissions: {}
+
+jobs:
+  metadata:
+    name: Assign owner and route metadata
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Apply centralized metadata policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ITEM_KIND: ${{ inputs.item-kind }}
+          ITEM_NUMBER: ${{ inputs.item-number }}
+          REPOSITORY: ${{ github.repository }}
+          OWNER_ASSIGNEE: blixten85
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$ITEM_KIND" != "issue" && "$ITEM_KIND" != "pull_request" ]]; then
+            echo "Unsupported item-kind: $ITEM_KIND" >&2
+            exit 1
+          fi
+
+          ensure_label() {
+            local name="$1"
+            local color="$2"
+            local description="$3"
+            if ! grep -Fxq "$name" <<<"$EXISTING_LABELS"; then
+              gh label create "$name" \
+                --repo "$REPOSITORY" \
+                --color "$color" \
+                --description "$description"
+              EXISTING_LABELS+=$'\n'"$name"
+            fi
+          }
+
+          EXISTING_LABELS="$(gh label list --repo "$REPOSITORY" --limit 1000 --json name --jq '.[].name')"
+
+          # Classification labels supplied by triage or GitHub-native alert data.
+          ensure_label "difficulty:low" "C2E0C6" "Low implementation complexity"
+          ensure_label "difficulty:medium" "FEF2C0" "Medium implementation complexity"
+          ensure_label "difficulty:high" "F9D0C4" "High implementation complexity"
+          ensure_label "security:critical" "B60205" "Critical security severity"
+          ensure_label "security:high" "D93F0B" "High security severity"
+          ensure_label "security:medium" "FBCA04" "Medium security severity"
+          ensure_label "security:low" "0E8A16" "Low security severity"
+          ensure_label "security:none" "D4C5F9" "Not security-related"
+
+          # Derived labels. These are controlled by this workflow.
+          ensure_label "agent:copilot" "0969DA" "Route to GitHub Copilot"
+          ensure_label "agent:codex" "1F883D" "Route to OpenAI Codex"
+          ensure_label "agent:claude" "8250DF" "Route to Anthropic Claude"
+          ensure_label "priority:p0" "B60205" "Highest priority"
+          ensure_label "priority:p1" "D93F0B" "Very high priority"
+          ensure_label "priority:p2" "FBCA04" "High priority"
+          ensure_label "priority:p3" "0E8A16" "Normal priority"
+          ensure_label "priority:p4" "6E7781" "Lowest priority"
+          ensure_label "triage:pending" "BFDADC" "Waiting for complete classification"
+          ensure_label "triage:invalid" "B60205" "Conflicting classification labels"
+
+          # Issues and pull requests share GitHub's issue-assignee API.
+          gh api \
+            --method POST \
+            "repos/$REPOSITORY/issues/$ITEM_NUMBER/assignees" \
+            -f "assignees[]=$OWNER_ASSIGNEE" \
+            >/dev/null
+
+          # Difficulty/security routing applies to issues. PRs only get the owner.
+          if [[ "$ITEM_KIND" != "issue" ]]; then
+            exit 0
+          fi
+
+          mapfile -t CURRENT_LABELS < <(
+            gh api "repos/$REPOSITORY/issues/$ITEM_NUMBER" --jq '.labels[].name'
+          )
+
+          mapfile -t DIFFICULTY_LABELS < <(
+            printf '%s\n' "${CURRENT_LABELS[@]}" | grep -E '^difficulty:(low|medium|high)$' || true
+          )
+          mapfile -t SECURITY_LABELS < <(
+            printf '%s\n' "${CURRENT_LABELS[@]}" | grep -E '^security:(critical|high|medium|low|none)$' || true
+          )
+
+          clear_derived_labels() {
+            local label
+            for label in \
+              "agent:copilot" "agent:codex" "agent:claude" \
+              "priority:p0" "priority:p1" "priority:p2" "priority:p3" "priority:p4"; do
+              if printf '%s\n' "${CURRENT_LABELS[@]}" | grep -Fxq "$label"; then
+                gh api --method DELETE "repos/$REPOSITORY/issues/$ITEM_NUMBER/labels/$label" >/dev/null
+              fi
+            done
+          }
+
+          set_triage_label() {
+            local desired="$1"
+            local other="$2"
+            if printf '%s\n' "${CURRENT_LABELS[@]}" | grep -Fxq "$other"; then
+              gh api --method DELETE "repos/$REPOSITORY/issues/$ITEM_NUMBER/labels/$other" >/dev/null
+            fi
+            gh api \
+              --method POST \
+              "repos/$REPOSITORY/issues/$ITEM_NUMBER/labels" \
+              -f "labels[]=$desired" \
+              >/dev/null
+          }
+
+          if (( ${#DIFFICULTY_LABELS[@]} == 0 || ${#SECURITY_LABELS[@]} == 0 )); then
+            clear_derived_labels
+            set_triage_label "triage:pending" "triage:invalid"
+            exit 0
+          fi
+
+          if (( ${#DIFFICULTY_LABELS[@]} != 1 || ${#SECURITY_LABELS[@]} != 1 )); then
+            clear_derived_labels
+            set_triage_label "triage:invalid" "triage:pending"
+            exit 0
+          fi
+
+          case "${DIFFICULTY_LABELS[0]}" in
+            difficulty:low)    AGENT_LABEL="agent:copilot" ;;
+            difficulty:medium) AGENT_LABEL="agent:codex" ;;
+            difficulty:high)   AGENT_LABEL="agent:claude" ;;
+            *) exit 1 ;;
+          esac
+
+          case "${SECURITY_LABELS[0]}" in
+            security:critical) PRIORITY_LABEL="priority:p0" ;;
+            security:high)     PRIORITY_LABEL="priority:p1" ;;
+            security:medium)   PRIORITY_LABEL="priority:p2" ;;
+            security:low)      PRIORITY_LABEL="priority:p3" ;;
+            security:none)     PRIORITY_LABEL="priority:p4" ;;
+            *) exit 1 ;;
+          esac
+
+          clear_derived_labels
+
+          for triage_label in "triage:pending" "triage:invalid"; do
+            if printf '%s\n' "${CURRENT_LABELS[@]}" | grep -Fxq "$triage_label"; then
+              gh api --method DELETE "repos/$REPOSITORY/issues/$ITEM_NUMBER/labels/$triage_label" >/dev/null
+            fi
+          done
+
+          gh api \
+            --method POST \
+            "repos/$REPOSITORY/issues/$ITEM_NUMBER/labels" \
+            -f "labels[]=$AGENT_LABEL" \
+            -f "labels[]=$PRIORITY_LABEL" \
+            >/dev/null
+
+          echo "Routing: ${DIFFICULTY_LABELS[0]} -> $AGENT_LABEL"
+          echo "Priority: ${SECURITY_LABELS[0]} -> $PRIORITY_LABEL"
