@@ -195,4 +195,4 @@ A task is complete only when:
 
 If documented policy and live enforcement differ, report the discrepancy instead of assuming the documentation provides protection.
 
-Repository-specific instructions for an individual repository are defined in `REPO.md` at that repository's root, when present.
+Repository-specific instructions for an individual repository are defined in `<REPO>.md` at that repository's root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`.
