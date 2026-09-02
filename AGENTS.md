@@ -4,19 +4,23 @@ This repository is Avkroken's central source for shared GitHub metadata and repo
 
 ## Metadata automation
 
-`.github/workflows/metadata-routing.yml` is deterministic metadata automation. It may assign `blixten85`, validate classification labels, and derive `agent:*`, `priority:*`, and `triage:*` labels. It must not check out or execute pull-request code.
+`.github/workflows/metadata-routing.yml` is deterministic metadata automation. It may assign `blixten85`, validate classification labels, convert one temporary `classification:<difficulty>:<security>` label into canonical classification labels, and derive `agent:*`, `priority:*`, and `triage:*` labels. It must not check out or execute pull-request code.
+
+Canonical `difficulty:*` and `security:*` labels take precedence over AI output. The temporary `classification:*` label is transport metadata only and must be removed after deterministic conversion. Malformed or conflicting classification metadata must fail closed to `triage:invalid`.
 
 ## Metadata-only AI triage exception
 
 GitHub Agentic Workflows are allowed only for metadata-only issue triage under these constraints:
 
 - The agent may read the triggering issue and read-only repository context needed to classify it.
-- Safe outputs may add exactly one `difficulty:*` label and exactly one `security:*` label from the centrally documented allowlist.
-- The agent portion must remain read-only; label mutation must occur through `gh-aw` safe outputs.
+- Safe outputs may add exactly one temporary `classification:<difficulty>:<security>` label from the centrally documented allowlist. The agent must not directly write canonical `difficulty:*` or `security:*` labels.
+- The agent portion must remain read-only; temporary label mutation must occur through `gh-aw` safe outputs and deterministic routing must perform canonical conversion.
+- Missing-tool, missing-data, incomplete-report, noop and workflow-failure fallbacks must not create issues or other repository records.
 - The workflow must not comment, assign users or coding agents, create or update branches or pull requests, edit or close issues, perform review, merge, deploy, start a coding-agent session, or propose/perform remediation.
+- Callers must explicitly map only `COPILOT_GITHUB_TOKEN`; `secrets: inherit` is prohibited for AI triage.
 - Copilot inference may use either organization billing or the GitHub Actions secret `COPILOT_GITHUB_TOKEN`. If the PAT-backed path is used, the secret must contain a user-owned fine-grained PAT scoped only for Copilot Requests and must be configured in GitHub UI; never commit or paste the token into repository content.
 - Do not add external AI-provider credentials without separate explicit owner approval.
-- Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, and safe-output policy before merge.
+- Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, safe-output cardinality and failure behavior before merge.
 
 This exception does not relax any other prohibition on AI remediation, review automation, deployment, or credential use.
 

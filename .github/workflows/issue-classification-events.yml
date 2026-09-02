@@ -12,4 +12,5 @@ jobs:
       contents: read
       issues: write
     uses: ./.github/workflows/issue-classification.lock.yml
-    secrets: inherit
+    secrets:
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
