@@ -1,4 +1,4 @@
-# REPO.md
+# GITHUB.md
 
 This file contains repository-specific instructions for `Avkroken/.github` and supplements the organization-wide `AGENTS.md`.
 
