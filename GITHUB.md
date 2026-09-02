@@ -1,6 +1,6 @@
 # GITHUB.md
 
-This file contains repository-specific instructions for `Avkroken/.github` and supplements the organization-wide `AGENTS.md`.
+This is the repository governance document for `Avkroken/.github`. Binding AI coding-agent policy is defined only in `Avkroken/.github/AGENTS.md`; this document records repository-specific technical contracts, invariants, validation requirements, and operational context required by that policy. It must not define, supplement, narrow, or override agent policy.
 
 This repository is Avkroken's central source for shared GitHub metadata and repository-policy automation. Keep changes minimal, reviewable, and free of secrets.
 
