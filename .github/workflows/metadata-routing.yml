@@ -23,7 +23,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       issues: write
-      pull-requests: write
 
     steps:
       - name: Apply centralized metadata policy
