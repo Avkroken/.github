@@ -27,14 +27,17 @@ Om någon klassificeringsdimension saknas sätts `triage:pending`. Om flera labe
 
 `.github/workflows/issue-classification.md` är den centrala källan för GitHub Agentic Workflows-baserad metadata-only triage. Den kompilerade `.github/workflows/issue-classification.lock.yml` exponeras som en reusable `workflow_call` och anropas av tunna repo-local triggers på nya och återöppnade issues.
 
-AI-triagen får endast lägga till exakt:
+AI-triagen får endast lägga till **en temporär kombinationslabel** från en fast allowlist:
 
-- en `difficulty:*`-label, och
-- en `security:*`-label.
+`classification:<difficulty>:<security>`
 
-Labelskrivningen sker genom `gh-aw` safe outputs med en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
+Exempel: `classification:medium:none`.
 
-För organisationer utan central Copilot-billing använder workflowen `COPILOT_GITHUB_TOKEN`, en GitHub Actions-secret som innehåller en fine-grained PAT från ett användarkonto med `Copilot Requests`-behörighet. Tokenvärdet får aldrig committas. Caller-repon använder `secrets: inherit`, så en organisationssecret kan aktivera alla valda Avkroken-repon utan att duplicera tokenvärdet.
+Den deterministiska metadata-workflowen översätter sedan den temporära labeln till exakt en kanonisk `difficulty:*` och exakt en kanonisk `security:*`, tar bort temporärlabeln och härleder därefter `agent:*` och `priority:*`. Befintliga kanoniska labels tar företräde över AI-output, så AI:n skriver aldrig över en manuell eller GitHub-native klassificering.
+
+Labelskrivningen sker genom `gh-aw` safe outputs med `max: 1` och en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data. Missing-tool, missing-data, incomplete-report, noop och workflow-failure får inte skapa fallback-issues. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
+
+För organisationer utan central Copilot-billing använder workflowen `COPILOT_GITHUB_TOKEN`, en GitHub Actions-secret som innehåller en fine-grained PAT från ett användarkonto med `Copilot Requests`-behörighet. Tokenvärdet får aldrig committas. Caller-repon mappar endast `COPILOT_GITHUB_TOKEN` explicit; `secrets: inherit` används inte.
 
 ## Deterministisk metadata-routing
 
@@ -42,8 +45,9 @@ För organisationer utan central Copilot-billing använder workflowen `COPILOT_G
 
 1. säkerställer de standardiserade labels som policyn använder,
 2. lägger till `blixten85` som assignee,
-3. validerar issueklassificeringen,
-4. härleder `agent:*` och `priority:*` deterministiskt.
+3. validerar och normaliserar issueklassificeringen,
+4. konverterar eventuell temporär `classification:*`-label,
+5. härleder `agent:*` och `priority:*` deterministiskt.
 
 Workflowen checkar inte ut eller exekverar kod från pull requests. `.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar den centrala reusable workflowen med en full commit-SHA.
 
