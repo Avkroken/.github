@@ -1,20 +1,21 @@
-name: Dependabot auto-merge
+name: Dependabot merge queue
 
 on:
-  pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
-  push:
-    branches: [main]
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      app-client-id:
+        description: GitHub App client ID used to request a repository-scoped installation token.
+        required: true
+        type: string
+    secrets:
+      app-private-key:
+        description: GitHub App private key.
+        required: true
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
-  group: dependabot-automerge-${{ github.repository }}
+  group: dependabot-queue-${{ github.repository }}
   cancel-in-progress: true
 
 jobs:
@@ -22,30 +23,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Create repository-scoped Gamnacken token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Reconcile Dependabot pull requests
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -u -o pipefail
 
           mapfile -t prs < <(
-            gh api --paginate "repos/${GH_REPO}/pulls?state=open&per_page=100" \
-              --jq '.[] | select(.user.login == "dependabot[bot]" and .draft == false) | .number'
+            gh pr list --repo "$GH_REPO" --state open --app dependabot --limit 100 \
+              --json number,isDraft,headRefOid \
+              --jq '.[] | select(.isDraft == false) | [.number, .headRefOid] | @tsv'
           )
 
-          for pr in "${prs[@]}"; do
-            if [[ "$(gh pr view "$pr" --repo "$GH_REPO" --json autoMergeRequest --jq '.autoMergeRequest != null')" != "true" ]]; then
-              if ! gh pr merge "$pr" --repo "$GH_REPO" --auto --squash; then
-                echo "::warning title=Dependabot auto-merge::Could not arm auto-merge for PR #${pr}; a later reconciliation will retry."
-              fi
-            fi
+          for row in "${prs[@]}"; do
+            IFS=$'\t' read -r pr head_sha <<< "$row"
 
-            merge_state="$(gh pr view "$pr" --repo "$GH_REPO" --json mergeStateStatus --jq '.mergeStateStatus')"
-            if [[ "$merge_state" == "BEHIND" ]]; then
-              if ! gh pr update-branch "$pr" --repo "$GH_REPO"; then
-                echo "::warning title=Dependabot branch update::Could not update PR #${pr}; a later reconciliation will retry."
-              fi
+            if ! gh pr merge "$pr" --repo "$GH_REPO" --auto --match-head-commit "$head_sha"; then
+              echo "::warning title=Dependabot merge queue::Could not arm or enqueue PR #${pr}; a later reconciliation will retry."
             fi
           done
