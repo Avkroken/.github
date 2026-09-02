@@ -1,0 +1,149 @@
+name: Sync repository merge policy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - rulesets/merge-queue.json
+      - .github/workflows/osv-scanner.yml
+      - .github/workflows/ruleset-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: avkroken-ruleset-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out trusted policy source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create organization-scoped Gamnacken token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.GAMNACKEN_CLIENT_ID }}
+          private-key: ${{ secrets.GAMNACKEN_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Reconcile repository and organization rulesets
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          POLICY_FILE: rulesets/merge-queue.json
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          owner="$(jq -r '.organization.owner' "$POLICY_FILE")"
+          queue_name="$(jq -r '.ruleset.name' "$POLICY_FILE")"
+          jq '.ruleset' "$POLICY_FILE" > /tmp/repository-ruleset.json
+
+          mapfile -t repositories < <(jq -r '.repositories[]' "$POLICY_FILE")
+          for repository in "${repositories[@]}"; do
+            endpoint="repos/${owner}/${repository}/rulesets"
+            ruleset_id="$(
+              gh api "$endpoint" \
+                --jq ".[] | select(.source_type == \"Repository\" and .name == \"${queue_name}\") | .id" \
+                | head -n 1
+            )"
+
+            if [[ -n "$ruleset_id" ]]; then
+              gh api --method PUT "${endpoint}/${ruleset_id}" --input /tmp/repository-ruleset.json >/dev/null
+              echo "Updated merge queue ruleset for ${owner}/${repository}."
+            else
+              gh api --method POST "$endpoint" --input /tmp/repository-ruleset.json >/dev/null
+              echo "Created merge queue ruleset for ${owner}/${repository}."
+            fi
+          done
+
+          loose="$(jq -r '.organization.loose_required_status_checks' "$POLICY_FILE")"
+          main_name="$(jq -r '.organization.main_ruleset_name' "$POLICY_FILE")"
+          required_repo="$(jq -r '.organization.required_workflow.repository' "$POLICY_FILE")"
+          required_path="$(jq -r '.organization.required_workflow.path' "$POLICY_FILE")"
+          remove_contexts="$(jq -c '.organization.remove_required_status_checks' "$POLICY_FILE")"
+          required_repo_id="$(gh api "repos/${owner}/${required_repo}" --jq '.id')"
+          required_sha="$(gh api "repos/${owner}/${required_repo}/commits/main" --jq '.sha')"
+
+          mapfile -t organization_rulesets < <(
+            gh api --paginate "orgs/${owner}/rulesets?per_page=100" \
+              --jq '.[] | select(.target == "branch") | [.id, .name] | @tsv'
+          )
+
+          for row in "${organization_rulesets[@]}"; do
+            IFS=$'\t' read -r ruleset_id ruleset_name <<< "$row"
+            gh api "orgs/${owner}/rulesets/${ruleset_id}" > /tmp/org-ruleset-current.json
+
+            jq --argjson loose "$loose" '
+              if $loose then
+                .rules |= map(
+                  if .type == "required_status_checks" then
+                    .parameters.strict_required_status_checks_policy = false
+                  else
+                    .
+                  end
+                )
+              else
+                .
+              end
+              | {name, target, enforcement, bypass_actors, conditions, rules}
+            ' /tmp/org-ruleset-current.json > /tmp/org-ruleset-update.json
+
+            if [[ "$ruleset_name" == "$main_name" ]]; then
+              jq \
+                --argjson required_repo_id "$required_repo_id" \
+                --arg required_path "$required_path" \
+                --arg required_sha "$required_sha" \
+                --argjson remove_contexts "$remove_contexts" '
+                  .rules |= map(
+                    if .type == "workflows" then
+                      .parameters.workflows = (
+                        .parameters.workflows
+                        | map(
+                            if .path == $required_path then
+                              .repository_id = $required_repo_id
+                              | .sha = $required_sha
+                              | .ref = "refs/heads/main"
+                            else
+                              .
+                            end
+                          )
+                        | if any(.path == $required_path) then
+                            .
+                          else
+                            . + [{
+                              repository_id: $required_repo_id,
+                              path: $required_path,
+                              sha: $required_sha,
+                              ref: "refs/heads/main"
+                            }]
+                          end
+                      )
+                    elif .type == "required_status_checks" then
+                      .parameters.required_status_checks |= map(
+                        select(.context as $context | ($remove_contexts | index($context) | not))
+                      )
+                    else
+                      .
+                    end
+                  )
+                  | .rules |= map(
+                      select(
+                        .type != "required_status_checks"
+                        or (.parameters.required_status_checks | length) > 0
+                      )
+                    )
+                ' /tmp/org-ruleset-update.json > /tmp/org-ruleset-main.json
+              mv /tmp/org-ruleset-main.json /tmp/org-ruleset-update.json
+            fi
+
+            gh api --method PUT "orgs/${owner}/rulesets/${ruleset_id}" --input /tmp/org-ruleset-update.json >/dev/null
+            echo "Updated organization ruleset ${ruleset_name}."
+          done
