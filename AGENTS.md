@@ -1,8 +1,12 @@
 # AGENTS.md
 
-This file defines the working rules for AI coding agents operating in this repository.
+This file is the sole binding source of truth for AI coding-agent policy across Avkroken repositories.
 
-Repository-local instructions and the live repository configuration are authoritative. When documentation and enforced GitHub settings differ, follow the stricter applicable rule and report the mismatch.
+Repository-local `AGENTS.md` files may only point here; they must not define, supplement, narrow, or override policy. Repository-specific technical and governance context belongs in `<REPO>.md` at the repository root. Those repository documents must be kept current and are required context when relevant, but they are not independent sources of agent policy.
+
+When a repository governance document is stale or inconsistent with this policy or with verified live configuration, update that document as part of the same task without asking the repository owner for a separate approval. This standing authorization is limited to documentation/governance consistency; it does not authorize bypassing protections or changing product behavior, runtime behavior, security posture, production infrastructure, or credentials outside the task's scope.
+
+Live GitHub configuration remains authoritative for factual enforcement such as required checks, rulesets, branch protection, and merge eligibility. If documentation conflicts with enforced GitHub state, obey the enforced state, report the mismatch when material, and correct the repository governance document. Live enforcement does not create a second source of agent policy.
 
 ## Before Making Changes
 
@@ -193,6 +197,6 @@ A task is complete only when:
 - repository merge rules are satisfied; and
 - the resulting repository or runtime state has been verified where applicable.
 
-If documented policy and live enforcement differ, report the discrepancy instead of assuming the documentation provides protection.
+If documented policy and live enforcement differ, this file remains the sole policy source; obey enforced GitHub protections and correct stale repository documentation.
 
-Repository-specific instructions for an individual repository are defined in `<REPO>.md` at that repository's root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`.
+Repository-specific governance and technical context for an individual repository belongs in `<REPO>.md` at that repository's root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`. These documents may define repository-specific technical contracts and invariants, but they do not override or supplement this policy.
