@@ -34,8 +34,14 @@ Om någon av klassificeringsdimensionerna saknas sätts `triage:pending`. Om fle
 
 Workflowen checkar inte ut eller exekverar kod från pull requests.
 
+`.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar den centrala reusable workflowen med en full commit-SHA.
+
 ## Visibility
 
-Repositoryt är för närvarande privat. Organisationsgemensamma custom agents i `/agents` kan fortfarande användas inom organisationen när de läggs till. Publika Avkroken-repositories kan däremot inte anropa en reusable workflow från ett privat repository. För att använda den centrala workflowen från publika repositories måste detta repository göras publikt, eller workflowkällan flyttas till ett annat publikt repository.
+Repositoryt är publikt så att både publika och privata caller-repositories kan använda den centrala reusable workflowen. Innehållet här ska därför alltid betraktas som offentligt.
 
 Inga secrets, tokens, privata nycklar eller provider-credentials ska committas här.
+
+## Repository-policy
+
+Ett repository kopplas endast till den centrala workflowen när dess egen `AGENTS.md` och live-policy tillåter ett metadata-workflow. Repositories med en uttrycklig exakt workflow-inventering eller en regel om att endast ett namngivet repository-owned workflow får finnas lämnas orörda tills den policyn ändras uttryckligen.
