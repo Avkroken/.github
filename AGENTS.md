@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This repository is Avkroken's central source for shared GitHub metadata automation. Keep changes minimal, reviewable, and free of secrets.
+This repository is Avkroken's central source for shared GitHub metadata and repository-policy automation. Keep changes minimal, reviewable, and free of secrets.
 
 ## Metadata automation
 
@@ -18,7 +18,19 @@ GitHub Agentic Workflows are allowed only for metadata-only issue triage under t
 - Do not add external AI-provider credentials without separate explicit owner approval.
 - Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, and safe-output policy before merge.
 
-This exception does not relax any other prohibition on AI remediation, review automation, branch/PR mutation, deployment, or credential use.
+This exception does not relax any other prohibition on AI remediation, review automation, deployment, or credential use.
+
+## Dependabot and merge-queue platform exception
+
+The repository owner explicitly authorizes deterministic, non-AI automation for dependency maintenance and centrally managed merge-queue policy.
+
+- `.github/workflows/dependabot-automerge.yml` is the reusable implementation. It may use the organization-installed `Gamnacken` GitHub App to request native GitHub auto-merge / merge-queue entry only for non-draft pull requests authored by `dependabot[bot]`.
+- The Dependabot workflow must not check out or execute pull-request code, bypass rulesets, use administrator merge, update PR branches, rebase branches, dismiss reviews, or directly merge around the merge queue.
+- Repository callers may trigger the reusable workflow on Dependabot PR events and on a low-frequency reconciliation schedule so missed events do not create permanent backlog.
+- `.github/workflows/ruleset-sync.yml` may reconcile only the repositories explicitly listed in `rulesets/merge-queue.json`, using the canonical repository-level merge-queue ruleset in that file.
+- `ruleset-sync.yml` may also move the organization `main` ruleset's required OSV workflow source to this repository and remove the redundant OSV status-check entry when the required-workflow rule is authoritative.
+- Repository rulesets remain the final merge authority. No automation in this repository may create bypass actors or weaken required project-specific CI/security gates.
+- GitHub App credentials must be supplied only through organization Actions configuration using `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`; credential values must never be committed or printed.
 
 ## Repository hygiene
 
