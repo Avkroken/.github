@@ -1,0 +1,34 @@
+name: Compile agentic issue triage
+
+on:
+  push:
+    branches:
+      - chore/agentic-issue-triage
+    paths:
+      - .github/workflows/issue-classification.md
+      - .github/workflows/compile-agentic-triage.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install gh-aw
+        uses: github/gh-aw/actions/setup-cli@ff62cdbec36230acbae869ddb28806e8eca01ea1
+        with:
+          version: v0.87.10
+
+      - name: Compile workflow
+        run: gh aw compile .github/workflows/issue-classification.md
+
+      - name: Upload compiled lockfile
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: issue-classification-lock
+          path: .github/workflows/issue-classification.lock.yml
+          if-no-files-found: error
