@@ -1,0 +1,30 @@
+name: Central metadata events
+
+on:
+  issues:
+    types: [opened, reopened, labeled, unlabeled]
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions: {}
+
+jobs:
+  issue:
+    if: github.event_name == 'issues'
+    permissions:
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/metadata-routing.yml
+    with:
+      item-kind: issue
+      item-number: ${{ github.event.issue.number }}
+
+  pull-request:
+    if: github.event_name == 'pull_request_target'
+    permissions:
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/metadata-routing.yml
+    with:
+      item-kind: pull_request
+      item-number: ${{ github.event.pull_request.number }}
