@@ -14,10 +14,6 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: osv-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   scan-pr:
     if: ${{ github.event_name == 'pull_request' }}
