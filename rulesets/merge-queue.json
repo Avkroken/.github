@@ -1,0 +1,43 @@
+{
+  "repositories": [
+    ".github",
+    "Bastion",
+    "Docker-idempotent-update",
+    "Dumpen",
+    "Klarsprak",
+    "Molnutbrott",
+    "Pastebinit",
+    "Politiker",
+    "Produkter",
+    "Regelverket",
+    "Skvallerbyttan"
+  ],
+  "ruleset": {
+    "name": "Avkroken merge queue",
+    "target": "branch",
+    "enforcement": "active",
+    "bypass_actors": [],
+    "conditions": {
+      "ref_name": {
+        "include": [
+          "~DEFAULT_BRANCH"
+        ],
+        "exclude": []
+      }
+    },
+    "rules": [
+      {
+        "type": "merge_queue",
+        "parameters": {
+          "check_response_timeout_minutes": 60,
+          "grouping_strategy": "HEADGREEN",
+          "max_entries_to_build": 5,
+          "min_entries_to_merge": 1,
+          "max_entries_to_merge": 1,
+          "min_entries_to_merge_wait_minutes": 0,
+          "merge_method": "SQUASH"
+        }
+      }
+    ]
+  }
+}
