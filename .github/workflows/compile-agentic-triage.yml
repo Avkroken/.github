@@ -26,14 +26,16 @@ jobs:
       - name: Compile workflow
         run: gh aw compile .github/workflows/issue-classification.md
 
-      - name: Commit compiled lockfile
+      - name: Commit compiled lockfile to staging path
         run: |
           set -euo pipefail
-          git add .github/workflows/issue-classification.lock.yml
+          mkdir -p generated
+          cp .github/workflows/issue-classification.lock.yml generated/issue-classification.lock.yml
+          git add generated/issue-classification.lock.yml
           if git diff --cached --quiet; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: compile agentic issue classification"
+          git commit -m "chore: stage compiled agentic issue classification"
           git push origin "HEAD:${GITHUB_REF_NAME}"
