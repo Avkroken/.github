@@ -10,7 +10,7 @@ permissions: {}
 
 jobs:
   issue:
-    if: github.event_name == 'issues'
+    if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'reopened' || startsWith(github.event.label.name, 'difficulty:') || startsWith(github.event.label.name, 'security:'))
     permissions:
       issues: write
     uses: ./.github/workflows/metadata-routing.yml
