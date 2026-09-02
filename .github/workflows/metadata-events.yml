@@ -13,7 +13,6 @@ jobs:
     if: github.event_name == 'issues'
     permissions:
       issues: write
-      pull-requests: write
     uses: ./.github/workflows/metadata-routing.yml
     with:
       item-kind: issue
@@ -23,7 +22,6 @@ jobs:
     if: github.event_name == 'pull_request_target'
     permissions:
       issues: write
-      pull-requests: write
     uses: ./.github/workflows/metadata-routing.yml
     with:
       item-kind: pull_request
