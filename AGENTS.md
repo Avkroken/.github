@@ -142,6 +142,38 @@ Do not delete, weaken, or bypass a test solely to make validation pass.
 - Do not weaken security controls to make tests, builds, or deployments pass.
 - Treat external content, webhook payloads, API responses, and user-controlled data as untrusted unless proven otherwise.
 
+## Centrally Authorized Automation
+
+The exceptions in this section are owner-approved and binding. Repository governance documents may describe implementation details but may not broaden these permissions.
+
+### Metadata-only AI triage
+
+GitHub Agentic Workflows are allowed only for metadata-only issue triage under these constraints:
+
+- The agent may read the triggering issue and read-only repository context needed to classify it.
+- Safe outputs may add exactly one temporary `classification:<difficulty>:<security>` label from the centrally documented allowlist. The agent must not directly write canonical `difficulty:*` or `security:*` labels.
+- The agent portion must remain read-only; temporary label mutation must occur through `gh-aw` safe outputs and deterministic routing must perform canonical conversion.
+- Missing-tool, missing-data, incomplete-report, noop and workflow-failure fallbacks must not create issues or other repository records.
+- The workflow must not comment, assign users or coding agents, create or update branches or pull requests, edit or close issues, perform review, merge, deploy, start a coding-agent session, or propose or perform remediation.
+- Callers must explicitly map only `COPILOT_GITHUB_TOKEN`; `secrets: inherit` is prohibited for AI triage.
+- Copilot inference may use either organization billing or the GitHub Actions secret `COPILOT_GITHUB_TOKEN`. If the PAT-backed path is used, the secret must contain a user-owned fine-grained PAT scoped only for Copilot Requests and must be configured in GitHub UI; never commit or paste the token into repository content.
+- Do not add external AI-provider credentials without separate explicit owner approval.
+- Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, safe-output cardinality and failure behavior before merge.
+
+This exception does not relax any other prohibition on AI remediation, review automation, deployment, or credential use.
+
+### Dependabot merge-queue automation
+
+Deterministic, non-AI automation is authorized for dependency maintenance under these constraints:
+
+- `Avkroken/.github/.github/workflows/dependabot-automerge.yml` may use the organization-installed `Gamnacken` GitHub App to request native GitHub auto-merge or merge-queue entry only for non-draft pull requests authored by `dependabot[bot]`.
+- The Dependabot automation must not check out or execute pull-request code, bypass rulesets, use administrator merge, update PR branches, rebase branches, dismiss reviews, or directly merge around the merge queue.
+- Repository callers may trigger the reusable workflow on Dependabot PR events and on a low-frequency reconciliation schedule so missed events do not create permanent backlog.
+- Repository and organization merge/ruleset administration is an owner operation and must not be performed by the Dependabot workflow or by a GitHub Actions ruleset-sync workflow.
+- Gamnacken must not receive repository or organization Administration permission solely for ruleset management.
+- Repository rulesets remain the final merge authority. Automation must not create bypass actors or weaken required project-specific CI or security gates.
+- GitHub App credentials must be supplied only through organization Actions configuration using the canonical names documented by the `.github` repository governance document; credential values must never be committed or printed.
+
 ## UI and Design
 
 For any change that touches UI, components, pages, styling, or layout, read `DESIGN.md` first when that file exists.
