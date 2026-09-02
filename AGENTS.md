@@ -34,7 +34,7 @@ The repository owner explicitly authorizes deterministic, non-AI automation for 
 - `.github/workflows/ruleset-sync.yml` may reconcile only the repositories explicitly listed in `rulesets/merge-queue.json`, using the canonical repository-level merge-queue ruleset in that file.
 - `ruleset-sync.yml` may also move the organization `main` ruleset's required OSV workflow source to this repository and remove the redundant OSV status-check entry when the required-workflow rule is authoritative.
 - Repository rulesets remain the final merge authority. No automation in this repository may create bypass actors or weaken required project-specific CI/security gates.
-- GitHub App credentials must be supplied only through organization Actions configuration using `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`; credential values must never be committed or printed.
+- GitHub App credentials must be supplied only through organization Actions configuration using `GAMNACKEN_ID` and `GAMNACKEN_PEMKEY`; credential values must never be committed or printed.
 
 ## Repository hygiene
 

@@ -14,6 +14,6 @@ jobs:
     if: ${{ github.event_name != 'pull_request_target' || github.event.pull_request.user.login == 'dependabot[bot]' }}
     uses: ./.github/workflows/dependabot-automerge.yml
     with:
-      app-client-id: ${{ vars.GAMNACKEN_CLIENT_ID }}
+      app-client-id: ${{ vars.GAMNACKEN_ID }}
     secrets:
-      app-private-key: ${{ secrets.GAMNACKEN_PRIVATE_KEY }}
+      app-private-key: ${{ secrets.GAMNACKEN_PEMKEY }}
