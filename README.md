@@ -25,14 +25,16 @@ Om någon klassificeringsdimension saknas sätts `triage:pending`. Om flera labe
 
 ## Automatisk issueklassificering
 
-`.github/workflows/issue-classification.md` är källan för GitHub Agentic Workflows-baserad metadata-only triage. Den körs för nya och återöppnade issues och får bara klassificera genom att lägga till exakt:
+`.github/workflows/issue-classification.md` är den centrala källan för GitHub Agentic Workflows-baserad metadata-only triage. Den kompilerade `.github/workflows/issue-classification.lock.yml` exponeras som en reusable `workflow_call` och anropas av tunna repo-local triggers på nya och återöppnade issues.
+
+AI-triagen får endast lägga till exakt:
 
 - en `difficulty:*`-label, och
 - en `security:*`-label.
 
-Labelskrivningen sker genom `gh-aw` safe outputs med en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data och använder GitHubs Copilot-request-behörighet; inga externa AI-provider-credentials ska användas. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
+Labelskrivningen sker genom `gh-aw` safe outputs med en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
 
-`.github/workflows/issue-classification.lock.yml` är den genererade körbara workflowen. Källan och lockfilen ska hållas synkroniserade och kompileras med officiella `github/gh-aw`.
+För organisationer utan central Copilot-billing använder workflowen `COPILOT_GITHUB_TOKEN`, en GitHub Actions-secret som innehåller en fine-grained PAT från ett användarkonto med `Copilot Requests`-behörighet. Tokenvärdet får aldrig committas. Caller-repon använder `secrets: inherit`, så en organisationssecret kan aktivera alla valda Avkroken-repon utan att duplicera tokenvärdet.
 
 ## Deterministisk metadata-routing
 
@@ -47,7 +49,7 @@ Workflowen checkar inte ut eller exekverar kod från pull requests. `.github/wor
 
 ## Visibility och secrets
 
-Repositoryt är publikt så att både publika och privata caller-repositories kan använda den centrala reusable workflowen. Innehållet här ska därför alltid betraktas som offentligt.
+Repositoryt är publikt så att både publika och privata caller-repositories kan använda de centrala reusable workflowsen. Innehållet här ska därför alltid betraktas som offentligt.
 
 Inga secrets, tokens, privata nycklar eller provider-credentials ska committas här.
 

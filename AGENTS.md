@@ -12,9 +12,10 @@ GitHub Agentic Workflows are allowed only for metadata-only issue triage under t
 
 - The agent may read the triggering issue and read-only repository context needed to classify it.
 - Safe outputs may add exactly one `difficulty:*` label and exactly one `security:*` label from the centrally documented allowlist.
-- The agent portion must remain read-only apart from the GitHub-hosted model request permission required by the selected engine; label mutation must occur through `gh-aw` safe outputs.
+- The agent portion must remain read-only; label mutation must occur through `gh-aw` safe outputs.
 - The workflow must not comment, assign users or coding agents, create or update branches or pull requests, edit or close issues, perform review, merge, deploy, start a coding-agent session, or propose/perform remediation.
-- Do not add external AI-provider credentials. Prefer GitHub-hosted Copilot billing/authentication; any PAT or provider credential requires separate explicit owner approval.
+- Copilot inference may use either organization billing or the GitHub Actions secret `COPILOT_GITHUB_TOKEN`. If the PAT-backed path is used, the secret must contain a user-owned fine-grained PAT scoped only for Copilot Requests and must be configured in GitHub UI; never commit or paste the token into repository content.
+- Do not add external AI-provider credentials without separate explicit owner approval.
 - Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, and safe-output policy before merge.
 
 This exception does not relax any other prohibition on AI remediation, review automation, branch/PR mutation, deployment, or credential use.
