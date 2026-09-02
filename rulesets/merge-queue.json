@@ -1,4 +1,16 @@
 {
+  "organization": {
+    "owner": "Avkroken",
+    "loose_required_status_checks": true,
+    "main_ruleset_name": "main",
+    "required_workflow": {
+      "repository": ".github",
+      "path": ".github/workflows/osv-scanner.yml"
+    },
+    "remove_required_status_checks": [
+      "scan-pr / osv-scan"
+    ]
+  },
   "repositories": [
     ".github",
     "Bastion",
