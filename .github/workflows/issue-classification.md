@@ -3,12 +3,11 @@ description: >-
   Metadata-only AI triage for new and reopened issues. Applies exactly one
   difficulty label and one security label; all other routing is deterministic.
 on:
-  issues:
-    types: [opened, reopened]
+  workflow_call:
+engine: copilot
 permissions:
   contents: read
   issues: read
-  copilot-requests: write
 safe-outputs:
   add-labels:
     allowed:
