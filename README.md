@@ -19,11 +19,22 @@ Issues routas först när de har exakt en svårighetsgrad och exakt en säkerhet
 | `security:low` | `priority:p3` |
 | `security:none` | `priority:p4` |
 
-Om någon av klassificeringsdimensionerna saknas sätts `triage:pending`. Om flera labels inom samma dimension finns samtidigt sätts `triage:invalid`. I båda fallen tas eventuella härledda `agent:*`- och `priority:*`-labels bort för att routingen ska vara fail-closed.
+Om någon klassificeringsdimension saknas sätts `triage:pending`. Om flera labels inom samma dimension finns samtidigt sätts `triage:invalid`. I båda fallen tas eventuella härledda `agent:*`- och `priority:*`-labels bort så att routingen är fail-closed.
 
-`agent:*` är routingmetadata. Den centrala workflowen startar inte Claude eller Codex direkt. Automatisk tredjeparts-agentdispatch ska endast läggas till när GitHub har en dokumenterad native/API-väg som kan användas med minsta nödvändiga behörighet och utan externa provider-credentials. Copilot-assignment hanteras separat eftersom GitHubs nuvarande automatiseringsstöd skiljer sig från tredjepartsagenterna.
+`agent:*` är routingmetadata. Den deterministiska workflowen startar inte Claude, Codex eller Copilot som coding agent.
 
-## Central workflow
+## Automatisk issueklassificering
+
+`.github/workflows/issue-classification.md` är källan för GitHub Agentic Workflows-baserad metadata-only triage. Den körs för nya och återöppnade issues och får bara klassificera genom att lägga till exakt:
+
+- en `difficulty:*`-label, och
+- en `security:*`-label.
+
+Labelskrivningen sker genom `gh-aw` safe outputs med en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data och använder GitHubs Copilot-request-behörighet; inga externa AI-provider-credentials ska användas. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
+
+`.github/workflows/issue-classification.lock.yml` är den genererade körbara workflowen. Källan och lockfilen ska hållas synkroniserade och kompileras med officiella `github/gh-aw`.
+
+## Deterministisk metadata-routing
 
 `.github/workflows/metadata-routing.yml` är en reusable workflow. Caller-repon skickar `item-kind` (`issue` eller `pull_request`) och `item-number`. Workflowen:
 
@@ -32,11 +43,9 @@ Om någon av klassificeringsdimensionerna saknas sätts `triage:pending`. Om fle
 3. validerar issueklassificeringen,
 4. härleder `agent:*` och `priority:*` deterministiskt.
 
-Workflowen checkar inte ut eller exekverar kod från pull requests.
+Workflowen checkar inte ut eller exekverar kod från pull requests. `.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar den centrala reusable workflowen med en full commit-SHA.
 
-`.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar den centrala reusable workflowen med en full commit-SHA.
-
-## Visibility
+## Visibility och secrets
 
 Repositoryt är publikt så att både publika och privata caller-repositories kan använda den centrala reusable workflowen. Innehållet här ska därför alltid betraktas som offentligt.
 
@@ -44,4 +53,4 @@ Inga secrets, tokens, privata nycklar eller provider-credentials ska committas h
 
 ## Repository-policy
 
-Ett repository kopplas endast till den centrala workflowen när dess egen `AGENTS.md` och live-policy tillåter ett metadata-workflow. Repositories med en uttrycklig exakt workflow-inventering eller en regel om att endast ett namngivet repository-owned workflow får finnas lämnas orörda tills den policyn ändras uttryckligen.
+Metadata-only AI-triage är ett uttryckligt begränsat undantag från förbud mot AI-delegering. Det undantaget tillåter inte kodändringar, remediation, reviewautomation, branch-/PR-mutation eller deployment. Varje caller-repository måste dessutom tillåta metadataautomation i sin egen `AGENTS.md` och live-policy.
