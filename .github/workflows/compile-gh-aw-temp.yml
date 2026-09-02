@@ -1,0 +1,40 @@
+name: Temporary gh-aw compile
+
+on:
+  push:
+    branches:
+      - fix/issue-triage-external-actors
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download verified gh-aw v0.87.10
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o "$RUNNER_TEMP/gh-aw" https://github.com/github/gh-aw/releases/download/v0.87.10/linux-amd64
+          echo '1624fb3a6e93b48046377c7b26c9b326e2b25056b3f36cc3fd3bf0ebee7d59fd  '"$RUNNER_TEMP/gh-aw" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/gh-aw"
+          "$RUNNER_TEMP/gh-aw" version
+
+      - name: Compile issue classification
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/gh-aw" compile issue-classification --strict --no-check-update
+          test -s .github/workflows/issue-classification.lock.yml
+
+      - name: Upload generated lock
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: issue-classification-lock
+          path: .github/workflows/issue-classification.lock.yml
+          if-no-files-found: error
