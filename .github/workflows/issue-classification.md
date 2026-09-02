@@ -45,6 +45,6 @@ Apply exactly two labels to the triggering issue:
    - `security:low`: minor defense-in-depth/security hardening issue with limited practical impact.
    - `security:none`: no credible security impact is described or implied by the issue.
 
-Security classification is about security impact, not general product urgency. Do not use a security label to represent outage severity, feature importance, or business priority.
+Security classification is about security impact, not general product urgency. Do not use a security label to represent outage severity, feature importance, or business priority. Do not invent a security impact that is not supported by the issue or repository context; use `security:none` when there is no credible security dimension.
 
 Do not add any other labels. Do not comment, assign users or agents, create or update branches or pull requests, start an agent session, edit issue text, close issues, perform review, merge anything, or modify repository content. Do not propose or perform remediation. The deterministic metadata workflow handles owner assignment, `agent:*`, `priority:*`, and triage state after these two classification labels are present.
