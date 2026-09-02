@@ -27,7 +27,7 @@
   "ruleset": {
     "name": "Avkroken merge queue",
     "target": "branch",
-    "enforcement": "active",
+    "enforcement": "disabled",
     "bypass_actors": [],
     "conditions": {
       "ref_name": {
