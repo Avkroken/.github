@@ -1,8 +1,6 @@
 name: Dependabot queue events
 
 on:
-  pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
   schedule:
     - cron: '23 * * * *'
   workflow_dispatch:
@@ -11,7 +9,6 @@ permissions: {}
 
 jobs:
   queue:
-    if: ${{ github.event_name != 'pull_request_target' || github.event.pull_request.user.login == 'dependabot[bot]' }}
     uses: ./.github/workflows/dependabot-automerge.yml
     with:
       app-client-id: ${{ vars.GAMNACKEN_ID }}
