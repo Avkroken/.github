@@ -1,23 +1,24 @@
 name: Feature request
-description: Propose a focused improvement
-title: "[Feature]: "
+description: Suggest a focused improvement
+title: "feat: "
+labels:
+  - enhancement
 body:
   - type: textarea
-    id: need
+    id: problem
     attributes:
-      label: Need
-      description: What problem or missing capability should be addressed?
+      label: Problem
+      description: What problem should this solve?
     validations:
       required: true
   - type: textarea
-    id: outcome
+    id: proposal
     attributes:
-      label: Desired outcome
-      description: Describe the useful end state without prescribing unnecessary implementation detail.
+      label: Proposed solution
+      description: Describe the smallest useful change.
     validations:
       required: true
   - type: textarea
-    id: context
+    id: alternatives
     attributes:
-      label: Relevant context
-      description: Constraints, examples, or references that materially affect the request.
+      label: Alternatives considered
