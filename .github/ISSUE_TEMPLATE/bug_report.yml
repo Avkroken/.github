@@ -36,3 +36,5 @@ body:
     attributes:
       label: Environment
       description: OS, runtime versions, browser, container image, or other relevant context. Remove secrets and personal data.
+    validations:
+      required: true
