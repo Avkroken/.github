@@ -100,6 +100,25 @@ Mark a thread resolved only after its feedback has been evaluated and any necess
 
 After every new commit, check for new or reopened review feedback.
 
+## Organization PR Sweeps
+
+When the repository owner asks for an organization-wide PR review, sweep, cleanup, or equivalent shorthand, treat it as standing authorization to process all relevant open pull requests owned by the connected account without requiring the owner to restate the detailed procedure.
+
+For each in-scope pull request:
+
+1. Read this policy and the repository-specific context before any mutation.
+2. Read the current PR HEAD, complete diff/scope, all review comments and review threads, current reviews, required checks, workflow results, mergeability, and live repository rules.
+3. Evaluate every review finding on its merits. Fix verified findings that are caused by the PR and fit its existing scope. Do not make unrelated refactors or expand product behavior merely to satisfy a reviewer.
+4. After every mutation, re-read the PR HEAD and re-check CI, reviews, threads, mergeability, and relevant rules against the new HEAD.
+5. When the PR is otherwise eligible, enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue.
+6. Do not treat a successful `enable auto-merge` call, a null/non-null REST `auto_merge` field, or an earlier queue event as proof that the PR is currently queued. Verify the resulting queue state from current GitHub state or timeline events. If queue events are available, the latest relevant event must show `added_to_merge_queue` after any `removed_from_merge_queue` event.
+7. When a PR is removed from the merge queue, identify the exact cause. Fix it if it is a verified PR-scope defect; otherwise leave legitimate external gates intact. Re-arm or requeue only after the applicable conditions are again satisfied.
+8. Inspect merge-group checks when the repository uses a merge queue. Green pull-request checks do not prove that the merge-group revision is valid.
+9. Do not report a PR as complete until GitHub confirms the merged/closed state, including `merged=true` or equivalent and a verified merge timestamp when available.
+10. Leave only legitimate external gates unresolved, and report the exact blocker rather than a generic waiting state.
+
+A request such as “run an organization review/sweep” is sufficient to invoke this procedure. The owner does not need to repeat these details on every run.
+
 ## CI and Workflow Changes
 
 Treat the repository's live required checks as authoritative for merge eligibility.
