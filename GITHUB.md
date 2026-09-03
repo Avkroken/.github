@@ -10,6 +10,8 @@ This repository is Avkroken's central source for shared GitHub metadata and repo
 
 Canonical `difficulty:*` and `security:*` labels take precedence over AI output. The temporary `classification:*` label is transport metadata only and is removed after deterministic conversion. Malformed or conflicting classification metadata routes to `triage:invalid`.
 
+Pull-request metadata callers use ordinary `pull_request` events only for same-repository, non-Dependabot pull requests where the event token can write safely. Fork, Dependabot, and missed pull-request events are covered by low-frequency scheduled reconciliation over open pull requests. Do not use `pull_request_target` for this caller path: current GitHub execution rejects these workflows at startup before any job runs.
+
 The metadata-only Agentic Workflow source and generated lock file are kept together and compiled with the repository's pinned stable `github/gh-aw` toolchain. Its permitted behavior is defined only by the `Metadata-only AI triage` section of `AGENTS.md`.
 
 ## Dependabot merge-queue implementation
