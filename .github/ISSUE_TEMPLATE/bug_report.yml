@@ -1,26 +1,40 @@
 name: Bug report
 description: Report a reproducible problem
-title: "[Bug]: "
+title: "bug: "
+labels:
+  - bug
 body:
   - type: markdown
     attributes:
       value: Do not report security vulnerabilities here. Use the repository Security tab and Report a vulnerability instead.
   - type: textarea
-    id: problem
+    id: description
     attributes:
-      label: Problem
-      description: What happened, and what did you expect instead?
+      label: Description
+      description: What happened?
     validations:
       required: true
   - type: textarea
-    id: reproduce
+    id: steps
     attributes:
-      label: Reproduction
-      description: Minimal steps, input, or example needed to reproduce the problem.
+      label: Steps to reproduce
+      description: List the exact steps needed to reproduce the issue.
+      placeholder: |
+        1.
+        2.
+        3.
     validations:
       required: true
   - type: textarea
-    id: context
+    id: expected
     attributes:
-      label: Relevant context
-      description: Version, environment, logs, screenshots, or other details that materially help diagnose the problem. Remove secrets and personal data.
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, runtime versions, browser, container image, or other relevant context. Remove secrets and personal data.
+    validations:
+      required: true
