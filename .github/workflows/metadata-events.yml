@@ -3,8 +3,11 @@ name: Central metadata events
 on:
   issues:
     types: [opened, reopened, labeled, unlabeled]
-  pull_request_target:
+  pull_request:
     types: [opened, reopened]
+  schedule:
+    - cron: '13 * * * *'
+  workflow_dispatch:
 
 permissions: {}
 
@@ -18,11 +21,47 @@ jobs:
       item-kind: issue
       item-number: ${{ github.event.issue.number }}
 
-  pull-request:
-    if: github.event_name == 'pull_request_target'
+  pull-request-event:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
     permissions:
       issues: write
     uses: ./.github/workflows/metadata-routing.yml
     with:
       item-kind: pull_request
       item-number: ${{ github.event.pull_request.number }}
+
+  discover-pull-requests:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      numbers: ${{ steps.open.outputs.numbers }}
+    steps:
+      - name: List open pull requests
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          numbers="$(
+            gh api --paginate "repos/$REPOSITORY/pulls?state=open&per_page=100" --jq '.[].number' \
+              | jq -Rsc 'split("\n") | map(select(length > 0) | tonumber)'
+          )"
+          echo "numbers=$numbers" >> "$GITHUB_OUTPUT"
+
+  pull-request-reconcile:
+    needs: discover-pull-requests
+    if: needs.discover-pull-requests.outputs.numbers != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        number: ${{ fromJSON(needs.discover-pull-requests.outputs.numbers) }}
+    permissions:
+      issues: write
+    uses: ./.github/workflows/metadata-routing.yml
+    with:
+      item-kind: pull_request
+      item-number: ${{ matrix.number }}
