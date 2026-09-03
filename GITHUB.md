@@ -24,14 +24,29 @@ Repository merge-queue rulesets are managed manually through GitHub UI/API by th
 
 Organization required-workflow and ruleset migrations are owner-operated rather than automated from this repository.
 
-GitHub App credentials used by Dependabot automation are supplied through organization Actions configuration using `GAMNACKEN_ID` and `GAMNACKEN_PEMKEY`. This public repository contains only credential names and references, never credential values.
+GitHub App credentials used by organization automation are supplied through organization Actions configuration. Current callers use `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. This public repository contains only credential names and references, never credential values.
 
-## Reusable auto release
+## Release PR platform
 
-`.github/workflows/auto-release.yml` is the reusable GitHub Release implementation for repositories that opt in with a small caller workflow.
+`.github/workflows/release-please.yml` is the reusable release implementation for repositories that explicitly opt in with a small caller workflow.
 
-The workflow runs only when invoked by a caller and uses the caller repository's normal `GITHUB_TOKEN` with `contents: write`. It does not require organization secrets, a PAT, or a GitHub App.
+The release lifecycle is `main -> Release PR -> normal repository checks/reviews/merge queue -> merged Release PR -> draft GitHub Release -> finalized GitHub Release`. The central workflow uses the organization-installed `Gamnacken` GitHub App so Release Please pull requests trigger normal repository workflows. The workflow may request native auto-merge for the exact Release Please pull request it just created or updated, but repository rulesets and merge queues remain the final merge authority.
 
-Stable release tags use `vMAJOR.MINOR.PATCH`. The next version is derived from commits since the latest stable tag: breaking changes, `!`, or `major:` cause a major bump; `feat:` or `minor:` cause a minor bump; `fix:`, `perf:`, or `patch:` cause a patch bump. Other commits do not create a release. GitHub-generated release notes are used for the release body.
+Release callers must pin the reusable workflow to an exact commit SHA and explicitly map only the Gamnacken client ID and private key. The reusable workflow itself pins third-party Actions to full commit SHAs.
 
-Repositories with bespoke release or publishing workflows keep those workflows unless they are explicitly migrated. Callers should pin the reusable workflow to an exact commit SHA.
+Each caller owns two Release Please files at repository root:
+
+- `release-please-config.json`, defining the release strategy and changelog sections;
+- `.release-please-manifest.json`, containing the current stable root version.
+
+The central workflow currently supports one root release package per repository. Stable tags use `vMAJOR.MINOR.PATCH`. Release configuration must create draft releases and force tag creation; the central workflow finalizes and publishes the draft after adding organization-standard release metadata.
+
+Release notes are deliberately split by purpose:
+
+- Release Please owns the human-facing code changelog and version bump in the Release PR.
+- The central workflow adds a bounded `Dependency updates` section from dependency-bump commits since the previous stable tag, capped at 20 visible entries.
+- Repositories may optionally add `.github/release-components.json` for a short first-party `Program versions` table. This table is limited to 12 declared components and supports only declarative release, JSON, or TOML version sources. It must not execute repository commands or enumerate the complete dependency graph.
+
+A component inventory is for first-party programs or shipped artifacts, not libraries. Complete dependency inventories belong in GitHub's dependency graph/SBOM rather than release notes.
+
+Publishing packages, deployment artifacts, app-store builds, container images, Debian packages, or production deployments remains repository-specific and is not performed by the central release workflow unless separately designed and authorized for that repository.
