@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 concurrency:
-  group: issue-classification-${{ github.repository }}-${{ github.event.issue.number || github.run_id }}
+  group: issue-classification-${{ github.repository }}-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
   queue: max
   cancel-in-progress: false
 
@@ -19,6 +19,15 @@ jobs:
     with:
       item-kind: issue
       item-number: ${{ github.event.issue.number }}
+
+  pull-request:
+    if: github.event_name == 'pull_request_target' && (startsWith(github.event.label.name, 'difficulty:') || startsWith(github.event.label.name, 'security:') || startsWith(github.event.label.name, 'classification:'))
+    permissions:
+      issues: write
+    uses: ./.github/workflows/metadata-routing.yml
+    with:
+      item-kind: pull_request
+      item-number: ${{ github.event.pull_request.number }}
 
   pull-request-reconcile:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
