@@ -25,3 +25,13 @@ Repository merge-queue rulesets are managed manually through GitHub UI/API by th
 Organization required-workflow and ruleset migrations are owner-operated rather than automated from this repository.
 
 GitHub App credentials used by Dependabot automation are supplied through organization Actions configuration using `GAMNACKEN_ID` and `GAMNACKEN_PEMKEY`. This public repository contains only credential names and references, never credential values.
+
+## Reusable auto release
+
+`.github/workflows/auto-release.yml` is the reusable GitHub Release implementation for repositories that opt in with a small caller workflow.
+
+The workflow runs only when invoked by a caller and uses the caller repository's normal `GITHUB_TOKEN` with `contents: write`. It does not require organization secrets, a PAT, or a GitHub App.
+
+Stable release tags use `vMAJOR.MINOR.PATCH`. The next version is derived from commits since the latest stable tag: breaking changes, `!`, or `major:` cause a major bump; `feat:` or `minor:` cause a minor bump; `fix:`, `perf:`, or `patch:` cause a patch bump. Other commits do not create a release. GitHub-generated release notes are used for the release body.
+
+Repositories with bespoke release or publishing workflows keep those workflows unless they are explicitly migrated. Callers should pin the reusable workflow to an exact commit SHA.
