@@ -6,11 +6,13 @@ This repository is Avkroken's central source for shared GitHub metadata and repo
 
 ## Metadata automation
 
-`.github/workflows/metadata-routing.yml` is deterministic metadata automation. It assigns `blixten85`, validates classification labels, converts one temporary `classification:<difficulty>:<security>` label into canonical classification labels, and derives `agent:*`, `priority:*`, and `triage:*` labels.
+`.github/workflows/metadata-orchestration.yml` is the reusable entry point for repository metadata automation. It owns event routing, issue-event concurrency, pull-request reconciliation concurrency, the pull-request owner assignee, reconciliation error aggregation, and the dispatch into deterministic issue routing. Repository callers should contain only the repository-local triggers, the minimum explicit token permissions, and a full commit-SHA pin to this reusable workflow. GitHub requires scheduled triggers to be declared in the caller workflow, so each repository keeps only its low-frequency staggered cron value as local trigger configuration; operational metadata values and implementation logic belong here centrally.
+
+`.github/workflows/metadata-routing.yml` is the deterministic issue-routing implementation called by the orchestrator. It assigns `blixten85`, validates classification labels, converts one temporary `classification:<difficulty>:<security>` label into canonical classification labels, and derives `agent:*`, `priority:*`, and `triage:*` labels.
 
 Canonical `difficulty:*` and `security:*` labels take precedence over AI output. The temporary `classification:*` label is transport metadata only and is removed after deterministic conversion. Malformed or conflicting classification metadata routes to `triage:invalid`.
 
-Pull-request owner metadata is reconciled on a low-frequency schedule over all open pull requests using a normal Actions token with explicit `issues: write` and `pull-requests: write`. Do not use `pull_request_target` or ordinary `pull_request` for this write path: the former is rejected at workflow startup by current GitHub execution policy, while the latter cannot reliably mutate pull-request assignees. Issue classification/routing remains event-driven through the central reusable workflow.
+Pull-request owner metadata is reconciled centrally on a low-frequency caller schedule over all open pull requests using a normal Actions token with explicit `issues: write` and `pull-requests: write`. Do not use `pull_request_target` or ordinary `pull_request` for this write path: the former is rejected at workflow startup by current GitHub execution policy, while the latter cannot reliably mutate pull-request assignees. Issue classification/routing remains event-driven through the central reusable workflow.
 
 The metadata-only Agentic Workflow source and generated lock file are kept together and compiled with the repository's pinned stable `github/gh-aw` toolchain. Its permitted behavior is defined only by the `Metadata-only AI triage` section of `AGENTS.md`.
 
