@@ -9,7 +9,9 @@ reviews:
     enabled: false
     auto_incremental_review: false
     auto_pause_after_reviewed_commits: 0
-    drafts: false
+    drafts: true
+    labels:
+      - review:coderabbit
   path_instructions:
     - path: ".github/workflows/**"
       instructions: |
