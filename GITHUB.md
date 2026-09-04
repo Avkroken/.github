@@ -30,6 +30,20 @@ Repository `.coderabbit.yaml` files use `inheritance: true` so repository-specif
 
 The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. `AGENTS.md` remains the binding AI-agent policy; CodeRabbit guidance is review context, not a replacement policy source.
 
+## Advisory AI review routing
+
+`.github/workflows/ai-review-router.yml` is the deterministic organization dispatcher for advisory pull-request review. It runs every eight minutes and may also be started manually in dry-run mode. It uses the organization-installed `Gamnacken` App with `issues: write` and `pull-requests: write`; it does not check out or execute code from target pull requests, change their branches, resolve review findings, mark them Ready, enable auto-merge, or merge them.
+
+The router automatically considers human-authored pull requests from `blixten85`. Other human-authored pull requests are included only when explicitly labeled `review:pending` or `review:deep`; bot-authored pull requests are excluded. The router creates the review labels lazily in repositories with eligible open pull requests:
+
+- `review:pending` requeues a pull request for a fresh advisory review after a material update;
+- `review:coderabbit`, `review:copilot`, and `review:codex` record the selected primary advisory reviewer; and
+- `review:deep` opts the pull request into the deeper Codex path.
+
+Each scheduled run may request at most one Codex review for the oldest `review:deep` pull request, one CodeRabbit review for the oldest normal pull request, and one Copilot review for the next normal pull request as overflow. If the CodeRabbit request itself fails, Copilot is used as fallback for that pull request. The eight-minute schedule therefore caps router-generated CodeRabbit requests at eight per hour. If CodeRabbit has already reviewed an otherwise-unrouted pull request automatically, the router adopts that review and labels it `review:coderabbit` instead of spending another request.
+
+The primary-review labels describe the router's selected reviewer, not a merge gate. Repository-native automatic reviews, including organization-level Copilot review and any repository-level CodeRabbit auto-review that remains enabled, may still produce additional advisory feedback. Those independent automatic reviews are outside the router's request-rate cap and remain non-blocking under `AGENTS.md` unless a live repository rule explicitly requires something else.
+
 ## Dependabot merge-queue implementation
 
 `.github/workflows/dependabot-automerge.yml` is the reusable implementation used by repository callers. It uses the organization-installed `Gamnacken` GitHub App to request native Dependabot auto-merge or merge-queue entry according to the central authorization in `AGENTS.md`.
