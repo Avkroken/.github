@@ -22,6 +22,11 @@ on:
           - classification
           - dependabot
           - release
+      target_sha:
+        description: Optional exact Avkroken/.github commit SHA to roll out
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -48,15 +53,20 @@ jobs:
       - name: Open pin rollout pull requests
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          ORGANIZATION: ${{ github.repository_owner }}
           SOURCE_REPOSITORY: ${{ github.repository }}
-          TARGET_SHA: ${{ github.sha }}
+          TARGET_SHA: ${{ inputs.target_sha || github.sha }}
           BEFORE_SHA: ${{ github.event.before }}
           EVENT_NAME: ${{ github.event_name }}
           REQUESTED_SCOPE: ${{ inputs.scope || 'all' }}
         shell: bash
         run: |
           set -euo pipefail
+
+          if [[ ! "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::target_sha must be a full 40-character commit SHA"
+            exit 1
+          fi
+          gh api "repos/$SOURCE_REPOSITORY/commits/$TARGET_SHA" >/dev/null
 
           declare -A targets=()
 
@@ -136,8 +146,8 @@ jobs:
           short_sha="${TARGET_SHA:0:12}"
 
           mapfile -t repositories < <(
-            gh api --paginate "orgs/$ORGANIZATION/repos?type=all&per_page=100" \
-              --jq '.[] | select(.archived == false and .fork == false and .name != ".github") | .full_name'
+            gh api --paginate "installation/repositories?per_page=100" \
+              --jq '.repositories[] | select(.archived == false and .fork == false and .name != ".github") | .full_name'
           )
 
           for repository in "${repositories[@]}"; do
@@ -186,11 +196,11 @@ jobs:
               fi
 
               encoded="$(base64 -w0 "$workdir/updated")"
-              jq -cn \
+              jq -cnr \
                 --arg path "$workflow_path" \
                 --arg sha "$blob_sha" \
                 --arg content "$encoded" \
-                '[$path, $sha, $content] | @tsv' -r >> "$workdir/changes.tsv"
+                '[$path, $sha, $content] | @tsv' >> "$workdir/changes.tsv"
             done < <(
               jq -r '.[] | select(.type == "file") | select(.name | test("\\.ya?ml$")) | .path' "$workflow_listing"
             )
