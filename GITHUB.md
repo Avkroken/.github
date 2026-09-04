@@ -28,7 +28,7 @@ Manual dispatch may specify an exact central commit SHA and workflow family for 
 
 Repository `.coderabbit.yaml` files use `inheritance: true` so repository-specific review settings can inherit organization defaults. Version-controlled organization-wide CodeRabbit configuration belongs in the dedicated `Avkroken/coderabbit` repository expected by CodeRabbit's central-configuration model; `Avkroken/.github` is not a substitute for that special repository name.
 
-The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. `AGENTS.md` remains the binding AI-agent policy; CodeRabbit guidance is review context, not a replacement policy source.
+The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. Router-managed repositories use label-driven CodeRabbit review: automatic review is otherwise disabled, `review:coderabbit` is the positive review trigger, Draft review is allowed, and automatic incremental review after later pushes is disabled. Repository-local `reviews.auto_review` overrides must preserve that contract unless an exception is explicitly documented. `AGENTS.md` remains the binding AI-agent policy; CodeRabbit guidance is review context, not a replacement policy source.
 
 ## Advisory AI review routing
 
@@ -36,8 +36,8 @@ The organization CodeRabbit configuration should instruct workflow reviews to ev
 
 The router automatically considers human-authored pull requests from `blixten85`. Other human-authored pull requests are included only when explicitly labeled `review:pending` or `review:deep`; bot-authored pull requests are excluded. The router creates its review labels lazily in repositories with eligible open pull requests:
 
-- `review:pending` requeues a pull request for a fresh advisory review after a material update;
-- `review:coderabbit`, `review:copilot`, and `review:codex` record the selected primary advisory reviewer;
+- `review:pending` requeues a pull request for a fresh advisory review after a material update and is retained while a routed request is in flight so an interrupted router run can recover on the next schedule;
+- `review:coderabbit`, `review:copilot`, and `review:codex` record the selected primary advisory reviewer; `review:coderabbit` also acts as CodeRabbit's positive review trigger;
 - `review:level:normal`, `review:level:elevated`, and `review:level:deep` record the router's deterministic change-risk level; and
 - `review:deep` is a manual override that forces the deep, Codex-first route.
 
@@ -45,11 +45,15 @@ The level classifier is deterministic and uses only pull-request file paths, fil
 
 Each scheduled run routes only the oldest eligible unrouted or requeued pull request. Normal and elevated pull requests prefer CodeRabbit, then GitHub Copilot, then Codex. Deep pull requests prefer Codex, then CodeRabbit, then GitHub Copilot. Existing preferred reviews may be adopted instead of spending a duplicate request when the pull request has not been explicitly requeued for a fresh review.
 
-After requesting a reviewer, the router waits up to 120 seconds and polls GitHub every 15 seconds for activity from that bot. A top-level bot comment, submitted review, or inline review comment created after the request counts as acknowledgement; CodeRabbit's preliminary/status comment therefore stops fallback while the full review continues asynchronously. An explicit unavailable/quota response advances to the next bot immediately. If no bot activity appears within two minutes, the router tries the next bot in the route. If no bot acknowledges after the full route, the pull request is left or marked `review:pending` for a later scheduled run.
+For CodeRabbit, selecting the primary reviewer means applying `review:coderabbit`; the router does not post an `@coderabbitai review` command. A fresh requeue removes and reapplies that label so CodeRabbit receives a new label event. If CodeRabbit times out or reports itself unavailable, the router removes/replaces its primary-review label before selecting the next bot.
 
-Because only one pull request is selected per scheduled run and normal/elevated routes can issue at most one new CodeRabbit request in that run, router-generated CodeRabbit requests remain capped at eight per clock hour by the eight-minute schedule. Fallback requests do not make any bot approval a merge requirement.
+After selecting or requesting a reviewer, the router waits up to 120 seconds and polls GitHub every 15 seconds for activity from that bot. A top-level bot comment, submitted review, or inline review comment created after the request counts as acknowledgement; CodeRabbit's preliminary/status comment therefore stops fallback while the full review continues asynchronously. An explicit unavailable/quota response advances to the next bot immediately. If no bot activity appears within two minutes, the router tries the next bot in the route. If no bot acknowledges after the full route, all primary-review labels are cleared and the pull request remains `review:pending` for a later scheduled run. After acknowledgement, `review:pending` is cleared and the selected primary-review label remains as the routing record.
 
-The primary-review labels describe the router's selected reviewer, not a merge gate. Repository-native automatic reviews, including organization-level Copilot review and any repository-level CodeRabbit auto-review that remains enabled, may still produce additional advisory feedback. Those independent automatic reviews are outside the router's request-rate cap and remain non-blocking under `AGENTS.md` unless a live repository rule explicitly requires something else.
+Because only one pull request is selected per scheduled run and normal/elevated routes can issue at most one new CodeRabbit label trigger in that run, router-generated CodeRabbit requests remain capped at eight per clock hour by the eight-minute schedule. Fallback requests do not make any bot approval a merge requirement.
+
+The primary-review labels describe the router's selected reviewer, not a merge gate. Repository-native automatic reviews, including organization-level Copilot review, may still produce additional advisory feedback. CodeRabbit auto-review outside the label-driven contract is an explicitly documented repository exception rather than part of the central router. Independent automatic reviews are outside the router's request-rate cap and remain non-blocking under `AGENTS.md` unless a live repository rule explicitly requires something else.
+
+CodeRabbit can apply configured pull-request labels as part of its review/walkthrough, but the documented labeling path is not used as a standalone pre-review classifier. The router therefore keeps `review:level:*` deterministic and does not depend on CodeRabbit to choose its own review level.
 
 ## Dependabot merge-queue implementation
 
