@@ -1,0 +1,264 @@
+name: Sync central reusable workflow pins
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/metadata-orchestration.yml
+      - .github/workflows/metadata-routing.yml
+      - .github/workflows/issue-classification.lock.yml
+      - .github/workflows/dependabot-automerge.yml
+      - .github/workflows/release-please.yml
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Central workflow family to roll out
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - metadata
+          - classification
+          - dependabot
+          - release
+
+permissions:
+  contents: read
+
+concurrency:
+  group: central-reusable-workflow-pin-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Create organization-scoped Gamnacken token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.GAMNACKEN_CLIENT_ID }}
+          private-key: ${{ secrets.GAMNACKEN_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open pin rollout pull requests
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ORGANIZATION: ${{ github.repository_owner }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_SCOPE: ${{ inputs.scope || 'all' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          declare -A targets=()
+
+          add_target() {
+            targets["$1"]=1
+          }
+
+          add_scope() {
+            case "$1" in
+              all)
+                add_target metadata-orchestration.yml
+                add_target metadata-routing.yml
+                add_target issue-classification.lock.yml
+                add_target dependabot-automerge.yml
+                add_target release-please.yml
+                ;;
+              metadata)
+                add_target metadata-orchestration.yml
+                add_target metadata-routing.yml
+                ;;
+              classification)
+                add_target issue-classification.lock.yml
+                add_target metadata-routing.yml
+                ;;
+              dependabot)
+                add_target dependabot-automerge.yml
+                ;;
+              release)
+                add_target release-please.yml
+                ;;
+              *)
+                echo "::error::Unsupported scope: $1"
+                exit 1
+                ;;
+            esac
+          }
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            add_scope "$REQUESTED_SCOPE"
+          else
+            changed_files="$(
+              gh api "repos/$SOURCE_REPOSITORY/compare/$BEFORE_SHA...$TARGET_SHA" \
+                --jq '.files[].filename'
+            )"
+
+            while IFS= read -r path; do
+              case "$path" in
+                .github/workflows/metadata-orchestration.yml)
+                  add_target metadata-orchestration.yml
+                  ;;
+                .github/workflows/metadata-routing.yml)
+                  # The orchestrator uses this workflow by a relative reference, so
+                  # callers of either entry point must move to a commit containing it.
+                  add_target metadata-orchestration.yml
+                  add_target metadata-routing.yml
+                  ;;
+                .github/workflows/issue-classification.lock.yml)
+                  add_target issue-classification.lock.yml
+                  ;;
+                .github/workflows/dependabot-automerge.yml)
+                  add_target dependabot-automerge.yml
+                  ;;
+                .github/workflows/release-please.yml)
+                  add_target release-please.yml
+                  ;;
+              esac
+            done <<< "$changed_files"
+          fi
+
+          if (( ${#targets[@]} == 0 )); then
+            echo "No reusable workflow pins require rollout."
+            exit 0
+          fi
+
+          TARGET_NAMES="$(printf '%s\n' "${!targets[@]}" | sort)"
+          export TARGET_NAMES TARGET_SHA
+          short_sha="${TARGET_SHA:0:12}"
+
+          mapfile -t repositories < <(
+            gh api --paginate "orgs/$ORGANIZATION/repos?type=all&per_page=100" \
+              --jq '.[] | select(.archived == false and .fork == false and .name != ".github") | .full_name'
+          )
+
+          for repository in "${repositories[@]}"; do
+            default_branch="$(gh api "repos/$repository" --jq '.default_branch')"
+
+            workflow_listing="$RUNNER_TEMP/workflows.json"
+            if ! gh api "repos/$repository/contents/.github/workflows?ref=$default_branch" > "$workflow_listing" 2>/dev/null; then
+              echo "Skipping $repository: no workflow directory."
+              continue
+            fi
+
+            workdir="$RUNNER_TEMP/${repository//\//_}"
+            rm -rf "$workdir"
+            mkdir -p "$workdir"
+            : > "$workdir/changes.tsv"
+
+            while IFS= read -r workflow_path; do
+              metadata="$workdir/file.json"
+              gh api "repos/$repository/contents/$workflow_path?ref=$default_branch" > "$metadata"
+              blob_sha="$(jq -r '.sha' "$metadata")"
+              jq -r '.content' "$metadata" | tr -d '\n' | base64 --decode > "$workdir/original"
+
+              ORIGINAL_FILE="$workdir/original" UPDATED_FILE="$workdir/updated" \
+                python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          source = Path(os.environ["ORIGINAL_FILE"])
+          target = Path(os.environ["UPDATED_FILE"])
+          text = source.read_text()
+          sha = os.environ["TARGET_SHA"]
+          names = [name for name in os.environ["TARGET_NAMES"].splitlines() if name]
+
+          for name in names:
+              pattern = re.compile(
+                  rf"(Avkroken/\.github/\.github/workflows/{re.escape(name)}@)[0-9a-f]{{40}}"
+              )
+              text = pattern.sub(rf"\g<1>{sha}", text)
+
+          target.write_text(text)
+          PY
+
+              if cmp -s "$workdir/original" "$workdir/updated"; then
+                continue
+              fi
+
+              encoded="$(base64 -w0 "$workdir/updated")"
+              jq -cn \
+                --arg path "$workflow_path" \
+                --arg sha "$blob_sha" \
+                --arg content "$encoded" \
+                '[$path, $sha, $content] | @tsv' -r >> "$workdir/changes.tsv"
+            done < <(
+              jq -r '.[] | select(.type == "file") | select(.name | test("\\.ya?ml$")) | .path' "$workflow_listing"
+            )
+
+            if [[ ! -s "$workdir/changes.tsv" ]]; then
+              echo "$repository already has the relevant central pins."
+              continue
+            fi
+
+            branch="chore/sync-central-workflows-$short_sha"
+            if gh api "repos/$repository/git/ref/heads/$branch" >/dev/null 2>&1; then
+              echo "::warning::$repository already has branch $branch; skipping duplicate rollout."
+              continue
+            fi
+
+            base_sha="$(gh api "repos/$repository/git/ref/heads/$default_branch" --jq '.object.sha')"
+            gh api --method POST "repos/$repository/git/refs" \
+              -f "ref=refs/heads/$branch" \
+              -f "sha=$base_sha" \
+              >/dev/null
+
+            while IFS=$'\t' read -r workflow_path blob_sha encoded; do
+              jq -n \
+                --arg message "chore: sync central workflow pins" \
+                --arg content "$encoded" \
+                --arg sha "$blob_sha" \
+                --arg branch "$branch" \
+                '{message: $message, content: $content, sha: $sha, branch: $branch}' \
+                | gh api --method PUT "repos/$repository/contents/$workflow_path" --input - >/dev/null
+            done < "$workdir/changes.tsv"
+
+            body="$(cat <<EOF
+          ## Summary
+          - update exact full-SHA references to Avkroken-owned reusable workflows affected by central commit \`$TARGET_SHA\`
+          - keep repository-local triggers, permissions, schedules, CI, reviews, rulesets, and merge-queue behavior unchanged
+
+          Generated by \`Avkroken/.github/.github/workflows/sync-reusable-workflow-pins.yml\`.
+          EOF
+          )"
+
+            pr_number="$(
+              jq -n \
+                --arg title "chore: sync central reusable workflow pins" \
+                --arg head "$branch" \
+                --arg base "$default_branch" \
+                --arg body "$body" \
+                '{title: $title, head: $head, base: $base, body: $body}' \
+                | gh api --method POST "repos/$repository/pulls" --input - --jq '.number'
+            )"
+
+            merge_flags=()
+            read -r allow_squash allow_merge allow_rebase < <(
+              gh api "repos/$repository" \
+                --jq '[.allow_squash_merge, .allow_merge_commit, .allow_rebase_merge] | @tsv'
+            )
+            if [[ "$allow_squash" == "true" ]]; then
+              merge_flags+=(--squash)
+            elif [[ "$allow_merge" == "true" ]]; then
+              merge_flags+=(--merge)
+            elif [[ "$allow_rebase" == "true" ]]; then
+              merge_flags+=(--rebase)
+            fi
+
+            if (( ${#merge_flags[@]} > 0 )); then
+              if ! gh pr merge "$pr_number" --repo "$repository" --auto "${merge_flags[@]}"; then
+                echo "::warning::Opened $repository#$pr_number but could not arm auto-merge."
+              fi
+            else
+              echo "::warning::Opened $repository#$pr_number; no supported merge method was reported."
+            fi
+          done
