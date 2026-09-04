@@ -26,7 +26,7 @@ Repository merge-queue rulesets are managed manually through GitHub UI/API by th
 
 Organization required-workflow and ruleset migrations are owner-operated rather than automated from this repository.
 
-GitHub App credentials used by organization automation are supplied through organization Actions configuration using the canonical names `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. Reusable workflows resolve the client ID directly from the organization variable, while callers explicitly map only the private-key secret. This public repository contains only credential names and references, never credential values.
+GitHub App credentials used by organization automation are supplied through organization Actions configuration using the canonical names `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. Reusable workflows resolve the client ID directly from the organization variable, while callers explicitly map only the private-key secret. This public repository contains only credential names and references, never credential values. These canonical names are specific to GitHub Actions; external runtimes do not inherit Actions variables or secrets and must use their own documented runtime bindings.
 
 ## Release PR platform
 
