@@ -1,0 +1,13 @@
+name: Release startup reusable canary
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Minimal reusable workflow resolves
+        run: echo reusable-ok
