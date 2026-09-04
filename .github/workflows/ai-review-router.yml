@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/ai-review-router.yml
       - .github/scripts/ai-review-router.sh
+      - .github/scripts/ai-review-router.test.sh
   schedule:
     - cron: "*/8 * * * *"
   workflow_dispatch:
@@ -26,19 +27,25 @@ jobs:
   validate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
       - name: Check out router change
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Validate shell syntax
         shell: bash
-        run: bash -n .github/scripts/ai-review-router.sh
+        run: |
+          bash -n .github/scripts/ai-review-router.sh
+          bash -n .github/scripts/ai-review-router.test.sh
+
+      - name: Run router tests
+        shell: bash
+        run: bash .github/scripts/ai-review-router.test.sh
 
   route:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     concurrency:
       group: central-ai-review-router
       cancel-in-progress: false
@@ -63,5 +70,7 @@ jobs:
           ROUTED_AUTHOR: blixten85
           REPOSITORY_FILTER: ${{ inputs.repository || '' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          REVIEW_RESPONSE_TIMEOUT_SECONDS: 120
+          REVIEW_RESPONSE_POLL_SECONDS: 15
         shell: bash
         run: bash .github/scripts/ai-review-router.sh
