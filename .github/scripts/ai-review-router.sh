@@ -101,6 +101,13 @@ actor_matches_bot() {
   esac
 }
 
+body_signals_label_gate_wait() {
+  local bot="$1" body="${2,,}"
+  [[ "$bot" == "coderabbit" ]] \
+    && [[ "$body" == *"auto reviews are limited based on label configuration"* ]] \
+    && [[ "$body" == *"review:coderabbit"* ]]
+}
+
 body_signals_unavailable() {
   local bot="$1" body="${2,,}"
   case "$bot" in
@@ -127,6 +134,12 @@ activity_state_from_tsv() {
     [[ -z "$timestamp" || -z "$actor" ]] && continue
     [[ "$timestamp" < "$since" ]] && continue
     if ! actor_matches_bot "$bot" "$actor"; then
+      continue
+    fi
+    # CodeRabbit may create its PR-open status comment before the router adds
+    # review:coderabbit, then update the same comment after the label event.
+    # Treat that transient label-gate message as no response and keep polling.
+    if body_signals_label_gate_wait "$bot" "${body:-}"; then
       continue
     fi
     if body_signals_unavailable "$bot" "${body:-}"; then
