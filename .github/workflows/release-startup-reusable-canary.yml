@@ -14,3 +14,6 @@ jobs:
       - name: Resolve create-github-app-token action without executing it
         if: ${{ false }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+      - name: Resolve release-please action without executing it
+        if: ${{ false }}
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
