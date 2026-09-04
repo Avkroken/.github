@@ -17,3 +17,5 @@ jobs:
       - name: Resolve release-please action without executing it
         if: ${{ false }}
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+
+# Policy canary retrigger after allowlisting googleapis/release-please-action.
