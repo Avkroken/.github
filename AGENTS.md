@@ -46,7 +46,7 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 3. Commit the initial coherent change on that branch before opening the pull request.
 4. Open a pull request targeting `main` as a **Draft**.
 5. Keep the pull request in Draft while the CI and review loop is active. Do not enable auto-merge while the pull request is still Draft.
-6. For the current PR HEAD, wait for the repository's applicable CI checks and configured review systems. When installed and available for the repository, the review round includes CodeRabbit, GitHub Copilot code review, and Codex review. Review systems that do not automatically review Draft pull requests must be triggered explicitly while the pull request remains Draft; for Codex Code Review, request the review by commenting `@codex review` on the pull request.
+6. For the current PR HEAD, wait for the repository's applicable CI checks and configured review systems. When installed and available for the repository, the review round includes CodeRabbit, GitHub Copilot code review, and Codex Code Review. Review systems that do not automatically review Draft pull requests must be triggered explicitly while the pull request remains Draft; for Codex Code Review, request the review by commenting `@codex review` on the pull request.
 7. Read and evaluate every review finding. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the CI and review round against the new HEAD, including fresh explicit review requests for systems that require them.
 8. Keep repeating that loop until all required CI checks pass on the latest HEAD, every relevant finding has been handled, required review threads are resolved, and the configured review round has completed without new relevant findings.
 9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
@@ -77,7 +77,7 @@ A pull request is complete only when every repository-required merge condition i
 At minimum:
 
 - every required CI check is successful on the latest PR HEAD;
-- the configured latest-HEAD review round has completed, including CodeRabbit, GitHub Copilot code review, and Codex review when installed and available for the repository;
+- the configured latest-HEAD review round has completed, including CodeRabbit, GitHub Copilot code review, and Codex Code Review when installed and available for the repository;
 - every relevant review comment has been read and evaluated;
 - every required review thread is resolved;
 - every relevant review finding has been fixed when necessary;
