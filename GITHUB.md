@@ -26,7 +26,7 @@ Repository merge-queue rulesets are managed manually through GitHub UI/API by th
 
 Organization required-workflow and ruleset migrations are owner-operated rather than automated from this repository.
 
-GitHub App credentials used by organization automation are supplied through organization Actions configuration using the canonical names `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. Reusable workflows resolve the client ID directly from the organization variable, while callers explicitly map only the private-key secret. This public repository contains only credential names and references, never credential values.
+GitHub App credentials used by organization automation are supplied through organization Actions configuration using the canonical names `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. Callers should pass `GAMNACKEN_CLIENT_ID` explicitly into reusable workflows through a string input, while mapping only the private-key secret from `GAMNACKEN_PRIVATE_KEY`. The reusable workflows keep a compatibility fallback to `vars.GAMNACKEN_CLIENT_ID`, but this public repository still contains only credential names and references, never credential values.
 
 ## Release PR platform
 
@@ -34,7 +34,7 @@ GitHub App credentials used by organization automation are supplied through orga
 
 The release lifecycle is `main -> Release PR -> normal repository checks/reviews/merge queue -> merged Release PR -> draft GitHub Release -> finalized GitHub Release`. The central workflow uses the organization-installed `Gamnacken` GitHub App so Release Please pull requests trigger normal repository workflows. The workflow may request native auto-merge for the exact Release Please pull request it just created or updated, but repository rulesets and merge queues remain the final merge authority.
 
-Release callers must pin the reusable workflow to an exact commit SHA and explicitly map only the Gamnacken private-key secret. The reusable workflow resolves `GAMNACKEN_CLIENT_ID` from organization Actions variables and pins third-party Actions to full commit SHAs.
+Release callers must pin the reusable workflow to an exact commit SHA, pass `GAMNACKEN_CLIENT_ID` through the reusable workflow input, and explicitly map only the Gamnacken private-key secret. The central reusable workflow retains a compatibility fallback to `vars.GAMNACKEN_CLIENT_ID` and pins third-party Actions to full commit SHAs.
 
 Each caller owns two Release Please files at repository root:
 
