@@ -55,6 +55,8 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 
 If a configured reviewer is unavailable because of quota, outage, permissions, or another external failure, treat that reviewer as an external gate unless the repository owner explicitly waives that review for the pull request.
 
+The centrally authorized Dependabot automation defined below is an explicit exception to this Draft/review/Ready sequencing. It may request native auto-merge for eligible non-draft Dependabot pull requests before the ordinary review loop completes, but repository rulesets, required checks, and merge-queue gates remain authoritative and must not be bypassed.
+
 Use the repository's configured merge method. If squash merge is the only permitted method, use squash auto-merge.
 
 Direct or manual merge is allowed only when explicitly requested and permitted by repository rules.
