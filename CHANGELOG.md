@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Avkroken/.github/compare/v1.1.0...v1.2.0) (2026-09-04)
+
+
+### Features
+
+* trigger CodeRabbit reviews by label ([#52](https://github.com/Avkroken/.github/issues/52)) ([66a670a](https://github.com/Avkroken/.github/commit/66a670ae924687fe1495ee36f168ac965411ae34))
+
 ## [1.1.0](https://github.com/Avkroken/.github/compare/v1.0.0...v1.1.0) (2026-09-04)
 
 
