@@ -1,0 +1,13 @@
+name: Release startup caller canary
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/release-startup-reusable-canary.yml
+      - .github/workflows/release-startup-caller-canary.yml
+
+permissions: {}
+
+jobs:
+  canary:
+    uses: ./.github/workflows/release-startup-reusable-canary.yml
