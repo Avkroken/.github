@@ -26,7 +26,7 @@ Manual dispatch may specify an exact central commit SHA and workflow family for 
 
 ## CodeRabbit review configuration
 
-Repository `.coderabbit.yaml` files use `inheritance: true` so repository-specific review settings can inherit organization defaults. Version-controlled organization-wide CodeRabbit configuration belongs in the dedicated `Avkroken/coderabbit` repository expected by CodeRabbit's central-configuration model; `Avkroken/.github` is not a substitute for that special repository name.
+Repository `.coderabbit.yaml` files use `inheritance: true` so repository-specific review settings can inherit CodeRabbit Organization Settings. Organization-wide CodeRabbit defaults are managed in CodeRabbit Organization Settings; repository-local YAML contains only router-preserving or repository-specific overrides. `Avkroken/.github` does not act as a central CodeRabbit configuration repository.
 
 The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. Router-managed repositories use label-driven CodeRabbit review: automatic review is otherwise disabled, `review:coderabbit` is the positive review trigger, Draft review is allowed, and automatic incremental review after later pushes is disabled. Repository-local `reviews.auto_review` overrides must preserve that contract unless an exception is explicitly documented. `AGENTS.md` remains the binding AI-agent policy; CodeRabbit guidance is review context, not a replacement policy source.
 
