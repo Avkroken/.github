@@ -43,9 +43,17 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 
 1. Never push directly to `main`.
 2. Create a short-lived working branch for each logical change.
-3. Open a pull request targeting `main`.
-4. Enable repository-supported **auto-merge immediately after the pull request is created**.
-5. Keep auto-merge armed while CI, reviews, approvals, or other merge gates are still pending.
+3. Commit the initial coherent change on that branch before opening the pull request.
+4. Open a pull request targeting `main` as a **Draft**.
+5. Keep the pull request in Draft while the CI and review loop is active. Do not enable auto-merge while the pull request is still Draft.
+6. For the current PR HEAD, wait for the repository's applicable CI checks and configured review systems. When installed and available for the repository, the review round includes CodeRabbit, GitHub Copilot code review, and Codex review.
+7. Read and evaluate every review finding. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the CI and review round against the new HEAD.
+8. Keep repeating that loop until the latest HEAD has successful required CI, every relevant finding has been handled, required review threads are resolved, and the configured review round has completed without new relevant findings.
+9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
+10. Verify that the pull request actually enters the merge queue when the repository uses one. Wait for the configured queue delay and merge-group checks, then let GitHub merge automatically.
+11. If a new commit, reopened finding, failed check, or queue removal occurs after readiness, return to the CI/review loop as necessary and re-enter the queue only after the latest HEAD is clean again.
+
+If a configured reviewer is unavailable because of quota, outage, permissions, or another external failure, treat that reviewer as an external gate unless the repository owner explicitly waives that review for the pull request.
 
 Use the repository's configured merge method. If squash merge is the only permitted method, use squash auto-merge.
 
@@ -64,19 +72,22 @@ Never bypass:
 
 ## Merge Gates
 
-A pull request is complete only when every repository-required merge condition is satisfied.
+A pull request is complete only when every repository-required merge condition and the review workflow above are satisfied.
 
 At minimum:
 
-- every required CI check is successful;
+- every required CI check is successful on the latest PR HEAD;
+- the configured latest-HEAD review round has completed, including CodeRabbit, GitHub Copilot code review, and Codex review when installed and available for the repository;
 - every relevant review comment has been read and evaluated;
 - every required review thread is resolved;
 - every relevant review finding has been fixed when necessary;
 - CI status has been checked again after the latest commit;
 - review status has been checked again after the latest commit;
 - required approvals, if any, are present;
-- applicable rulesets, branch protection, and merge-queue requirements are satisfied; and
-- auto-merge remains armed.
+- the pull request is marked Ready before auto-merge is enabled;
+- applicable rulesets, branch protection, and merge-queue requirements are satisfied;
+- merge-group checks are successful when the repository uses a merge queue; and
+- auto-merge remains armed after the pull request becomes eligible.
 
 Do not infer approval requirements or required check names from another repository.
 
@@ -92,13 +103,14 @@ For each review comment:
 2. If it does, fix the issue in the same pull request.
 3. Run the relevant validation after the fix.
 4. Push the change to the existing pull request branch.
-5. Re-check CI and the complete review state.
+5. Re-check CI and the complete review state against the new HEAD.
+6. Re-request or re-check the configured review systems for the new HEAD so an earlier review is not treated as approval of later code.
 
 Do not resolve a review thread solely to remove a merge blocker.
 
 Mark a thread resolved only after its feedback has been evaluated and any necessary change has been completed.
 
-After every new commit, check for new or reopened review feedback.
+After every new commit, check for new or reopened review feedback and continue the loop until the latest review round is clean.
 
 ## Organization PR Sweeps
 
@@ -110,7 +122,7 @@ For each in-scope pull request:
 2. Read the current PR HEAD, complete diff/scope, all review comments and review threads, current reviews, required checks, workflow results, mergeability, and live repository rules.
 3. Evaluate every review finding on its merits. Fix verified findings that are caused by the PR and fit its existing scope. Do not make unrelated refactors or expand product behavior merely to satisfy a reviewer.
 4. After every mutation, re-read the PR HEAD and re-check CI, reviews, threads, mergeability, and relevant rules against the new HEAD.
-5. When the PR is otherwise eligible, enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue.
+5. When the latest-HEAD review loop is clean and the PR is otherwise eligible, mark it Ready if it is still Draft, then enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue.
 6. Do not treat a successful `enable auto-merge` call, a null/non-null REST `auto_merge` field, or an earlier queue event as proof that the PR is currently queued. Verify the resulting queue state from current GitHub state or timeline events. If queue events are available, the latest relevant event must show `added_to_merge_queue` after any `removed_from_merge_queue` event.
 7. When a PR is removed from the merge queue, identify the exact cause. Fix it if it is a verified PR-scope defect; otherwise leave legitimate external gates intact. Re-arm or requeue only after the applicable conditions are again satisfied.
 8. Inspect merge-group checks when the repository uses a merge queue. Green pull-request checks do not prove that the merge-group revision is valid.
@@ -226,7 +238,7 @@ For pull request work, confirm:
 - required check names and results are correct;
 - review status has been checked after the latest commit;
 - relevant review threads are resolved;
-- auto-merge remains armed; and
+- auto-merge is not armed while the PR is Draft and remains armed after the PR becomes Ready and eligible; and
 - the repository reports the expected merge state.
 
 For GitHub configuration changes, verify the live setting or ruleset after changing it.
