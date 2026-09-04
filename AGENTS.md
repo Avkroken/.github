@@ -43,9 +43,19 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 
 1. Never push directly to `main`.
 2. Create a short-lived working branch for each logical change.
-3. Open a pull request targeting `main`.
-4. Enable repository-supported **auto-merge immediately after the pull request is created**.
-5. Keep auto-merge armed while CI, reviews, approvals, or other merge gates are still pending.
+3. Commit the initial coherent change on that branch before opening the pull request.
+4. Open a pull request targeting `main` as a **Draft**.
+5. Keep the pull request in Draft while required CI and any useful review work is active. Do not enable auto-merge while the pull request is still Draft.
+6. For the current PR HEAD, wait for the repository's applicable required CI checks. Bot reviews are advisory and best-effort, not merge requirements. When installed, CodeRabbit, GitHub Copilot code review, and Codex Code Review may be used when useful and available, but their completion, approval, availability, quota, or response is never required to mark a pull request Ready or to merge it. Do not consume paid review credits merely to satisfy this workflow.
+7. Read and evaluate every review finding that is actually received. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the required CI checks against the new HEAD. Re-request a bot review only when it is useful and available; a fresh bot review after every commit is not required.
+8. Keep repeating the required CI and fix loop until all required CI checks pass on the latest HEAD, every relevant received finding has been handled, and required review threads are resolved. Do not wait for an advisory bot review to start, finish, approve, or regain quota.
+9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
+10. Verify that the pull request actually enters the merge queue when the repository uses one. Wait for the configured queue delay and merge-group checks, then let GitHub merge automatically.
+11. If a new commit, reopened finding, failed check, or queue removal occurs after readiness, return to the required CI/fix loop as necessary and re-enter the queue only after the latest HEAD is clean again.
+
+Quota exhaustion, outage, permissions, non-response, or other unavailability from an advisory bot reviewer is not an external gate and must not block Ready status, auto-merge, merge-queue entry, or completion. Do not purchase additional bot-review capacity solely to satisfy this workflow unless the repository owner explicitly requests it.
+
+The centrally authorized Dependabot automation defined below is an explicit exception to this Draft/review/Ready sequencing. It may request native auto-merge for eligible non-draft Dependabot pull requests before the ordinary review loop completes, but repository rulesets, required checks, and merge-queue gates remain authoritative and must not be bypassed.
 
 Use the repository's configured merge method. If squash merge is the only permitted method, use squash auto-merge.
 
@@ -64,19 +74,22 @@ Never bypass:
 
 ## Merge Gates
 
-A pull request is complete only when every repository-required merge condition is satisfied.
+A pull request is complete only when every repository-required merge condition is satisfied and all relevant feedback actually received has been handled.
 
 At minimum:
 
-- every required CI check is successful;
-- every relevant review comment has been read and evaluated;
+- every required CI check is successful on the latest PR HEAD;
+- advisory bot-review completion, approval, availability, quota, and latest-HEAD re-review are not merge gates;
+- every relevant review comment that was received has been read and evaluated;
 - every required review thread is resolved;
-- every relevant review finding has been fixed when necessary;
+- every relevant review finding that was received has been fixed when necessary;
 - CI status has been checked again after the latest commit;
-- review status has been checked again after the latest commit;
+- required review state has been checked again after the latest commit;
 - required approvals, if any, are present;
-- applicable rulesets, branch protection, and merge-queue requirements are satisfied; and
-- auto-merge remains armed.
+- the pull request is marked Ready before auto-merge is enabled;
+- applicable rulesets, branch protection, and merge-queue requirements are satisfied;
+- merge-group checks are successful when the repository uses a merge queue; and
+- auto-merge remains armed after the pull request becomes eligible.
 
 Do not infer approval requirements or required check names from another repository.
 
@@ -84,21 +97,22 @@ If the pull request does not auto-merge after all known gates are satisfied, ins
 
 ## Review Handling
 
-Read and evaluate every review comment before considering a pull request complete.
+Read and evaluate every review comment that is actually received before considering a pull request complete.
 
 For each review comment:
 
 1. Determine whether it identifies a relevant issue.
 2. If it does, fix the issue in the same pull request.
 3. Run the relevant validation after the fix.
-4. Push the change to the existing pull request branch.
-5. Re-check CI and the complete review state.
+4. Commit the fix and push the change to the existing pull request branch.
+5. Re-check required CI and the required review state against the new HEAD.
+6. Optionally re-request advisory bot reviewers when useful and available. A fresh CodeRabbit, GitHub Copilot, or Codex Code Review round is not required for merge, and quota exhaustion or non-response must not block progress.
 
 Do not resolve a review thread solely to remove a merge blocker.
 
 Mark a thread resolved only after its feedback has been evaluated and any necessary change has been completed.
 
-After every new commit, check for new or reopened review feedback.
+After every new commit, check for new or reopened feedback that already exists or arrives, but do not wait for or force a new advisory bot review before continuing once required repository gates are satisfied.
 
 ## Organization PR Sweeps
 
@@ -109,13 +123,13 @@ For each in-scope pull request:
 1. Read this policy and the repository-specific context before any mutation.
 2. Read the current PR HEAD, complete diff/scope, all review comments and review threads, current reviews, required checks, workflow results, mergeability, and live repository rules.
 3. Evaluate every review finding on its merits. Fix verified findings that are caused by the PR and fit its existing scope. Do not make unrelated refactors or expand product behavior merely to satisfy a reviewer.
-4. After every mutation, re-read the PR HEAD and re-check CI, reviews, threads, mergeability, and relevant rules against the new HEAD.
-5. When the PR is otherwise eligible, enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue.
+4. After every mutation, re-read the PR HEAD and re-check required CI, received reviews, threads, mergeability, and relevant rules against the new HEAD.
+5. When required CI is green, relevant received feedback has been handled, required review conditions are satisfied, and the PR is otherwise eligible, mark it Ready if it is still Draft, then enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue, and never wait solely for an advisory bot reviewer.
 6. Do not treat a successful `enable auto-merge` call, a null/non-null REST `auto_merge` field, or an earlier queue event as proof that the PR is currently queued. Verify the resulting queue state from current GitHub state or timeline events. If queue events are available, the latest relevant event must show `added_to_merge_queue` after any `removed_from_merge_queue` event.
 7. When a PR is removed from the merge queue, identify the exact cause. Fix it if it is a verified PR-scope defect; otherwise leave legitimate external gates intact. Re-arm or requeue only after the applicable conditions are again satisfied.
 8. Inspect merge-group checks when the repository uses a merge queue. Green pull-request checks do not prove that the merge-group revision is valid.
 9. Do not report a PR as complete until GitHub confirms the merged/closed state, including `merged=true` or equivalent and a verified merge timestamp when available.
-10. Leave only legitimate external gates unresolved, and report the exact blocker rather than a generic waiting state.
+10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate.
 
 A request such as “run an organization review/sweep” is sufficient to invoke this procedure. The owner does not need to repeat these details on every run.
 
@@ -224,9 +238,9 @@ For pull request work, confirm:
 - the intended commit is present on the pull request branch;
 - CI is running against the latest commit;
 - required check names and results are correct;
-- review status has been checked after the latest commit;
-- relevant review threads are resolved;
-- auto-merge remains armed; and
+- received review feedback and required review state have been checked after the latest commit;
+- required review threads are resolved;
+- auto-merge is not armed while the PR is Draft and remains armed after the PR becomes Ready and eligible; and
 - the repository reports the expected merge state.
 
 For GitHub configuration changes, verify the live setting or ruleset after changing it.
@@ -243,7 +257,7 @@ A task is complete only when:
 - the change is represented in the correct pull request;
 - auto-merge is enabled when supported;
 - required GitHub checks pass;
-- review feedback has been read and handled;
+- review feedback that was actually received has been read and handled;
 - required review threads are resolved;
 - repository merge rules are satisfied; and
 - the resulting repository or runtime state has been verified where applicable.
