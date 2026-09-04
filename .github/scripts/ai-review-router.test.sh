@@ -27,10 +27,20 @@ assert_eq acknowledged "$(printf '%s\n' $'2026-09-04T20:00:05Z\tcoderabbitai[bot
 assert_eq unavailable "$(printf '%s\n' $'2026-09-04T20:00:05Z\tcoderabbitai[bot]\tReview skipped because quota is unavailable' | activity_state_from_tsv coderabbit "$since")" "CodeRabbit explicit unavailability falls back"
 assert_eq unavailable "$(printf '%s\n' $'2026-09-04T20:00:05Z\tchatgpt-codex-connector[bot]\tYou have reached your Codex usage limits for code reviews.' | activity_state_from_tsv codex "$since")" "Codex quota response falls back"
 assert_eq none "$(printf '%s\n' $'2026-09-04T19:59:59Z\tcoderabbitai[bot]\tOld review' | activity_state_from_tsv coderabbit "$since")" "old bot activity does not satisfy a new request"
-assert_eq none "$(printf '%s\n' $'2026-09-04T20:00:05Z\tgamnacken[bot]\t@coderabbitai review' | activity_state_from_tsv coderabbit "$since")" "router command comment is not bot acknowledgement"
+assert_eq none "$(printf '%s\n' $'2026-09-04T20:00:05Z\tgamnacken[bot]\treview:coderabbit' | activity_state_from_tsv coderabbit "$since")" "router label mutation is not bot acknowledgement"
 
 assert_eq 'coderabbit copilot codex' "$(bot_chain_for_level normal)" "normal fallback order"
 assert_eq 'coderabbit copilot codex' "$(bot_chain_for_level elevated)" "elevated fallback order"
 assert_eq 'codex coderabbit copilot' "$(bot_chain_for_level deep)" "deep fallback order"
+
+if grep -Fq '@coderabbitai review' "$SCRIPT_DIR/ai-review-router.sh"; then
+  echo "FAIL: CodeRabbit must be triggered by review:coderabbit, not a command comment" >&2
+  exit 1
+fi
+
+if ! grep -Fq 'selected="review:$bot"' "$SCRIPT_DIR/ai-review-router.sh"; then
+  echo "FAIL: router must select the primary review label before dispatch" >&2
+  exit 1
+fi
 
 echo "AI review router tests passed"
