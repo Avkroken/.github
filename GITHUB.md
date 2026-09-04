@@ -12,9 +12,23 @@ This repository is Avkroken's central source for shared GitHub metadata and repo
 
 Canonical `difficulty:*` and `security:*` labels take precedence over AI output. The temporary `classification:*` label is transport metadata only and is removed after deterministic conversion. Malformed or conflicting classification metadata routes to `triage:invalid`.
 
-Pull-request owner metadata is reconciled centrally on a low-frequency caller schedule over all open pull requests using a normal Actions token with explicit `issues: write` and `pull-requests: write`. Do not use `pull_request_target` or ordinary `pull_request` for this write path: the former is rejected at workflow startup by current GitHub execution policy, while the latter cannot reliably mutate pull-request assignees. Issue classification/routing remains event-driven through the central reusable workflow.
+Pull-request owner assignment is reconciled centrally on a low-frequency caller schedule over all open pull requests using a normal Actions token with explicit `issues: write` and `pull-requests: write`. `pull_request_target` label events are used only for the approved metadata-only PR routing path; that path must not check out or execute pull-request code. Scheduled reconciliation remains authoritative for owner assignment. Issue classification/routing remains event-driven through the central reusable workflow.
 
 The metadata-only Agentic Workflow source and generated lock file are kept together and compiled with the repository's pinned stable `github/gh-aw` toolchain. Its permitted behavior is defined only by the `Metadata-only AI triage` section of `AGENTS.md`.
+
+## Reusable workflow pin rollout
+
+Caller repositories pin Avkroken-owned reusable workflows to immutable full commit SHAs. A full SHA identifies a repository commit, so the correct rollout target is the newest commit that contains the relevant workflow family and its required central dependencies, not mechanically the newest commit in `Avkroken/.github`.
+
+`.github/workflows/sync-reusable-workflow-pins.yml` is the deterministic organization rollout mechanism for these Avkroken-owned pins. On a relevant central workflow change it maps the changed workflow family to affected caller references, discovers repositories available to the organization-installed `Gamnacken` App, changes only matching `Avkroken/.github/.github/workflows/<name>@<40-char-sha>` references, and opens ordinary pull requests. It must not push to a caller's default branch, execute caller code, bypass rulesets or reviews, dismiss findings, or merge around a merge queue. It may request native auto-merge; repository protections remain final authority.
+
+Manual dispatch may specify an exact central commit SHA and workflow family for catch-up or recovery. This is required when a later unrelated `.github` commit should not advance an unaffected caller family. Dependabot `github-actions` updates remain enabled as defense in depth for Actions dependencies, but Dependabot is not the authoritative rollout mechanism for Avkroken-owned reusable workflow pins because it does not encode this organization-specific workflow dependency closure.
+
+## CodeRabbit review configuration
+
+Repository `.coderabbit.yaml` files use `inheritance: true` so repository-specific review settings can inherit organization defaults. Version-controlled organization-wide CodeRabbit configuration belongs in the dedicated `Avkroken/coderabbit` repository expected by CodeRabbit's central-configuration model; `Avkroken/.github` is not a substitute for that special repository name.
+
+The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. `AGENTS.md` remains the binding AI-agent policy; CodeRabbit guidance is review context, not a replacement policy source.
 
 ## Dependabot merge-queue implementation
 
