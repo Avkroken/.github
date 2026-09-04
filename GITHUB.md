@@ -34,13 +34,20 @@ The organization CodeRabbit configuration should instruct workflow reviews to ev
 
 `.github/workflows/ai-review-router.yml` is the deterministic organization dispatcher for advisory pull-request review. It runs every eight minutes and may also be started manually in dry-run mode. It uses the organization-installed `Gamnacken` App with `issues: write` and `pull-requests: write`; it does not check out or execute code from target pull requests, change their branches, resolve review findings, mark them Ready, enable auto-merge, or merge them.
 
-The router automatically considers human-authored pull requests from `blixten85`. Other human-authored pull requests are included only when explicitly labeled `review:pending` or `review:deep`; bot-authored pull requests are excluded. The router creates the review labels lazily in repositories with eligible open pull requests:
+The router automatically considers human-authored pull requests from `blixten85`. Other human-authored pull requests are included only when explicitly labeled `review:pending` or `review:deep`; bot-authored pull requests are excluded. The router creates its review labels lazily in repositories with eligible open pull requests:
 
 - `review:pending` requeues a pull request for a fresh advisory review after a material update;
-- `review:coderabbit`, `review:copilot`, and `review:codex` record the selected primary advisory reviewer; and
-- `review:deep` opts the pull request into the deeper Codex path.
+- `review:coderabbit`, `review:copilot`, and `review:codex` record the selected primary advisory reviewer;
+- `review:level:normal`, `review:level:elevated`, and `review:level:deep` record the router's deterministic change-risk level; and
+- `review:deep` is a manual override that forces the deep, Codex-first route.
 
-Each scheduled run may request at most one Codex review for the oldest `review:deep` pull request, one CodeRabbit review for the oldest normal pull request, and one Copilot review for the next normal pull request as overflow. If the CodeRabbit request itself fails, Copilot is used as fallback for that pull request. The eight-minute schedule therefore caps router-generated CodeRabbit requests at eight per hour. If CodeRabbit has already reviewed an otherwise-unrouted pull request automatically, the router adopts that review and labels it `review:coderabbit` instead of spending another request.
+The level classifier is deterministic and uses only pull-request file paths, file count, and additions/deletions from GitHub metadata. It does not ask an AI model to choose an AI reviewer. Normal is the default. Authentication/login/session, API/server/database paths, dependency manifests/locks, and ordinary workflow changes are elevated; changes of at least 250 lines or 10 files are also elevated. Migrations/schema, security/permissions/authorization, deploy/infrastructure/terraform/ruleset paths, `wrangler.toml`, changes of at least 800 lines or 25 files, and the manual `review:deep` override are deep.
+
+Each scheduled run routes only the oldest eligible unrouted or requeued pull request. Normal and elevated pull requests prefer CodeRabbit, then GitHub Copilot, then Codex. Deep pull requests prefer Codex, then CodeRabbit, then GitHub Copilot. Existing preferred reviews may be adopted instead of spending a duplicate request when the pull request has not been explicitly requeued for a fresh review.
+
+After requesting a reviewer, the router waits up to 120 seconds and polls GitHub every 15 seconds for activity from that bot. A top-level bot comment, submitted review, or inline review comment created after the request counts as acknowledgement; CodeRabbit's preliminary/status comment therefore stops fallback while the full review continues asynchronously. An explicit unavailable/quota response advances to the next bot immediately. If no bot activity appears within two minutes, the router tries the next bot in the route. If no bot acknowledges after the full route, the pull request is left or marked `review:pending` for a later scheduled run.
+
+Because only one pull request is selected per scheduled run and normal/elevated routes can issue at most one new CodeRabbit request in that run, router-generated CodeRabbit requests remain capped at eight per clock hour by the eight-minute schedule. Fallback requests do not make any bot approval a merge requirement.
 
 The primary-review labels describe the router's selected reviewer, not a merge gate. Repository-native automatic reviews, including organization-level Copilot review and any repository-level CodeRabbit auto-review that remains enabled, may still produce additional advisory feedback. Those independent automatic reviews are outside the router's request-rate cap and remain non-blocking under `AGENTS.md` unless a live repository rule explicitly requires something else.
 
