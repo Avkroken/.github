@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Avkroken/.github/compare/v1.0.0...v1.1.0) (2026-09-04)
+
+
+### Features
+
+* add AI review levels and timed fallback ([#50](https://github.com/Avkroken/.github/issues/50)) ([77adbce](https://github.com/Avkroken/.github/commit/77adbceef886782c74b8d2b4bcdc1ad22353979d))
+
 ## 1.0.0 (2026-09-04)
 
 
