@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+inheritance: true
+
+reviews:
+  review_progress: true
+  fail_commit_status: true
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 0
+    drafts: false
+  path_instructions:
+    - path: ".github/workflows/**"
+      instructions: |
+        Avkroken centralizes reusable GitHub Actions implementation in Avkroken/.github.
+        Review caller SHA bumps against the exact referenced central commit and the central workflow's dependency closure; do not infer behavior only from the caller diff.
+        Preserve the thin-caller contract: repository callers should keep only GitHub-required local triggers, minimum explicit permissions, staggered schedules, secrets mappings when required, and immutable full-SHA references. Do not recommend copying central implementation logic into caller repositories merely to make it locally visible.
+        Full 40-character SHA pins for Avkroken-owned reusable workflows are intentional. A pin-only rollout may legitimately contain no local logic change.
+        When reviewing nested reusable-workflow permissions, account for GitHub's permission propagation model: a called workflow may maintain or reduce the caller's GITHUB_TOKEN permissions but cannot elevate beyond the caller-provided ceiling.
+        Treat pull_request_target contextually. In Avkroken's approved metadata-only PR label-routing path, flag checkout or execution of untrusted pull-request code and unnecessary write behavior; do not flag the trigger name alone when the path remains metadata-only.
+        Avkroken-owned reusable workflow pin rollouts are handled by the central pin-sync workflow and ordinary protected pull requests. Do not suggest direct default-branch writes or bypassing checks, reviews, rulesets, or merge queues.
+    - path: ".github/dependabot.yml"
+      instructions: |
+        Keep github-actions version updates enabled for the repository root. Dependabot is defense in depth for Action and reusable-workflow references, but the central Avkroken pin-sync workflow is authoritative for organization-owned reusable-workflow SHA rollouts because it understands workflow-family dependency closure.
