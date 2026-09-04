@@ -1,6 +1,10 @@
 name: AI review router
 
 on:
+  pull_request:
+    paths:
+      - .github/workflows/ai-review-router.yml
+      - .github/scripts/ai-review-router.sh
   schedule:
     - cron: "*/8 * * * *"
   workflow_dispatch:
@@ -18,14 +22,26 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: central-ai-review-router
-  cancel-in-progress: false
-
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check out router change
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Validate shell syntax
+        shell: bash
+        run: bash -n .github/scripts/ai-review-router.sh
+
   route:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    concurrency:
+      group: central-ai-review-router
+      cancel-in-progress: false
     steps:
       - name: Check out trusted router code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
