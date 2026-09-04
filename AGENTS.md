@@ -48,7 +48,7 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 5. Keep the pull request in Draft while the CI and review loop is active. Do not enable auto-merge while the pull request is still Draft.
 6. For the current PR HEAD, wait for the repository's applicable CI checks and configured review systems. When installed and available for the repository, the review round includes CodeRabbit, GitHub Copilot code review, and Codex review.
 7. Read and evaluate every review finding. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the CI and review round against the new HEAD.
-8. Keep repeating that loop until the latest HEAD has successful required CI, every relevant finding has been handled, required review threads are resolved, and the configured review round has completed without new relevant findings.
+8. Keep repeating that loop until all required CI checks pass on the latest HEAD, every relevant finding has been handled, required review threads are resolved, and the configured review round has completed without new relevant findings.
 9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
 10. Verify that the pull request actually enters the merge queue when the repository uses one. Wait for the configured queue delay and merge-group checks, then let GitHub merge automatically.
 11. If a new commit, reopened finding, failed check, or queue removal occurs after readiness, return to the CI/review loop as necessary and re-enter the queue only after the latest HEAD is clean again.
@@ -72,7 +72,7 @@ Never bypass:
 
 ## Merge Gates
 
-A pull request is complete only when every repository-required merge condition and the review workflow above are satisfied.
+A pull request is complete only when every repository-required merge condition is satisfied and the review workflow above has completed.
 
 At minimum:
 
@@ -102,7 +102,7 @@ For each review comment:
 1. Determine whether it identifies a relevant issue.
 2. If it does, fix the issue in the same pull request.
 3. Run the relevant validation after the fix.
-4. Push the change to the existing pull request branch.
+4. Commit the fix and push the change to the existing pull request branch.
 5. Re-check CI and the complete review state against the new HEAD.
 6. Re-request or re-check the configured review systems for the new HEAD so an earlier review is not treated as approval of later code.
 
