@@ -60,6 +60,8 @@ GitHub App credentials used by organization automation are supplied through orga
 
 `.github/workflows/release-please.yml` is the reusable release implementation for repositories that explicitly opt in with a small caller workflow.
 
+The organization Actions policy must allow `googleapis/release-please-action@*`. The reusable workflow still pins the action to an exact full commit SHA, so the organization allowlist permits only refs from that repository while each execution remains immutable and auditable.
+
 The release lifecycle is `main -> Release PR -> normal repository checks/reviews/merge queue -> merged Release PR -> draft GitHub Release -> finalized GitHub Release`. The central workflow uses the organization-installed `Gamnacken` GitHub App so Release Please pull requests trigger normal repository workflows. The workflow may request native auto-merge for the exact Release Please pull request it just created or updated, but repository rulesets and merge queues remain the final merge authority.
 
 Release callers must pin the reusable workflow to an exact commit SHA and explicitly map only the Gamnacken private-key secret. The reusable workflow resolves `GAMNACKEN_CLIENT_ID` from organization Actions variables and pins third-party Actions to full commit SHAs.
