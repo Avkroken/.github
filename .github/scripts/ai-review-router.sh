@@ -215,7 +215,9 @@ trigger_review() {
 
   case "$bot" in
     coderabbit)
-      gh pr comment "$pr" --repo "$repository" --body '@coderabbitai review' >/dev/null
+      # Adding review:coderabbit is the request. The label is selected before
+      # this function runs so CodeRabbit can react without a command comment.
+      return 0
       ;;
     copilot)
       if has_copilot_review_or_request "$repository" "$pr"; then
@@ -235,21 +237,57 @@ trigger_review() {
   esac
 }
 
-mark_route() {
-  local repository="$1" pr="$2" bot="$3" current_labels="$4"
-  local selected="review:$bot"
+select_primary_route() {
+  local repository="$1" pr="$2" bot="$3" force_reapply="${4:-false}"
+  local selected="review:$bot" labels label
+  labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[dry-run] would label $repository#$pr with $selected"
+    echo "[dry-run] would select $selected for $repository#$pr"
     return 0
   fi
 
-  for label in "${primary_labels[@]}" review:pending; do
-    if has_label "$current_labels" "$label"; then
+  for label in "${primary_labels[@]}"; do
+    if has_label "$labels" "$label" && { [[ "$label" != "$selected" ]] || [[ "$force_reapply" == "true" ]]; }; then
       gh pr edit "$pr" --repo "$repository" --remove-label "$label" >/dev/null
     fi
   done
-  gh pr edit "$pr" --repo "$repository" --add-label "$selected" >/dev/null
+
+  if [[ "$force_reapply" == "true" ]] || ! has_label "$labels" "$selected"; then
+    gh pr edit "$pr" --repo "$repository" --add-label "$selected" >/dev/null
+  fi
+}
+
+finalize_route() {
+  local repository="$1" pr="$2"
+  local labels
+  labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] would clear review:pending for $repository#$pr"
+    return 0
+  fi
+
+  if has_label "$labels" review:pending; then
+    gh pr edit "$pr" --repo "$repository" --remove-label review:pending >/dev/null
+  fi
+}
+
+clear_primary_routes() {
+  local repository="$1" pr="$2"
+  local labels label
+  labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] would clear primary review labels for $repository#$pr"
+    return 0
+  fi
+
+  for label in "${primary_labels[@]}"; do
+    if has_label "$labels" "$label"; then
+      gh pr edit "$pr" --repo "$repository" --remove-label "$label" >/dev/null
+    fi
+  done
 }
 
 mark_level() {
@@ -280,8 +318,11 @@ mark_level() {
 }
 
 mark_pending() {
-  local repository="$1" pr="$2" current_labels="$3"
-  if has_label "$current_labels" review:pending; then
+  local repository="$1" pr="$2"
+  local labels
+  labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+
+  if has_label "$labels" review:pending; then
     return 0
   fi
   if [[ "$DRY_RUN" == "true" ]]; then
@@ -302,27 +343,37 @@ bot_chain_for_level() {
 
 route_candidate() {
   local line="$1"
-  local created repository pr level fresh labels requested_at state bot
+  local created repository pr level fresh requested_at state bot
   IFS=$'\t' read -r created repository pr level fresh <<< "$line"
-  labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
 
   echo "Routing $repository#$pr (created $created, level $level, fresh=$fresh)."
+
+  # Keep review:pending while a request is in flight. If the workflow is
+  # interrupted, the next scheduled run will safely pick the PR up again.
+  mark_pending "$repository" "$pr"
 
   for bot in $(bot_chain_for_level "$level"); do
     if [[ "$fresh" != "true" ]] && has_bot_review "$repository" "$pr" "$bot"; then
       echo "Adopting existing $bot review for $repository#$pr."
-      mark_route "$repository" "$pr" "$bot" "$labels"
+      select_primary_route "$repository" "$pr" "$bot" false
+      finalize_route "$repository" "$pr"
       return 0
     fi
 
+    # Capture the time before selecting the label so a fast CodeRabbit status
+    # comment emitted by the label event cannot be missed by the response poll.
     requested_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    if ! select_primary_route "$repository" "$pr" "$bot" "$fresh"; then
+      echo "::warning::Could not select $bot for $repository#$pr; trying fallback."
+      continue
+    fi
     if ! trigger_review "$repository" "$pr" "$bot"; then
       echo "::warning::Could not request $bot review for $repository#$pr; trying fallback."
       continue
     fi
 
     if [[ "$DRY_RUN" == "true" ]]; then
-      mark_route "$repository" "$pr" "$bot" "$labels"
+      finalize_route "$repository" "$pr"
       return 0
     fi
 
@@ -330,7 +381,7 @@ route_candidate() {
     case "$state" in
       acknowledged)
         echo "$bot acknowledged $repository#$pr."
-        mark_route "$repository" "$pr" "$bot" "$labels"
+        finalize_route "$repository" "$pr"
         return 0
         ;;
       unavailable)
@@ -346,7 +397,8 @@ route_candidate() {
   done
 
   echo "::warning::No review bot acknowledged $repository#$pr; keeping it pending for a later run."
-  mark_pending "$repository" "$pr" "$labels"
+  clear_primary_routes "$repository" "$pr"
+  mark_pending "$repository" "$pr"
   return 1
 }
 
@@ -440,12 +492,14 @@ main() {
       if [[ "$pending" != "true" ]]; then
         if [[ "$level" == "deep" ]] && has_bot_review "$repository" "$pr" codex; then
           echo "Adopting existing Codex review for $repository#$pr."
-          mark_route "$repository" "$pr" codex "$labels"
+          select_primary_route "$repository" "$pr" codex false
+          finalize_route "$repository" "$pr"
           continue
         fi
         if [[ "$level" != "deep" ]] && has_bot_review "$repository" "$pr" coderabbit; then
           echo "Adopting existing CodeRabbit review for $repository#$pr."
-          mark_route "$repository" "$pr" coderabbit "$labels"
+          select_primary_route "$repository" "$pr" coderabbit false
+          finalize_route "$repository" "$pr"
           continue
         fi
       fi
