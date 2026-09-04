@@ -46,8 +46,8 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 3. Commit the initial coherent change on that branch before opening the pull request.
 4. Open a pull request targeting `main` as a **Draft**.
 5. Keep the pull request in Draft while the CI and review loop is active. Do not enable auto-merge while the pull request is still Draft.
-6. For the current PR HEAD, wait for the repository's applicable CI checks and configured review systems. When installed and available for the repository, the review round includes CodeRabbit, GitHub Copilot code review, and Codex review.
-7. Read and evaluate every review finding. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the CI and review round against the new HEAD.
+6. For the current PR HEAD, wait for the repository's applicable CI checks and configured review systems. When installed and available for the repository, the review round includes CodeRabbit, GitHub Copilot code review, and Codex review. Review systems that do not automatically review Draft pull requests must be triggered explicitly while the pull request remains Draft; for Codex Code Review, request the review by commenting `@codex review` on the pull request.
+7. Read and evaluate every review finding. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the CI and review round against the new HEAD, including fresh explicit review requests for systems that require them.
 8. Keep repeating that loop until all required CI checks pass on the latest HEAD, every relevant finding has been handled, required review threads are resolved, and the configured review round has completed without new relevant findings.
 9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
 10. Verify that the pull request actually enters the merge queue when the repository uses one. Wait for the configured queue delay and merge-group checks, then let GitHub merge automatically.
@@ -104,7 +104,7 @@ For each review comment:
 3. Run the relevant validation after the fix.
 4. Commit the fix and push the change to the existing pull request branch.
 5. Re-check CI and the complete review state against the new HEAD.
-6. Re-request or re-check the configured review systems for the new HEAD so an earlier review is not treated as approval of later code.
+6. Re-request or re-check the configured review systems for the new HEAD so an earlier review is not treated as approval of later code. For Codex Code Review, comment `@codex review` again after each new commit that must be reviewed.
 
 Do not resolve a review thread solely to remove a merge blocker.
 
