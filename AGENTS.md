@@ -46,14 +46,14 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 3. Commit the initial coherent change on that branch before opening the pull request.
 4. Open a pull request targeting `main` as a **Draft**.
 5. Keep the pull request in Draft while required CI and any useful review work is active. Do not enable auto-merge while the pull request is still Draft.
-6. For the current PR HEAD, wait for the repository's applicable required CI checks. Bot reviews are advisory and best-effort, not merge requirements. When installed, CodeRabbit, GitHub Copilot code review, and Codex Code Review may be used when useful and available, but their completion, approval, availability, quota, or response is never required to mark a pull request Ready or to merge it. Do not consume paid review credits merely to satisfy this workflow.
-7. Read and evaluate every review finding that is actually received. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the required CI checks against the new HEAD. Re-request a bot review only when it is useful and available; a fresh bot review after every commit is not required.
-8. Keep repeating the required CI and fix loop until all required CI checks pass on the latest HEAD, every relevant received finding has been handled, and required review threads are resolved. Do not wait for an advisory bot review to start, finish, approve, or regain quota.
+6. For the current PR HEAD, wait for the repository's applicable required CI checks. Bot reviews are advisory and best-effort by default. **Deep-review exception:** a pull request carrying either `review:level:deep` or `review:deep` must receive a substantive CodeRabbit submitted pull-request review on the latest HEAD before it may be marked Ready, armed for auto-merge, or entered into a merge queue. A preliminary/status comment, skipped-review message, quota message, or label acknowledgement is not a substantive review. If CodeRabbit does not start an actual review automatically, explicitly request one with `@coderabbitai review`.
+7. Read and evaluate every review finding that is actually received. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the required CI checks against the new HEAD. For a deep-review pull request, a CodeRabbit review anchored to an older HEAD no longer satisfies the gate; explicitly request a fresh review for the latest HEAD when needed.
+8. Keep repeating the required CI and fix loop until all required CI checks pass on the latest HEAD, every relevant received finding has been handled, required review threads are resolved, and any applicable deep-review CodeRabbit gate is satisfied on the latest HEAD. For ordinary pull requests, do not wait for an advisory bot review to start, finish, approve, or regain quota.
 9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
 10. Verify that the pull request actually enters the merge queue when the repository uses one. Wait for the configured queue delay and merge-group checks, then let GitHub merge automatically.
 11. If a new commit, reopened finding, failed check, or queue removal occurs after readiness, return to the required CI/fix loop as necessary and re-enter the queue only after the latest HEAD is clean again.
 
-Quota exhaustion, outage, permissions, non-response, or other unavailability from an advisory bot reviewer is not an external gate and must not block Ready status, auto-merge, merge-queue entry, or completion. Do not purchase additional bot-review capacity solely to satisfy this workflow unless the repository owner explicitly requests it.
+Quota exhaustion, outage, permissions, non-response, or other unavailability from an advisory bot reviewer is not an external gate for ordinary pull requests. The sole review-bot exception is the deep-review CodeRabbit gate above: if CodeRabbit reports quota exhaustion or temporary unavailability, keep that pull request waiting and retry later rather than substituting another bot as satisfaction of the gate. Do not purchase additional bot-review capacity solely to satisfy this workflow unless the repository owner explicitly requests it.
 
 The centrally authorized Dependabot automation defined below is an explicit exception to this Draft/review/Ready sequencing. It may request native auto-merge for eligible non-draft Dependabot pull requests before the ordinary review loop completes, but repository rulesets, required checks, and merge-queue gates remain authoritative and must not be bypassed.
 
@@ -79,7 +79,8 @@ A pull request is complete only when every repository-required merge condition i
 At minimum:
 
 - every required CI check is successful on the latest PR HEAD;
-- advisory bot-review completion, approval, availability, quota, and latest-HEAD re-review are not merge gates;
+- advisory bot-review completion, approval, availability, quota, and latest-HEAD re-review are not merge gates for ordinary pull requests;
+- a pull request carrying `review:level:deep` or `review:deep` has a substantive CodeRabbit submitted review on the latest HEAD, and CodeRabbit quota/unavailability remains a legitimate external gate for that pull request until a review can be obtained;
 - every relevant review comment that was received has been read and evaluated;
 - every required review thread is resolved;
 - every relevant review finding that was received has been fixed when necessary;
@@ -106,13 +107,13 @@ For each review comment:
 3. Run the relevant validation after the fix.
 4. Commit the fix and push the change to the existing pull request branch.
 5. Re-check required CI and the required review state against the new HEAD.
-6. Optionally re-request advisory bot reviewers when useful and available. A fresh CodeRabbit, GitHub Copilot, or Codex Code Review round is not required for merge, and quota exhaustion or non-response must not block progress.
+6. Optionally re-request advisory bot reviewers when useful and available for ordinary pull requests. For a pull request carrying `review:level:deep` or `review:deep`, explicitly request CodeRabbit when automatic review does not produce a substantive submitted review, and ensure the review covers the latest HEAD before proceeding.
 
 Do not resolve a review thread solely to remove a merge blocker.
 
 Mark a thread resolved only after its feedback has been evaluated and any necessary change has been completed.
 
-After every new commit, check for new or reopened feedback that already exists or arrives, but do not wait for or force a new advisory bot review before continuing once required repository gates are satisfied.
+After every new commit, check for new or reopened feedback that already exists or arrives. Ordinary pull requests do not wait for or force a new advisory bot review once required repository gates are satisfied; deep-review pull requests must restore the CodeRabbit latest-HEAD gate before continuing.
 
 ## Organization PR Sweeps
 
@@ -124,12 +125,12 @@ For each in-scope pull request:
 2. Read the current PR HEAD, complete diff/scope, all review comments and review threads, current reviews, required checks, workflow results, mergeability, and live repository rules.
 3. Evaluate every review finding on its merits. Fix verified findings that are caused by the PR and fit its existing scope. Do not make unrelated refactors or expand product behavior merely to satisfy a reviewer.
 4. After every mutation, re-read the PR HEAD and re-check required CI, received reviews, threads, mergeability, and relevant rules against the new HEAD.
-5. When required CI is green, relevant received feedback has been handled, required review conditions are satisfied, and the PR is otherwise eligible, mark it Ready if it is still Draft, then enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue, and never wait solely for an advisory bot reviewer.
+5. When required CI is green, relevant received feedback has been handled, required review conditions are satisfied, any applicable deep-review CodeRabbit gate is satisfied on the latest HEAD, and the PR is otherwise eligible, mark it Ready if it is still Draft, then enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue.
 6. Do not treat a successful `enable auto-merge` call, a null/non-null REST `auto_merge` field, or an earlier queue event as proof that the PR is currently queued. Verify the resulting queue state from current GitHub state or timeline events. If queue events are available, the latest relevant event must show `added_to_merge_queue` after any `removed_from_merge_queue` event.
 7. When a PR is removed from the merge queue, identify the exact cause. Fix it if it is a verified PR-scope defect; otherwise leave legitimate external gates intact. Re-arm or requeue only after the applicable conditions are again satisfied.
 8. Inspect merge-group checks when the repository uses a merge queue. Green pull-request checks do not prove that the merge-group revision is valid.
 9. Do not report a PR as complete until GitHub confirms the merged/closed state, including `merged=true` or equivalent and a verified merge timestamp when available.
-10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate.
+10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate for ordinary pull requests; CodeRabbit quota/unavailability is a legitimate gate for a pull request carrying `review:level:deep` or `review:deep`.
 
 A request such as “run an organization review/sweep” is sufficient to invoke this procedure. The owner does not need to repeat these details on every run.
 
@@ -239,6 +240,7 @@ For pull request work, confirm:
 - CI is running against the latest commit;
 - required check names and results are correct;
 - received review feedback and required review state have been checked after the latest commit;
+- any applicable deep-review CodeRabbit gate is satisfied on the latest HEAD;
 - required review threads are resolved;
 - auto-merge is not armed while the PR is Draft and remains armed after the PR becomes Ready and eligible; and
 - the repository reports the expected merge state.
@@ -258,6 +260,7 @@ A task is complete only when:
 - auto-merge is enabled when supported;
 - required GitHub checks pass;
 - review feedback that was actually received has been read and handled;
+- any applicable deep-review CodeRabbit gate is satisfied on the latest HEAD;
 - required review threads are resolved;
 - repository merge rules are satisfied; and
 - the resulting repository or runtime state has been verified where applicable.
