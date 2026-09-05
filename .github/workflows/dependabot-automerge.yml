@@ -27,6 +27,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
+          permission-issues: write
           permission-pull-requests: write
 
       - name: Reconcile Dependabot pull requests
@@ -39,6 +40,7 @@ jobs:
 
           repo_owner="${GH_REPO%%/*}"
           repo_name="${GH_REPO#*/}"
+          conflict_marker='<!-- avkroken-dependabot-queue-conflict -->'
 
           mapfile -t prs < <(
             gh pr list --repo "$GH_REPO" --state open --app dependabot --limit 100 \
@@ -64,6 +66,56 @@ jobs:
                 -f query='mutation($pullRequestId:ID!){disablePullRequestAutoMerge(input:{pullRequestId:$pullRequestId}){pullRequest{id}}}' \
                 -f pullRequestId="$pr_id" \
                 >/dev/null
+            fi
+
+            conflict_comment_id="$(
+              gh api --paginate "repos/$GH_REPO/issues/$pr/comments" \
+                --jq ".[] | select(.body | contains(\"$conflict_marker\")) | .id" \
+                | head -n1
+            )"
+
+            if [[ "$merge_state" == "DIRTY" ]]; then
+              conflict_body="$(cat <<EOF
+          $conflict_marker
+          Status: **active**
+
+          Dependabot merge-queue reconciliation detected a real merge conflict on this pull request.
+
+          - HEAD: \`$head_sha\`
+          - GitHub \`mergeStateStatus\`: \`DIRTY\`
+          - Normal \`BEHIND\` state is handled by merge queue; \`DIRTY\` requires conflict resolution.
+
+          Automation intentionally does **not** update or rebase Dependabot branches. Resolve the conflict through Dependabot or an owner action; the scheduled reconciliation will retry native squash auto-merge afterward.
+          EOF
+              )"
+
+              if [[ -n "$conflict_comment_id" ]]; then
+                gh api --method PATCH "repos/$GH_REPO/issues/comments/$conflict_comment_id" \
+                  -f "body=$conflict_body" >/dev/null
+              else
+                gh api --method POST "repos/$GH_REPO/issues/$pr/comments" \
+                  -f "body=$conflict_body" >/dev/null
+              fi
+            elif [[ -n "$conflict_comment_id" ]]; then
+              current_conflict_body="$(
+                gh api "repos/$GH_REPO/issues/comments/$conflict_comment_id" --jq '.body'
+              )"
+              if grep -Fq 'Status: **active**' <<< "$current_conflict_body"; then
+                resolved_body="$(cat <<EOF
+          $conflict_marker
+          Status: **resolved**
+
+          The latest Dependabot merge-queue reconciliation no longer reports a merge conflict.
+
+          - HEAD: \`$head_sha\`
+          - GitHub \`mergeStateStatus\`: \`$merge_state\`
+
+          Native squash auto-merge reconciliation continues normally.
+          EOF
+                )"
+                gh api --method PATCH "repos/$GH_REPO/issues/comments/$conflict_comment_id" \
+                  -f "body=$resolved_body" >/dev/null
+              fi
             fi
 
             if ! output="$(gh pr merge "$pr" --repo "$GH_REPO" --auto --squash --match-head-commit "$head_sha" 2>&1)"; then
