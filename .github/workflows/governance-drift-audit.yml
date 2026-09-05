@@ -1,0 +1,126 @@
+name: Governance drift audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/osv-scanner.yml
+      - .github/workflows/dependabot-automerge.yml
+      - .github/workflows/release-please.yml
+      - .github/workflows/sync-reusable-workflow-pins.yml
+      - .github/workflows/reconcile-reusable-workflow-pins.yml
+      - GITHUB.md
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: governance-drift-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Audit live ruleset assumptions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          issue_title='governance: required workflow pin drift'
+          rulesets_json="$RUNNER_TEMP/rulesets.json"
+          ruleset_json="$RUNNER_TEMP/main-ruleset.json"
+          problems="$RUNNER_TEMP/problems.txt"
+          : > "$problems"
+
+          gh api "repos/$GH_REPO/rulesets" > "$rulesets_json"
+          ruleset_id="$(
+            jq -r '.[] | select(.source_type == "Organization" and .name == "main" and .enforcement == "active") | .id' "$rulesets_json" \
+              | head -n1
+          )"
+          if [[ -z "$ruleset_id" ]]; then
+            echo 'No active inherited organization ruleset named main was found.' >> "$problems"
+          else
+            gh api "repos/$GH_REPO/rulesets/$ruleset_id" > "$ruleset_json"
+
+            allowed_methods="$(
+              jq -c '[.rules[] | select(.type == "pull_request") | .parameters.allowed_merge_methods][0] // []' "$ruleset_json"
+            )"
+            if [[ "$allowed_methods" != '["squash"]' ]]; then
+              echo "Organization main ruleset no longer requires exactly squash merge; observed: $allowed_methods" >> "$problems"
+            fi
+
+            pinned_sha="$(
+              jq -r '[.rules[] | select(.type == "workflows") | .parameters.workflows[] | select(.path == ".github/workflows/osv-scanner.yml") | .sha][0] // empty' "$ruleset_json"
+            )"
+            if [[ -z "$pinned_sha" ]]; then
+              echo 'Organization main ruleset does not contain the required OSV-Scanner workflow pin.' >> "$problems"
+            else
+              pinned_blob="$(
+                gh api "repos/$GH_REPO/contents/.github/workflows/osv-scanner.yml?ref=$pinned_sha" --jq '.sha'
+              )"
+              current_blob="$(
+                gh api "repos/$GH_REPO/contents/.github/workflows/osv-scanner.yml?ref=main" --jq '.sha'
+              )"
+              if [[ "$pinned_blob" != "$current_blob" ]]; then
+                latest_workflow_sha="$(
+                  gh api --method GET "repos/$GH_REPO/commits" \
+                    -f 'path=.github/workflows/osv-scanner.yml' \
+                    -f 'sha=main' \
+                    -f 'per_page=1' \
+                    --jq '.[0].sha'
+                )"
+                echo "Required OSV workflow content drifted: ruleset pin=$pinned_sha, current workflow commit=$latest_workflow_sha." >> "$problems"
+              fi
+            fi
+          fi
+
+          existing_issue="$(
+            gh issue list --repo "$GH_REPO" --state open --limit 100 --json number,title \
+              --jq ".[] | select(.title == \"$issue_title\") | .number" \
+              | head -n1
+          )"
+
+          if [[ -s "$problems" ]]; then
+            body="$RUNNER_TEMP/issue-body.md"
+            {
+              echo 'The deterministic governance audit found live configuration drift that requires owner action.'
+              echo
+              echo '## Findings'
+              while IFS= read -r problem; do
+                echo "- $problem"
+              done < "$problems"
+              echo
+              echo '## Required action'
+              echo '- Review the live organization `main` ruleset against `Avkroken/.github`.'
+              echo '- If the OSV workflow content changed intentionally, update the required-workflow pin to the reviewed central commit that contains the current workflow.'
+              echo '- Keep the organization merge method and repository merge queues on `SQUASH` unless governance is intentionally changed everywhere in the same migration.'
+              echo '- Re-run `Governance drift audit` after the owner-side ruleset change.'
+              echo
+              echo 'This workflow intentionally does not mutate organization or repository rulesets.'
+            } > "$body"
+
+            if [[ -n "$existing_issue" ]]; then
+              gh issue edit "$existing_issue" --repo "$GH_REPO" --body-file "$body"
+            else
+              gh issue create --repo "$GH_REPO" --title "$issue_title" --body-file "$body"
+            fi
+
+            cat "$problems"
+            exit 1
+          fi
+
+          if [[ -n "$existing_issue" ]]; then
+            gh issue comment "$existing_issue" --repo "$GH_REPO" --body 'Live ruleset assumptions are back in sync; closing this deterministic drift alert.'
+            gh issue close "$existing_issue" --repo "$GH_REPO"
+          fi
+
+          echo 'Live organization main ruleset matches the central workflow and squash-merge assumptions.'

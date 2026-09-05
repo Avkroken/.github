@@ -35,7 +35,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
-          set -u -o pipefail
+          set -euo pipefail
+
+          repo_owner="${GH_REPO%%/*}"
+          repo_name="${GH_REPO#*/}"
 
           mapfile -t prs < <(
             gh pr list --repo "$GH_REPO" --state open --app dependabot --limit 100 \
@@ -46,7 +49,25 @@ jobs:
           for row in "${prs[@]}"; do
             IFS=$'\t' read -r pr head_sha <<< "$row"
 
-            if ! gh pr merge "$pr" --repo "$GH_REPO" --auto --match-head-commit "$head_sha"; then
-              echo "::warning title=Dependabot merge queue::Could not arm or enqueue PR #${pr}; a later reconciliation will retry."
+            read -r pr_id mergeable merge_state auto_method < <(
+              gh api graphql \
+                -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){id mergeable mergeStateStatus autoMergeRequest{mergeMethod}}}}}' \
+                -f owner="$repo_owner" \
+                -f name="$repo_name" \
+                -F number="$pr" \
+                --jq '[.data.repository.pullRequest.id, .data.repository.pullRequest.mergeable, .data.repository.pullRequest.mergeStateStatus, (.data.repository.pullRequest.autoMergeRequest.mergeMethod // "")] | @tsv'
+            )
+
+            if [[ -n "$auto_method" && "$auto_method" != "SQUASH" ]]; then
+              echo "::warning title=Dependabot merge queue::PR #${pr} had stale auto-merge method ${auto_method}; resetting it to SQUASH."
+              gh api graphql \
+                -f query='mutation($pullRequestId:ID!){disablePullRequestAutoMerge(input:{pullRequestId:$pullRequestId}){pullRequest{id}}}' \
+                -f pullRequestId="$pr_id" \
+                >/dev/null
+            fi
+
+            if ! output="$(gh pr merge "$pr" --repo "$GH_REPO" --auto --squash --match-head-commit "$head_sha" 2>&1)"; then
+              output="${output//$'\n'/ }"
+              echo "::warning title=Dependabot merge queue::Could not arm or enqueue PR #${pr} with SQUASH (mergeable=${mergeable}, mergeStateStatus=${merge_state}). ${output} A later reconciliation will retry without changing the PR branch."
             fi
           done

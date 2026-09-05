@@ -132,7 +132,7 @@ jobs:
               echo "::error::Refusing to arm unexpected release pull request #$pr"
               exit 1
             fi
-            gh pr merge "$pr" --repo "$GH_REPO" --auto --match-head-commit "$sha"
+            gh pr merge "$pr" --repo "$GH_REPO" --auto --squash --match-head-commit "$sha"
           done < <(jq -r '.[].number' <<< "$RELEASE_PRS")
 
       - name: Build final release notes

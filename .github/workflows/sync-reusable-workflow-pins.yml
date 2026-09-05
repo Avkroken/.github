@@ -208,8 +208,20 @@ jobs:
 
             branch="chore/sync-central-$scope_slug-$short_sha"
             if gh api "repos/$repository/git/ref/heads/$branch" >/dev/null 2>&1; then
-              echo "::warning::$repository already has branch $branch; skipping duplicate rollout."
-              continue
+              existing_pr="$(
+                gh pr list --repo "$repository" --state open --head "$branch" --limit 1 \
+                  --json number --jq '.[0].number // empty'
+              )"
+              if [[ -n "$existing_pr" ]]; then
+                echo "$repository already has open rollout PR #$existing_pr on $branch; re-arming squash auto-merge."
+                if ! gh pr merge "$existing_pr" --repo "$repository" --auto --squash; then
+                  echo "::warning::$repository#$existing_pr still could not arm squash auto-merge; later reconciliation will retry."
+                fi
+                continue
+              fi
+
+              echo "$repository has stale rollout branch $branch without an open PR; deleting only that owned rollout branch before recreating it."
+              gh api --method DELETE "repos/$repository/git/refs/heads/$branch" >/dev/null
             fi
 
             base_sha="$(gh api "repos/$repository/git/ref/heads/$default_branch" --jq '.object.sha')"
@@ -248,24 +260,7 @@ jobs:
                 | gh api --method POST "repos/$repository/pulls" --input - --jq '.number'
             )"
 
-            merge_flags=()
-            read -r allow_squash allow_merge allow_rebase < <(
-              gh api "repos/$repository" \
-                --jq '[.allow_squash_merge, .allow_merge_commit, .allow_rebase_merge] | @tsv'
-            )
-            if [[ "$allow_squash" == "true" ]]; then
-              merge_flags+=(--squash)
-            elif [[ "$allow_merge" == "true" ]]; then
-              merge_flags+=(--merge)
-            elif [[ "$allow_rebase" == "true" ]]; then
-              merge_flags+=(--rebase)
-            fi
-
-            if (( ${#merge_flags[@]} > 0 )); then
-              if ! gh pr merge "$pr_number" --repo "$repository" --auto "${merge_flags[@]}"; then
-                echo "::warning::Opened $repository#$pr_number but could not arm auto-merge."
-              fi
-            else
-              echo "::warning::Opened $repository#$pr_number; no supported merge method was reported."
+            if ! gh pr merge "$pr_number" --repo "$repository" --auto --squash; then
+              echo "::warning::Opened $repository#$pr_number but could not arm squash auto-merge."
             fi
           done
