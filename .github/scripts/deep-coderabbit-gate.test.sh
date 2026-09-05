@@ -17,19 +17,40 @@ assert_eq() {
 head_sha='f0e1756122a63e70cc35a4df8b1f9c4e093afc71'
 old_sha='1c37ea3fed36764d931937d7a37284838fe14901'
 
-complete_comment=$'comment\tcoderabbitai[bot]\t-\t<!-- final_review_risk_coverage:{"sourceCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","coveredCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","kind":"reviewed"} -->'
-in_progress_comment=$'comment\tcoderabbitai[bot]\t-\t<!-- This is an auto-generated comment: review in progress by coderabbit.ai --> Reviewing files between 1c37ea3fed36764d931937d7a37284838fe14901 and f0e1756122a63e70cc35a4df8b1f9c4e093afc71.'
-old_complete_comment=$'comment\tcoderabbitai[bot]\t-\t<!-- final_review_risk_coverage:{"sourceCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","coveredCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","kind":"reviewed"} -->'
-quota_comment=$'comment\tcoderabbitai[bot]\t-\tReview skipped because quota is unavailable.'
-formal_review=$'review\tcoderabbitai[bot]\tf0e1756122a63e70cc35a4df8b1f9c4e093afc71\tReview completed.'
+complete_comment=$'comment\tcoderabbitai[bot]\t-\t-\t<!-- final_review_risk_coverage:{"sourceCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","coveredCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","kind":"reviewed"} -->'
+in_progress_comment=$'comment\tcoderabbitai[bot]\t-\t-\t<!-- This is an auto-generated comment: review in progress by coderabbit.ai --> Reviewing files between 1c37ea3fed36764d931937d7a37284838fe14901 and f0e1756122a63e70cc35a4df8b1f9c4e093afc71.'
+old_complete_comment=$'comment\tcoderabbitai[bot]\t-\t-\t<!-- final_review_risk_coverage:{"sourceCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","coveredCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","kind":"reviewed"} -->'
+quota_comment=$'comment\tcoderabbitai[bot]\t-\t-\tReview skipped because quota is unavailable.'
+submitted_review=$'review\tcoderabbitai[bot]\tf0e1756122a63e70cc35a4df8b1f9c4e093afc71\tCOMMENTED\tReview completed.'
+pending_review=$'review\tcoderabbitai[bot]\tf0e1756122a63e70cc35a4df8b1f9c4e093afc71\tPENDING\tDraft review.'
+stale_submitted_review=$'review\tcoderabbitai[bot]\t1c37ea3fed36764d931937d7a37284838fe14901\tAPPROVED\tOld review.'
 
 assert_eq complete "$(printf '%s\n' "$complete_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "current-head coverage artifact satisfies gate"
-assert_eq complete "$(printf '%s\n' "$formal_review" | coderabbit_gate_state_from_tsv "$head_sha")" "formal CodeRabbit review on current head satisfies gate"
-assert_eq in_progress "$(printf '%s\n' "$in_progress_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "current-head in-progress review suppresses duplicate trigger"
+assert_eq complete "$(printf '%s\n' "$submitted_review" | coderabbit_gate_state_from_tsv "$head_sha")" "submitted CodeRabbit review on current head satisfies gate"
+assert_eq in_progress "$(printf '%s\n' "$pending_review" | coderabbit_gate_state_from_tsv "$head_sha")" "pending CodeRabbit review on current head remains waiting"
+assert_eq in_progress "$(printf '%s\n' "$in_progress_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "current-head in-progress artifact suppresses duplicate trigger"
 assert_eq missing "$(printf '%s\n' "$old_complete_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "old coverage does not satisfy latest-head gate"
+assert_eq missing "$(printf '%s\n' "$stale_submitted_review" | coderabbit_gate_state_from_tsv "$head_sha")" "stale submitted review does not satisfy latest-head gate"
 assert_eq missing "$(printf '%s\n' "$quota_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "quota response remains retry eligible"
 assert_eq complete "$(printf '%s\n%s\n' "$old_complete_comment" "$complete_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "current coverage wins over stale coverage"
 assert_eq in_progress "$(printf '%s\n%s\n' "$old_complete_comment" "$in_progress_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "current in-progress state wins over stale completion"
+
+if ! review_state_is_submitted APPROVED; then
+  echo "FAIL: APPROVED must be treated as submitted" >&2
+  exit 1
+fi
+if ! review_state_is_submitted CHANGES_REQUESTED; then
+  echo "FAIL: CHANGES_REQUESTED must be treated as submitted" >&2
+  exit 1
+fi
+if ! review_state_is_submitted COMMENTED; then
+  echo "FAIL: COMMENTED must be treated as submitted" >&2
+  exit 1
+fi
+if review_state_is_submitted PENDING; then
+  echo "FAIL: PENDING must not be treated as submitted" >&2
+  exit 1
+fi
 
 if ! critical_central_path AGENTS.md; then
   echo "FAIL: AGENTS.md must be central deep-risk scope" >&2
