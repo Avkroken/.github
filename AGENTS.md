@@ -46,8 +46,8 @@ Do not assume that documentation is enforced. Verify live configuration when enf
 3. Commit the initial coherent change on that branch before opening the pull request.
 4. Open a pull request targeting `main` as a **Draft**.
 5. Keep the pull request in Draft while required CI and any useful review work is active. Do not enable auto-merge while the pull request is still Draft.
-6. For the current PR HEAD, wait for the repository's applicable required CI checks. Bot reviews are advisory and best-effort by default. **Deep-review exception:** a pull request carrying either `review:level:deep` or `review:deep` must receive a substantive CodeRabbit submitted pull-request review on the latest HEAD before it may be marked Ready, armed for auto-merge, or entered into a merge queue. A preliminary/status comment, skipped-review message, quota message, or label acknowledgement is not a substantive review. If CodeRabbit does not start an actual review automatically, explicitly request one with `@coderabbitai review`.
-7. Read and evaluate every review finding that is actually received. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the required CI checks against the new HEAD. For a deep-review pull request, a CodeRabbit review anchored to an older HEAD no longer satisfies the gate; explicitly request a fresh review for the latest HEAD when needed.
+6. For the current PR HEAD, wait for the repository's applicable required CI checks. Bot reviews are advisory and best-effort by default. **Deep-review exception:** a pull request carrying either `review:level:deep` or `review:deep` must have a completed substantive CodeRabbit review result that verifiably covers the latest HEAD before it may be marked Ready, armed for auto-merge, or entered into a merge queue. A qualifying result may be either a submitted GitHub pull-request review or CodeRabbit's completed review/walkthrough artifact or top-level review comment, provided it explicitly records coverage of the current HEAD, for example via the reviewed commit SHA or CodeRabbit final-review coverage metadata. A preliminary/status comment, walkthrough placeholder, skipped-review message, quota message, command acknowledgement, or label acknowledgement is not a qualifying result. If CodeRabbit does not start an actual review automatically, explicitly request one with `@coderabbitai review`.
+7. Read and evaluate every review finding that is actually received. Fix relevant findings on the same branch, commit the fix, push it to the existing pull request, then repeat the required CI checks against the new HEAD. For a deep-review pull request, a CodeRabbit result anchored to an older HEAD no longer satisfies the gate; explicitly request a fresh review for the latest HEAD when needed.
 8. Keep repeating the required CI and fix loop until all required CI checks pass on the latest HEAD, every relevant received finding has been handled, required review threads are resolved, and any applicable deep-review CodeRabbit gate is satisfied on the latest HEAD. For ordinary pull requests, do not wait for an advisory bot review to start, finish, approve, or regain quota.
 9. Only then mark the pull request **Ready for review** and enable the repository-supported native auto-merge path.
 10. Verify that the pull request actually enters the merge queue when the repository uses one. Wait for the configured queue delay and merge-group checks, then let GitHub merge automatically.
@@ -80,7 +80,7 @@ At minimum:
 
 - every required CI check is successful on the latest PR HEAD;
 - advisory bot-review completion, approval, availability, quota, and latest-HEAD re-review are not merge gates for ordinary pull requests;
-- a pull request carrying `review:level:deep` or `review:deep` has a substantive CodeRabbit submitted review on the latest HEAD, and CodeRabbit quota/unavailability remains a legitimate external gate for that pull request until a review can be obtained;
+- a pull request carrying `review:level:deep` or `review:deep` has a completed substantive CodeRabbit review result that verifiably covers the latest HEAD; that result may be a submitted review or a completed CodeRabbit review artifact/comment with explicit current-HEAD coverage, and CodeRabbit quota/unavailability remains a legitimate external gate until such a result can be obtained;
 - every relevant review comment that was received has been read and evaluated;
 - every required review thread is resolved;
 - every relevant review finding that was received has been fixed when necessary;
@@ -107,7 +107,7 @@ For each review comment:
 3. Run the relevant validation after the fix.
 4. Commit the fix and push the change to the existing pull request branch.
 5. Re-check required CI and the required review state against the new HEAD.
-6. Optionally re-request advisory bot reviewers when useful and available for ordinary pull requests. For a pull request carrying `review:level:deep` or `review:deep`, explicitly request CodeRabbit when automatic review does not produce a substantive submitted review, and ensure the review covers the latest HEAD before proceeding.
+6. Optionally re-request advisory bot reviewers when useful and available for ordinary pull requests. For a pull request carrying `review:level:deep` or `review:deep`, explicitly request CodeRabbit when automatic review does not produce a qualifying completed review result, and ensure the result verifiably covers the latest HEAD before proceeding.
 
 Do not resolve a review thread solely to remove a merge blocker.
 
@@ -219,7 +219,7 @@ For any change that touches UI, components, pages, styling, or layout, read `DES
 - Do not rely on color alone to communicate state.
 - Verify responsive behavior for affected UI.
 
-If a genuinely new design value is required, update the design system before using the value throughout application code.
+If a genuinely new design value is required, update the design system before using it throughout application code.
 
 ## Dependencies
 
