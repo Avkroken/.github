@@ -61,9 +61,9 @@ central_pr_is_critical() {
   return 1
 }
 
-# Input rows are TSV: kind, actor, commit SHA, body. A qualifying CodeRabbit
-# result is either a formal review anchored to HEAD or a completed CodeRabbit
-# artifact/comment whose final-review coverage explicitly names HEAD.
+# Input rows are TSV: kind, actor, commit SHA/sentinel, body. The sentinel keeps
+# the third field non-empty because Bash treats tab as IFS whitespace and would
+# otherwise collapse an empty commit field into its neighbour.
 coderabbit_gate_state_from_tsv() {
   local head_sha="$1"
   local kind actor commit_sha body
@@ -105,9 +105,9 @@ collect_coderabbit_gate_rows() {
   local repository="$1" pr="$2"
 
   gh api --paginate "repos/$repository/issues/$pr/comments?per_page=100" \
-    --jq '.[] | ["comment", .user.login, "", (.body // "")] | @tsv' 2>/dev/null || true
+    --jq '.[] | ["comment", .user.login, "-", (.body // "")] | @tsv' 2>/dev/null || true
   gh api --paginate "repos/$repository/pulls/$pr/reviews?per_page=100" \
-    --jq '.[] | ["review", .user.login, (.commit_id // ""), (.body // "")] | @tsv' 2>/dev/null || true
+    --jq '.[] | ["review", .user.login, (.commit_id // "-"), (.body // "")] | @tsv' 2>/dev/null || true
 }
 
 coderabbit_gate_state() {
