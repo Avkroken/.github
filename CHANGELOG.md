@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.7](https://github.com/Avkroken/.github/compare/v1.2.6...v1.2.7) (2026-09-05)
+
+
+### Documentation
+
+* standardize governance filename as REPO.md ([#71](https://github.com/Avkroken/.github/issues/71)) ([d19cab4](https://github.com/Avkroken/.github/commit/d19cab4d0d3ab8a9ee99ff2f31f228267e7820b7))
+
 ## [1.2.6](https://github.com/Avkroken/.github/compare/v1.2.5...v1.2.6) (2026-09-05)
 
 
