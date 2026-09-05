@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/Avkroken/.github/compare/v1.2.0...v1.2.1) (2026-09-05)
+
+
+### Documentation
+
+* update CodeRabbit configuration source ([#56](https://github.com/Avkroken/.github/issues/56)) ([0eb24b8](https://github.com/Avkroken/.github/commit/0eb24b872056538248a450e20b48f3a6dc92713f))
+
 ## [1.2.0](https://github.com/Avkroken/.github/compare/v1.1.0...v1.2.0) (2026-09-04)
 
 
