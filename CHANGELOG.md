@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.6](https://github.com/Avkroken/.github/compare/v1.2.5...v1.2.6) (2026-09-05)
+
+
+### Fixes
+
+* escalate Dependabot merge conflicts ([#68](https://github.com/Avkroken/.github/issues/68)) ([8c05288](https://github.com/Avkroken/.github/commit/8c05288325c7646972c4c6ba0d4493a84152d7d8))
+
 ## [1.2.5](https://github.com/Avkroken/.github/compare/v1.2.4...v1.2.5) (2026-09-05)
 
 
