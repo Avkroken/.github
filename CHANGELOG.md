@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/Avkroken/.github/compare/v1.2.2...v1.2.3) (2026-09-05)
+
+
+### Fixes
+
+* authenticate release metadata checkout ([#62](https://github.com/Avkroken/.github/issues/62)) ([7b01a9c](https://github.com/Avkroken/.github/commit/7b01a9c73b2d37388e8b8fe15acbfd3044f425e9))
+
 ## [1.2.2](https://github.com/Avkroken/.github/compare/v1.2.1...v1.2.2) (2026-09-05)
 
 
