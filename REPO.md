@@ -1,6 +1,6 @@
 # REPO.md
 
-This is the repository governance document for `Avkroken/.github`. Binding AI coding-agent policy is defined only in `Avkroken/.github/AGENTS.md`. This document records repository-specific technical contracts, invariants, validation requirements, and operational context required by that policy; it must not define, supplement, narrow, or override agent policy.
+This is the repository governance document for `Avkroken/.github`. `Avkroken/.github/AGENTS.md` defines the shared organization-wide agent policy and defaults. This `REPO.md` defines the repository-specific requirements, technical contracts, invariants, validation rules, constraints, and operating instructions for this repository. Read both documents together. For matters specific to this repository, this document is authoritative unless live GitHub enforcement requires otherwise; the central defaults continue to apply where this document does not specialize them.
 
 This repository is Avkroken's central source for shared GitHub metadata and repository-policy automation.
 
@@ -43,7 +43,7 @@ A required-workflow commit SHA is intentionally immutable and does not need to e
 
 CodeRabbit Organization Settings are Avkroken's central review baseline. Repository `.coderabbit.yaml` files use `inheritance: true` so they inherit that baseline and should contain only repository-specific overrides or router-preserving exceptions. No dedicated central CodeRabbit configuration repository is required, and `Avkroken/.github` does not duplicate the Organization Settings baseline.
 
-The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. Router-managed repositories use label-driven CodeRabbit review: automatic review is otherwise disabled, `review:coderabbit` is the positive review trigger, Draft review is allowed, and automatic incremental review after later pushes is disabled. Repository-local `reviews.auto_review` overrides must preserve that contract unless an exception is explicitly documented. `AGENTS.md` remains the binding AI-agent policy; CodeRabbit guidance is review context, not a replacement policy source.
+The organization CodeRabbit configuration should instruct workflow reviews to evaluate Avkroken reusable-workflow SHA bumps against the exact referenced central commit and dependency closure, preserve the thin-caller contract, and avoid recommending that centralized implementation be copied into caller repositories. Router-managed repositories use label-driven CodeRabbit review: automatic review is otherwise disabled, `review:coderabbit` is the positive review trigger, Draft review is allowed, and automatic incremental review after later pushes is disabled. Repository-local `reviews.auto_review` overrides must preserve that contract unless an exception is explicitly documented. `AGENTS.md` remains the shared agent-policy baseline; repository-specific review behavior belongs in the applicable `REPO.md` and live repository configuration.
 
 ## Advisory AI review routing
 
@@ -66,7 +66,7 @@ After selecting or requesting a reviewer, the router waits up to 120 seconds and
 
 Because only one pull request is selected per scheduled run and normal/elevated routes can issue at most one new CodeRabbit label trigger in that run, router-generated CodeRabbit requests remain capped at eight per clock hour by the eight-minute schedule. Fallback requests do not make any bot approval a merge requirement.
 
-The primary-review labels describe the router's selected reviewer, not a merge gate. Repository-native automatic reviews, including organization-level Copilot review, may still produce additional advisory feedback. CodeRabbit auto-review outside the label-driven contract is an explicitly documented repository exception rather than part of the central router. Independent automatic reviews are outside the router's request-rate cap and remain non-blocking under `AGENTS.md` unless a live repository rule explicitly requires something else.
+The primary-review labels describe the router's selected reviewer, not a merge gate. Repository-native automatic reviews, including organization-level Copilot review, may still produce additional advisory feedback. CodeRabbit auto-review outside the label-driven contract is an explicitly documented repository exception rather than part of the central router. Independent automatic reviews are outside the router's request-rate cap and remain non-blocking under the shared `AGENTS.md` defaults unless repository-specific governance or live enforcement explicitly requires something else.
 
 CodeRabbit can apply configured pull-request labels as part of its review/walkthrough, but the documented labeling path is not used as a standalone pre-review classifier. The router therefore keeps `review:level:*` deterministic and does not depend on CodeRabbit to choose its own review level.
 
