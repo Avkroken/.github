@@ -20,9 +20,24 @@ The metadata-only Agentic Workflow source and generated lock file are kept toget
 
 Caller repositories pin Avkroken-owned reusable workflows to immutable full commit SHAs. A full SHA identifies a repository commit, so the correct rollout target is the newest commit that contains the relevant workflow family and its required central dependencies, not mechanically the newest commit in `Avkroken/.github`.
 
-`.github/workflows/sync-reusable-workflow-pins.yml` is the deterministic organization rollout mechanism for these Avkroken-owned pins. On a relevant central workflow change it maps the changed workflow family to affected caller references, discovers repositories available to the organization-installed `Gamnacken` App, changes only matching `Avkroken/.github/.github/workflows/<name>@<40-char-sha>` references, and opens ordinary pull requests. It must not push to a caller's default branch, execute caller code, bypass rulesets or reviews, dismiss findings, or merge around a merge queue. It may request native auto-merge; repository protections remain final authority.
+`.github/workflows/sync-reusable-workflow-pins.yml` is the deterministic organization rollout mechanism for these Avkroken-owned pins. On a relevant central workflow change it maps the changed workflow family to affected caller references, discovers repositories available to the organization-installed `Gamnacken` App, changes only matching `Avkroken/.github/.github/workflows/<name>@<40-char-sha>` references, and opens ordinary pull requests. It must not push to a caller's default branch, execute caller code, bypass rulesets or reviews, dismiss findings, or merge around a merge queue. It may request native auto-merge; repository protections remain final authority. Rollout auto-merge is always requested with `SQUASH`, matching the organization default-branch merge contract.
 
-Manual dispatch may specify an exact central commit SHA and workflow family for catch-up or recovery. This is required when a later unrelated `.github` commit should not advance an unaffected caller family. Dependabot `github-actions` updates remain enabled as defense in depth for Actions dependencies, but Dependabot is not the authoritative rollout mechanism for Avkroken-owned reusable workflow pins because it does not encode this organization-specific workflow dependency closure.
+`.github/workflows/reconcile-reusable-workflow-pins.yml` is the low-frequency recovery path. Every six hours it discovers the newest relevant commit for each central workflow family and dispatches the normal pin-sync workflow for that exact family/SHA pair. For `metadata-orchestration`, the reconciliation target is the newer of the latest orchestration commit and the latest routing commit because the orchestrator consumes routing by relative reference. This scheduled reconciliation exists so a missed push event, a historical change that predates the rollout workflow, or a transient failed rollout cannot leave caller repositories permanently pinned to an older central implementation.
+
+The sync workflow treats its rollout branches as owned ephemeral state. If the expected rollout branch already has an open pull request, reconciliation reuses that pull request and re-arms squash auto-merge. If the owned rollout branch exists without an open pull request, it is considered stale rollout state and only that branch is deleted before the deterministic rollout is recreated from the caller's current default branch. Unrelated branches are never touched.
+
+Manual dispatch may specify an exact central commit SHA and workflow family for catch-up or recovery. This remains useful for targeted operator recovery and when a later unrelated `.github` commit should not advance an unaffected caller family. Dependabot `github-actions` updates remain enabled as defense in depth for Actions dependencies, but Dependabot is not the authoritative rollout mechanism for Avkroken-owned reusable workflow pins because it does not encode this organization-specific workflow dependency closure.
+
+## Ruleset drift detection
+
+Organization and repository ruleset administration remains an owner operation. `.github/workflows/governance-drift-audit.yml` is therefore detection-only with respect to rulesets: it reads the effective inherited organization `main` ruleset, never writes ruleset configuration, and raises a deterministic repository issue when an owner-side migration is required.
+
+The audit runs after relevant central changes and every six hours. It verifies two assumptions that central automation depends on:
+
+- the effective organization `main` pull-request rule permits exactly the `squash` merge method; and
+- the required `OSV-Scanner` workflow pin still resolves to the same workflow file content as `.github/workflows/osv-scanner.yml` on central `main`.
+
+A required-workflow commit SHA is intentionally immutable and does not need to equal the current `.github/main` SHA. Unrelated central commits are not drift. Drift exists when the workflow file content at the ruleset's pinned commit differs from the current central workflow content, or when the merge-method contract changes. When drift is detected, the audit opens or updates the single `governance: required workflow pin drift` issue with the exact observed cause and required owner action, then fails visibly. When the live assumptions are restored, the audit closes that alert. This keeps privileged ruleset mutation out of Actions while preventing silent policy drift.
 
 ## CodeRabbit review configuration
 
@@ -61,9 +76,11 @@ CodeRabbit can apply configured pull-request labels as part of its review/walkth
 
 The App-backed reconciliation is invoked from scheduled or manual caller runs. Do not invoke the secret-backed App workflow directly from Dependabot pull-request events: GitHub withholds normal Actions secrets for Dependabot-triggered runs, which prevents this credential model from starting reliably. The recurring reconciliation is the authoritative retry path and still leaves repository rulesets, required checks, reviews and merge queues as the final merge authority.
 
+Dependabot reconciliation always requests `SQUASH`. Before re-arming a pull request, it reads the current native auto-merge request. If an older automation run left `MERGE` or `REBASE` armed, the reconciliation disables only that stale auto-merge request and immediately re-arms the same unchanged PR HEAD with `SQUASH`. It never rebases, updates, or force-pushes the Dependabot branch. If GitHub still refuses queue entry, the workflow reports the live `mergeable` and `mergeStateStatus` values in its warning and leaves the branch untouched for the next reconciliation or owner investigation.
+
 Repository merge-queue rulesets are managed manually through GitHub UI/API by the repository or organization owner. This repository does not use an Actions workflow or GitHub App for repository or organization ruleset reconciliation, and Gamnacken does not require repository or organization Administration solely for ruleset management.
 
-Organization required-workflow and ruleset migrations are owner-operated rather than automated from this repository.
+Organization required-workflow and ruleset migrations are owner-operated rather than automated from this repository. The governance drift audit described above is the deterministic detection and escalation path for those privileged migrations.
 
 GitHub App credentials used by organization automation are supplied through organization Actions configuration using the canonical names `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. Reusable workflows resolve the client ID directly from the organization variable, while callers explicitly map only the private-key secret. This public repository contains only credential names and references, never credential values. These canonical names are specific to GitHub Actions; external runtimes do not inherit Actions variables or secrets and must use their own documented runtime bindings.
 
@@ -73,7 +90,7 @@ GitHub App credentials used by organization automation are supplied through orga
 
 The organization Actions policy must allow `googleapis/release-please-action@*`. The reusable workflow still pins the action to an exact full commit SHA, so the organization allowlist permits only refs from that repository while each execution remains immutable and auditable.
 
-The release lifecycle is `main -> Release PR -> normal repository checks/reviews/merge queue -> merged Release PR -> draft GitHub Release -> finalized GitHub Release`. The central workflow uses the organization-installed `Gamnacken` GitHub App so Release Please pull requests trigger normal repository workflows. The workflow may request native auto-merge for the exact Release Please pull request it just created or updated, but repository rulesets and merge queues remain the final merge authority.
+The release lifecycle is `main -> Release PR -> normal repository checks/reviews/merge queue -> merged Release PR -> draft GitHub Release -> finalized GitHub Release`. The central workflow uses the organization-installed `Gamnacken` GitHub App so Release Please pull requests trigger normal repository workflows. The workflow requests native auto-merge for the exact Release Please pull request it just created or updated using `SQUASH`; repository rulesets and merge queues remain the final merge authority.
 
 Release callers must pin the reusable workflow to an exact commit SHA and explicitly map only the Gamnacken private-key secret. The reusable workflow resolves `GAMNACKEN_CLIENT_ID` from organization Actions variables and pins third-party Actions to full commit SHAs.
 
