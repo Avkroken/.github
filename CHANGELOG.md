@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/Avkroken/.github/compare/v1.2.1...v1.2.2) (2026-09-05)
+
+
+### Fixes
+
+* grant Actions read permission to issue classification caller ([#59](https://github.com/Avkroken/.github/issues/59)) ([03bd019](https://github.com/Avkroken/.github/commit/03bd0195971b955fa8f8083c24d0a094514648c7))
+
 ## [1.2.1](https://github.com/Avkroken/.github/compare/v1.2.0...v1.2.1) (2026-09-05)
 
 
