@@ -9,7 +9,7 @@ on:
       - .github/workflows/release-please.yml
       - .github/workflows/sync-reusable-workflow-pins.yml
       - .github/workflows/reconcile-reusable-workflow-pins.yml
-      - GITHUB.md
+      - REPO.md
   schedule:
     - cron: '41 */6 * * *'
   workflow_dispatch:
