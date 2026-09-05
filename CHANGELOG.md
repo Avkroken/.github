@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.5](https://github.com/Avkroken/.github/compare/v1.2.4...v1.2.5) (2026-09-05)
+
+
+### Fixes
+
+* harden governance reconciliation ([#66](https://github.com/Avkroken/.github/issues/66)) ([abfaf7a](https://github.com/Avkroken/.github/commit/abfaf7aae8a69f1dfa6bc7e01440496edb59def6))
+
 ## [1.2.4](https://github.com/Avkroken/.github/compare/v1.2.3...v1.2.4) (2026-09-05)
 
 
