@@ -19,6 +19,17 @@ actor_is_coderabbit() {
   [[ "$actor" == "coderabbitai" || "$actor" == "coderabbitai[bot]" ]]
 }
 
+review_state_is_submitted() {
+  case "$1" in
+    APPROVED|CHANGES_REQUESTED|COMMENTED)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 critical_central_path() {
   local path="$1"
   case "$path" in
@@ -45,37 +56,51 @@ critical_central_path() {
   esac
 }
 
+# Returns 0 when critical, 1 when non-critical, and 2 when the GitHub listing
+# cannot be trusted. Callers must propagate status 2 rather than treating it as
+# a non-critical result.
 central_pr_is_critical() {
   local repository="$1" pr="$2"
   [[ "$repository" == "$OWNER/.github" ]] || return 1
 
-  local path
+  local paths path
+  if ! paths="$(
+    gh api --paginate "repos/$repository/pulls/$pr/files?per_page=100" \
+      --jq '.[].filename'
+  )"; then
+    echo "::error::Could not list changed files for $repository#$pr; refusing to classify it as non-critical." >&2
+    return 2
+  fi
+
   while IFS= read -r path; do
+    [[ -n "$path" ]] || continue
     if critical_central_path "$path"; then
       return 0
     fi
-  done < <(
-    gh api --paginate "repos/$repository/pulls/$pr/files?per_page=100" \
-      --jq '.[].filename'
-  )
+  done <<< "$paths"
   return 1
 }
 
-# Input rows are TSV: kind, actor, commit SHA/sentinel, body. The sentinel keeps
-# the third field non-empty because Bash treats tab as IFS whitespace and would
-# otherwise collapse an empty commit field into its neighbour.
+# Input rows are TSV: kind, actor, commit SHA/sentinel, review state/sentinel,
+# body. Sentinels keep intermediate fields non-empty because Bash treats tab as
+# IFS whitespace and otherwise collapses adjacent empty fields.
 coderabbit_gate_state_from_tsv() {
   local head_sha="$1"
-  local kind actor commit_sha body
+  local kind actor commit_sha review_state body
   local saw_in_progress=false
 
-  while IFS=$'\t' read -r kind actor commit_sha body; do
+  while IFS=$'\t' read -r kind actor commit_sha review_state body; do
     [[ -n "$actor" ]] || continue
     actor_is_coderabbit "$actor" || continue
 
     if [[ "$kind" == "review" && "$commit_sha" == "$head_sha" ]]; then
-      echo complete
-      return 0
+      if review_state_is_submitted "$review_state"; then
+        echo complete
+        return 0
+      fi
+      if [[ "$review_state" == "PENDING" ]]; then
+        saw_in_progress=true
+      fi
     fi
 
     if [[ "$kind" == "comment" ]]; then
@@ -104,10 +129,16 @@ coderabbit_gate_state_from_tsv() {
 collect_coderabbit_gate_rows() {
   local repository="$1" pr="$2"
 
-  gh api --paginate "repos/$repository/issues/$pr/comments?per_page=100" \
-    --jq '.[] | ["comment", .user.login, "-", (.body // "")] | @tsv' 2>/dev/null || true
-  gh api --paginate "repos/$repository/pulls/$pr/reviews?per_page=100" \
-    --jq '.[] | ["review", .user.login, (.commit_id // "-"), (.body // "")] | @tsv' 2>/dev/null || true
+  if ! gh api --paginate "repos/$repository/issues/$pr/comments?per_page=100" \
+    --jq '.[] | ["comment", .user.login, "-", "-", (.body // "")] | @tsv'; then
+    echo "::error::Could not list issue comments for CodeRabbit gate on $repository#$pr." >&2
+    return 1
+  fi
+  if ! gh api --paginate "repos/$repository/pulls/$pr/reviews?per_page=100" \
+    --jq '.[] | ["review", .user.login, (.commit_id // "-"), (.state // "-"), (.body // "")] | @tsv'; then
+    echo "::error::Could not list pull-request reviews for CodeRabbit gate on $repository#$pr." >&2
+    return 1
+  fi
 }
 
 coderabbit_gate_state() {
@@ -221,26 +252,39 @@ main() {
   if [[ -n "$REPOSITORY_FILTER" ]]; then
     repositories=("$REPOSITORY_FILTER")
   else
-    mapfile -t repositories < <(
+    local repository_listing repository
+    if ! repository_listing="$(
       gh api --paginate "installation/repositories?per_page=100" \
         --jq '.repositories[] | select(.archived == false and .fork == false) | .full_name'
-    )
+    )"; then
+      echo "::error::Could not list installation repositories; refusing to report deep gates reconciled." >&2
+      return 1
+    fi
+    while IFS= read -r repository; do
+      [[ -n "$repository" ]] && repositories+=("$repository")
+    done <<< "$repository_listing"
   fi
 
   local retry_candidates="$RUNNER_TEMP/deep-coderabbit-retries.tsv"
   : > "$retry_candidates"
 
-  local repository pr created head_sha labels is_deep state
+  local repository pr created head_sha labels is_deep state critical_status pr_listing row
   for repository in "${repositories[@]}"; do
-    mapfile -t prs < <(
+    local prs=()
+    if ! pr_listing="$(
       gh api --paginate "repos/$repository/pulls?state=open&per_page=100" \
         --jq '.[] | [.number, .created_at, .head.sha] | @tsv'
-    )
+    )"; then
+      echo "::error::Could not list open pull requests for $repository; refusing partial deep-gate reconciliation." >&2
+      return 1
+    fi
+    while IFS= read -r row; do
+      [[ -n "$row" ]] && prs+=("$row")
+    done <<< "$pr_listing"
     (( ${#prs[@]} > 0 )) || continue
 
     ensure_repository_labels "$repository"
 
-    local row
     for row in "${prs[@]}"; do
       IFS=$'\t' read -r pr created head_sha <<< "$row"
       [[ -n "$pr" && -n "$head_sha" ]] || continue
@@ -253,6 +297,11 @@ main() {
         is_deep=true
         set_central_deep_level "$repository" "$pr" "$labels"
         labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+      else
+        critical_status=$?
+        if (( critical_status != 1 )); then
+          return "$critical_status"
+        fi
       fi
 
       [[ "$is_deep" == "true" ]] || continue
@@ -287,16 +336,70 @@ main() {
     exit 0
   fi
 
-  # Re-trigger at most one deep PR per scheduled run. The 8-minute workflow
-  # cadence therefore bounds automatic CodeRabbit retry pressure while still
-  # recovering automatically after quota, skipped-review, or transient failures.
+  # Re-trigger at most one deep PR per scheduled run. Re-read all mutable state
+  # before doing so because CodeRabbit or the PR can change during the org sweep.
   sort -t $'\t' -k1,1 "$retry_candidates" -o "$retry_candidates"
-  local selected
+  local selected pr_json pr_fields current_state current_head
   selected="$(head -n1 "$retry_candidates")"
   IFS=$'\t' read -r created repository pr head_sha <<< "$selected"
+
+  if ! pr_json="$(gh api "repos/$repository/pulls/$pr")"; then
+    echo "::error::Could not refresh retry candidate $repository#$pr." >&2
+    return 1
+  fi
+  if ! pr_fields="$(jq -r '[.state, .head.sha] | @tsv' <<< "$pr_json")"; then
+    echo "::error::Could not parse refreshed retry candidate $repository#$pr." >&2
+    return 1
+  fi
+  IFS=$'\t' read -r current_state current_head <<< "$pr_fields"
+  if [[ "$current_state" != "open" ]]; then
+    echo "Skipping stale retry candidate $repository#$pr: PR is now $current_state."
+    return 0
+  fi
+
   labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
-  echo "Retrying deep CodeRabbit gate for $repository#$pr at $head_sha."
-  ensure_coderabbit_primary "$repository" "$pr" "$labels" true
+  is_deep=false
+  if has_label "$labels" review:deep || has_label "$labels" review:level:deep; then
+    is_deep=true
+  elif central_pr_is_critical "$repository" "$pr"; then
+    is_deep=true
+    set_central_deep_level "$repository" "$pr" "$labels"
+    labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+  else
+    critical_status=$?
+    if (( critical_status != 1 )); then
+      return "$critical_status"
+    fi
+  fi
+  if [[ "$is_deep" != "true" ]]; then
+    echo "Skipping stale retry candidate $repository#$pr: it is no longer deep."
+    return 0
+  fi
+
+  state="$(coderabbit_gate_state "$repository" "$pr" "$current_head")"
+  case "$state" in
+    complete)
+      echo "Skipping retry for $repository#$pr: CodeRabbit now covers current HEAD $current_head."
+      ensure_coderabbit_primary "$repository" "$pr" "$labels" false
+      clear_waiting "$repository" "$pr" "$labels"
+      return 0
+      ;;
+    in_progress)
+      echo "Skipping retry for $repository#$pr: CodeRabbit is now reviewing current HEAD $current_head."
+      ensure_coderabbit_primary "$repository" "$pr" "$labels" false
+      mark_waiting "$repository" "$pr" "$labels"
+      return 0
+      ;;
+    missing)
+      echo "Retrying deep CodeRabbit gate for $repository#$pr at refreshed HEAD $current_head."
+      mark_waiting "$repository" "$pr" "$labels"
+      ensure_coderabbit_primary "$repository" "$pr" "$labels" true
+      ;;
+    *)
+      echo "::error::Unexpected refreshed CodeRabbit gate state '$state' for $repository#$pr." >&2
+      return 1
+      ;;
+  esac
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
