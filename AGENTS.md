@@ -267,4 +267,4 @@ A task is complete only when:
 
 If documented policy and live enforcement differ, this file remains the sole policy source; obey enforced GitHub protections and correct stale repository documentation.
 
-Repository-specific governance and technical context for an individual repository belongs in `<REPO>.md` at the repository root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`. These documents may define repository-specific technical contracts and invariants, but they do not override or supplement this policy.
+Repository-specific governance and technical context for an individual repository belongs in `<REPO>.md` at that repository's root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`. These documents may define repository-specific technical contracts and invariants, but they do not override or supplement this policy.
