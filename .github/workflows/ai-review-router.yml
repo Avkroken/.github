@@ -6,6 +6,8 @@ on:
       - .github/workflows/ai-review-router.yml
       - .github/scripts/ai-review-router.sh
       - .github/scripts/ai-review-router.test.sh
+      - .github/scripts/deep-coderabbit-gate.sh
+      - .github/scripts/deep-coderabbit-gate.test.sh
   schedule:
     - cron: "*/8 * * * *"
   workflow_dispatch:
@@ -37,10 +39,14 @@ jobs:
         run: |
           bash -n .github/scripts/ai-review-router.sh
           bash -n .github/scripts/ai-review-router.test.sh
+          bash -n .github/scripts/deep-coderabbit-gate.sh
+          bash -n .github/scripts/deep-coderabbit-gate.test.sh
 
       - name: Run router tests
         shell: bash
-        run: bash .github/scripts/ai-review-router.test.sh
+        run: |
+          bash .github/scripts/ai-review-router.test.sh
+          bash .github/scripts/deep-coderabbit-gate.test.sh
 
   route:
     if: github.event_name != 'pull_request'
@@ -62,6 +68,15 @@ jobs:
           owner: ${{ github.repository_owner }}
           permission-issues: write
           permission-pull-requests: write
+
+      - name: Reconcile deep CodeRabbit gates
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          OWNER: ${{ github.repository_owner }}
+          REPOSITORY_FILTER: ${{ inputs.repository || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        shell: bash
+        run: bash .github/scripts/deep-coderabbit-gate.sh
 
       - name: Route advisory AI reviews
         env:
