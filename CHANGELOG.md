@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/Avkroken/.github/compare/v1.2.3...v1.2.4) (2026-09-05)
+
+
+### Documentation
+
+* update CodeRabbit organization settings contract ([#64](https://github.com/Avkroken/.github/issues/64)) ([3e1c224](https://github.com/Avkroken/.github/commit/3e1c224175350b934e47df01d8c98209180d72c6))
+
 ## [1.2.3](https://github.com/Avkroken/.github/compare/v1.2.2...v1.2.3) (2026-09-05)
 
 
