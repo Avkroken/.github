@@ -219,7 +219,7 @@ For any change that touches UI, components, pages, styling, or layout, read `DES
 - Do not rely on color alone to communicate state.
 - Verify responsive behavior for affected UI.
 
-If a genuinely new design value is required, update the design system before using it throughout application code.
+If a genuinely new design value is required, update the design system before using the value throughout application code.
 
 ## Dependencies
 
@@ -267,4 +267,4 @@ A task is complete only when:
 
 If documented policy and live enforcement differ, this file remains the sole policy source; obey enforced GitHub protections and correct stale repository documentation.
 
-Repository-specific governance and technical context for an individual repository belongs in `<REPO>.md` at that repository's root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`. These documents may define repository-specific technical contracts and invariants, but they do not override or supplement this policy.
+Repository-specific governance and technical context for an individual repository belongs in `<REPO>.md` at the repository root, when present. Replace `<REPO>` with the repository name uppercased; for example, `Politiker` uses `POLITIKER.md`, `Bastion` uses `BASTION.md`, and `.github` uses `GITHUB.md`. These documents may define repository-specific technical contracts and invariants, but they do not override or supplement this policy.
