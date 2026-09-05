@@ -1,23 +1,30 @@
 # AGENTS.md
 
-This file is the sole binding source of truth for AI coding-agent policy across Avkroken repositories.
+This file defines the shared AI coding-agent policy and default working model for Avkroken repositories. It deliberately stays general; repository-specific requirements belong in each repository's `REPO.md`.
 
-Repository-local `AGENTS.md` files may only point here; they must not define, supplement, narrow, or override policy. Repository-specific technical and governance context belongs in `REPO.md` at the repository root. Those repository documents must be kept current and are required context when relevant, but they are not independent sources of agent policy.
+Repository-local `AGENTS.md` files may only point here. For any repository that has a root `REPO.md`, agents must read this file and that repository's `REPO.md` together before making changes.
 
-When a repository governance document is stale or inconsistent with this policy or with verified live configuration, update that document as part of the same task without asking the repository owner for a separate approval. This standing authorization is limited to documentation/governance consistency; it does not authorize bypassing protections or changing product behavior, runtime behavior, security posture, production infrastructure, or credentials outside the task's scope.
+The governance hierarchy is based on scope and specificity:
 
-Live GitHub configuration remains authoritative for factual enforcement such as required checks, rulesets, branch protection, and merge eligibility. If documentation conflicts with enforced GitHub state, obey the enforced state, report the mismatch when material, and correct the repository governance document. Live enforcement does not create a second source of agent policy.
+- live GitHub configuration is authoritative for factual enforcement such as required checks, rulesets, branch protection, merge eligibility, and merge queues;
+- the repository's root `REPO.md` is authoritative for repository-specific technical contracts, invariants, validation requirements, constraints, and explicit operating instructions; and
+- this `AGENTS.md` defines organization-wide defaults and shared requirements that apply where the repository-specific document does not specialize them.
+
+A repository-specific `REPO.md` may add, narrow, or explicitly vary shared defaults when repository-specific conditions require a different procedure. That is the intended mechanism for expressing local behavior that does not belong in this central file. A repository document must never claim permission to bypass live GitHub protections or ignore required checks, reviews, rulesets, merge queues, or other enforced protections.
+
+When central and repository-specific documentation appear inconsistent, first determine whether they address the same scope. For a repository-specific matter, follow the repository-specific instruction. For a shared matter that is not specialized locally, follow this file. If either document is stale or inconsistent with verified live configuration, update the stale governance documentation as part of the same task without asking the repository owner for separate approval. This standing authorization is limited to documentation/governance consistency; it does not authorize bypassing protections or changing product behavior, runtime behavior, security posture, production infrastructure, or credentials outside the task's scope.
 
 ## Before Making Changes
 
 1. Read this `AGENTS.md` completely.
-2. Read the relevant repository documentation and configuration before changing code.
+2. Read the relevant repository documentation and configuration before changing code, including the root `REPO.md` when present.
 3. Inspect the current branch, active pull requests, CI status, review state, and applicable GitHub rules before substantial changes.
 4. Prefer finishing an already active pull request before starting parallel work in the same repository when the current work belongs in that PR.
 5. Inspect nearby code and tests before introducing new patterns or abstractions.
 
 Relevant repository context may include:
 
+- `REPO.md`
 - `README.md`
 - `DESIGN.md`
 - `package.json`
@@ -59,7 +66,7 @@ The centrally authorized Dependabot automation defined below is an explicit exce
 
 Use the repository's configured merge method. If squash merge is the only permitted method, use squash auto-merge.
 
-Direct or manual merge is allowed only when explicitly requested and permitted by repository rules.
+Direct or manual merge is allowed only when explicitly requested and permitted by repository rules. A repository-specific `REPO.md` may provide that explicit standing request for documented repository-specific situations.
 
 Never bypass:
 
@@ -79,7 +86,7 @@ A pull request is complete only when every repository-required merge condition i
 At minimum:
 
 - every required CI check is successful on the latest PR HEAD;
-- advisory bot-review completion, approval, availability, quota, and latest-HEAD re-review are not merge gates;
+- advisory bot-review completion, approval, availability, quota, and latest-HEAD re-review are not merge gates unless a repository-specific instruction or live enforced rule explicitly makes one required;
 - every relevant review comment that was received has been read and evaluated;
 - every required review thread is resolved;
 - every relevant review finding that was received has been fixed when necessary;
@@ -89,11 +96,11 @@ At minimum:
 - the pull request is marked Ready before auto-merge is enabled;
 - applicable rulesets, branch protection, and merge-queue requirements are satisfied;
 - merge-group checks are successful when the repository uses a merge queue; and
-- auto-merge remains armed after the pull request becomes eligible.
+- auto-merge remains armed after the pull request becomes eligible when that is the repository's applicable path.
 
 Do not infer approval requirements or required check names from another repository.
 
-If the pull request does not auto-merge after all known gates are satisfied, inspect the live repository configuration and identify the exact remaining blocker.
+If the pull request does not auto-merge after all known gates are satisfied, inspect the live repository configuration and the repository-specific `REPO.md`, then follow the applicable repository-specific completion path. Do not invent a blocker that the repository does not actually have.
 
 ## Review Handling
 
@@ -106,13 +113,13 @@ For each review comment:
 3. Run the relevant validation after the fix.
 4. Commit the fix and push the change to the existing pull request branch.
 5. Re-check required CI and the required review state against the new HEAD.
-6. Optionally re-request advisory bot reviewers when useful and available. A fresh CodeRabbit, GitHub Copilot, or Codex Code Review round is not required for merge, and quota exhaustion or non-response must not block progress.
+6. Optionally re-request advisory bot reviewers when useful and available. A fresh CodeRabbit, GitHub Copilot, or Codex Code Review round is not required for merge unless repository-specific governance or live enforcement explicitly requires it.
 
 Do not resolve a review thread solely to remove a merge blocker.
 
 Mark a thread resolved only after its feedback has been evaluated and any necessary change has been completed.
 
-After every new commit, check for new or reopened feedback that already exists or arrives, but do not wait for or force a new advisory bot review before continuing once required repository gates are satisfied.
+After every new commit, check for new or reopened feedback that already exists or arrives, but do not wait for or force a new advisory bot review before continuing once the repository's actual required gates are satisfied.
 
 ## Organization PR Sweeps
 
@@ -124,12 +131,12 @@ For each in-scope pull request:
 2. Read the current PR HEAD, complete diff/scope, all review comments and review threads, current reviews, required checks, workflow results, mergeability, and live repository rules.
 3. Evaluate every review finding on its merits. Fix verified findings that are caused by the PR and fit its existing scope. Do not make unrelated refactors or expand product behavior merely to satisfy a reviewer.
 4. After every mutation, re-read the PR HEAD and re-check required CI, received reviews, threads, mergeability, and relevant rules against the new HEAD.
-5. When required CI is green, relevant received feedback has been handled, required review conditions are satisfied, and the PR is otherwise eligible, mark it Ready if it is still Draft, then enable the repository-supported native auto-merge or merge-queue path. Never substitute direct merge for a required queue, and never wait solely for an advisory bot reviewer.
+5. When required CI is green, relevant received feedback has been handled, required review conditions are satisfied, and the PR is otherwise eligible, mark it Ready if it is still Draft, then follow the repository-supported completion path defined by live rules and repository-specific governance. Never substitute direct merge for a required queue, and never wait solely for an advisory bot reviewer unless that review is explicitly required for the repository.
 6. Do not treat a successful `enable auto-merge` call, a null/non-null REST `auto_merge` field, or an earlier queue event as proof that the PR is currently queued. Verify the resulting queue state from current GitHub state or timeline events. If queue events are available, the latest relevant event must show `added_to_merge_queue` after any `removed_from_merge_queue` event.
 7. When a PR is removed from the merge queue, identify the exact cause. Fix it if it is a verified PR-scope defect; otherwise leave legitimate external gates intact. Re-arm or requeue only after the applicable conditions are again satisfied.
 8. Inspect merge-group checks when the repository uses a merge queue. Green pull-request checks do not prove that the merge-group revision is valid.
 9. Do not report a PR as complete until GitHub confirms the merged/closed state, including `merged=true` or equivalent and a verified merge timestamp when available.
-10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate.
+10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate unless repository-specific governance or live enforcement explicitly makes it one.
 
 A request such as “run an organization review/sweep” is sufficient to invoke this procedure. The owner does not need to repeat these details on every run.
 
@@ -177,7 +184,7 @@ Do not delete, weaken, or bypass a test solely to make validation pass.
 
 ## Centrally Authorized Automation
 
-The exceptions in this section are owner-approved and binding. Repository governance documents may describe implementation details but may not broaden these permissions.
+The exceptions in this section are organization-wide authorizations and constraints for the named central automation. Repository-specific governance may document additional local automation behavior, but it must not misrepresent or bypass the constraints of these central workflows.
 
 ### Metadata-only AI triage
 
@@ -240,7 +247,7 @@ For pull request work, confirm:
 - required check names and results are correct;
 - received review feedback and required review state have been checked after the latest commit;
 - required review threads are resolved;
-- auto-merge is not armed while the PR is Draft and remains armed after the PR becomes Ready and eligible; and
+- the repository-specific completion path has been followed; and
 - the repository reports the expected merge state.
 
 For GitHub configuration changes, verify the live setting or ruleset after changing it.
@@ -255,13 +262,13 @@ A task is complete only when:
 - relevant tests or validation have been added or updated;
 - required local validation passes;
 - the change is represented in the correct pull request;
-- auto-merge is enabled when supported;
+- the repository-specific merge/completion path has been followed;
 - required GitHub checks pass;
 - review feedback that was actually received has been read and handled;
 - required review threads are resolved;
 - repository merge rules are satisfied; and
 - the resulting repository or runtime state has been verified where applicable.
 
-If documented policy and live enforcement differ, this file remains the sole policy source; obey enforced GitHub protections and correct stale repository documentation.
+If documented governance and live enforcement differ, obey enforced GitHub protections and correct stale documentation. For repository-specific matters, the repository's `REPO.md` is the applicable governance source; for shared matters not specialized there, this file applies.
 
-Repository-specific governance and technical context for an individual repository belongs in `REPO.md` at that repository's root, when present. The filename is always exactly `REPO.md`, regardless of repository name. These documents may define repository-specific technical contracts and invariants, but they do not override or supplement this policy.
+Repository-specific governance and technical context for an individual repository belongs in `REPO.md` at that repository's root, when present. The filename is always exactly `REPO.md`, regardless of repository name. These documents are binding repository governance and may define repository-specific requirements, constraints, technical contracts, validation rules, and explicit operating instructions, including specializations of shared defaults where local conditions require them. Read them together with this file; do not use the central policy's generality as a reason to ignore a more specific repository instruction.
