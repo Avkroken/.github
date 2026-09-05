@@ -17,10 +17,10 @@ assert_eq() {
 head_sha='f0e1756122a63e70cc35a4df8b1f9c4e093afc71'
 old_sha='1c37ea3fed36764d931937d7a37284838fe14901'
 
-complete_comment=$'comment\tcoderabbitai[bot]\t\t<!-- final_review_risk_coverage:{"sourceCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","coveredCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","kind":"reviewed"} -->'
-in_progress_comment=$'comment\tcoderabbitai[bot]\t\t<!-- This is an auto-generated comment: review in progress by coderabbit.ai --> Reviewing files between 1c37ea3fed36764d931937d7a37284838fe14901 and f0e1756122a63e70cc35a4df8b1f9c4e093afc71.'
-old_complete_comment=$'comment\tcoderabbitai[bot]\t\t<!-- final_review_risk_coverage:{"sourceCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","coveredCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","kind":"reviewed"} -->'
-quota_comment=$'comment\tcoderabbitai[bot]\t\tReview skipped because quota is unavailable.'
+complete_comment=$'comment\tcoderabbitai[bot]\t-\t<!-- final_review_risk_coverage:{"sourceCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","coveredCommitId":"f0e1756122a63e70cc35a4df8b1f9c4e093afc71","kind":"reviewed"} -->'
+in_progress_comment=$'comment\tcoderabbitai[bot]\t-\t<!-- This is an auto-generated comment: review in progress by coderabbit.ai --> Reviewing files between 1c37ea3fed36764d931937d7a37284838fe14901 and f0e1756122a63e70cc35a4df8b1f9c4e093afc71.'
+old_complete_comment=$'comment\tcoderabbitai[bot]\t-\t<!-- final_review_risk_coverage:{"sourceCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","coveredCommitId":"1c37ea3fed36764d931937d7a37284838fe14901","kind":"reviewed"} -->'
+quota_comment=$'comment\tcoderabbitai[bot]\t-\tReview skipped because quota is unavailable.'
 formal_review=$'review\tcoderabbitai[bot]\tf0e1756122a63e70cc35a4df8b1f9c4e093afc71\tReview completed.'
 
 assert_eq complete "$(printf '%s\n' "$complete_comment" | coderabbit_gate_state_from_tsv "$head_sha")" "current-head coverage artifact satisfies gate"
