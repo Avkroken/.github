@@ -73,6 +73,25 @@ jobs:
             targets["$1"]=1
           }
 
+          arm_auto_merge() {
+            local repository="$1"
+            local pr_number="$2"
+            local output
+
+            if output="$(gh pr merge "$pr_number" --repo "$repository" --auto --squash 2>&1)"; then
+              [[ -z "$output" ]] || printf '%s\n' "$output"
+              return 0
+            fi
+
+            printf '%s\n' "$output" >&2
+            if [[ "$output" != *"Pull request is in unstable status"* ]]; then
+              return 1
+            fi
+
+            sleep 2
+            gh pr merge "$pr_number" --repo "$repository" --auto --squash
+          }
+
           add_scope() {
             case "$1" in
               metadata-orchestration)
@@ -214,7 +233,7 @@ jobs:
               )"
               if [[ -n "$existing_pr" ]]; then
                 echo "$repository already has open rollout PR #$existing_pr on $branch; re-arming squash auto-merge."
-                if ! gh pr merge "$existing_pr" --repo "$repository" --auto --squash; then
+                if ! arm_auto_merge "$repository" "$existing_pr"; then
                   echo "::warning::$repository#$existing_pr still could not arm squash auto-merge; later reconciliation will retry."
                 fi
                 continue
@@ -260,7 +279,7 @@ jobs:
                 | gh api --method POST "repos/$repository/pulls" --input - --jq '.number'
             )"
 
-            if ! gh pr merge "$pr_number" --repo "$repository" --auto --squash; then
+            if ! arm_auto_merge "$repository" "$pr_number"; then
               echo "::warning::Opened $repository#$pr_number but could not arm squash auto-merge."
             fi
           done
