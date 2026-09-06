@@ -56,13 +56,13 @@ jobs:
             <<<"$text"; then
             security="high"
           elif grep -Eqi \
-            '(^|[^a-z])(security|permission|permissions|authorization|authentication|credential|credentials|secret|token)([^a-z]|$)' \
-            <<<"$text"; then
-            security="medium"
-          elif grep -Eqi \
             '(^|[^a-z])(hardening|defense in depth|defence in depth|security header|content security policy|csp)([^a-z]|$)' \
             <<<"$text"; then
             security="low"
+          elif grep -Eqi \
+            '(^|[^a-z])(security (issue|risk|impact|bug|problem|concern)|(authentication|authorization|permission|permissions|credential|credentials|secret|token) (issue|risk|bug|problem|failure|flaw|weakness)|issue with (authentication|authorization|permissions?|credentials?|secrets?|tokens?))([^a-z]|$)' \
+            <<<"$text"; then
+            security="medium"
           fi
 
           classification="classification:$difficulty:$security"
