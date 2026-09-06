@@ -59,3 +59,6 @@ jobs:
           test -f .github/workflows/issue-classification.lock.yml
           test ! -e .github/workflows/issue-classification.md
           grep -Fq 'name: Deterministic issue classification' .github/workflows/issue-classification.lock.yml
+          ! grep -Fq 'uses: github/gh-aw/.github/workflows/agentic-workflow.yml@' .github/workflows/issue-classification.lock.yml
+          ! grep -Fq 'copilot-requests:' .github/workflows/issue-classification.lock.yml
+          ! grep -Fq 'COPILOT_GITHUB_TOKEN' .github/workflows/issue-classification.lock.yml
