@@ -90,11 +90,15 @@ jobs:
           git commit -m "chore: promote dev ${dev_sha:0:12}"
           git push origin "$branch"
 
+          pr_body="Automatisk, oföränderlig promotion av \`dev\` vid \`$dev_sha\`. Full produktionskontroll körs på merge-gruppen mot aktuell \`main\`."
           pr_number="$(
-            gh pr create --repo "$GH_REPO" --base main --head "$branch" \
-              --title "promote: dev ${dev_sha:0:12}" \
-              --body "Automatisk, oföränderlig promotion av \`dev\` vid \`$dev_sha\`. Full produktionskontroll körs på merge-gruppen mot aktuell \`main\`." \
-              --json number --jq '.number'
+            jq -n \
+              --arg title "promote: dev ${dev_sha:0:12}" \
+              --arg head "$branch" \
+              --arg base "main" \
+              --arg body "$pr_body" \
+              '{title:$title,head:$head,base:$base,body:$body}' \
+              | gh api --method POST "repos/$GH_REPO/pulls" --input - --jq '.number'
           )"
           gh pr edit "$pr_number" --repo "$GH_REPO" --add-label review:high
 
