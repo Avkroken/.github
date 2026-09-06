@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.13](https://github.com/Avkroken/.github/compare/v1.2.12...v1.2.13) (2026-09-06)
+
+
+### Fixes
+
+* gör auto-merge robust mot unstable status ([#94](https://github.com/Avkroken/.github/issues/94)) ([0193429](https://github.com/Avkroken/.github/commit/01934299e5469a6edca6593d9effbd8a1cf5fec5))
+
 ## [1.2.12](https://github.com/Avkroken/.github/compare/v1.2.11...v1.2.12) (2026-09-06)
 
 
