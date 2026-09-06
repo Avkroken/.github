@@ -72,7 +72,7 @@ CodeRabbit can apply configured pull-request labels as part of its review/walkth
 
 ## Dependabot merge-queue implementation
 
-`.github/workflows/dependabot-automerge.yml` is the reusable implementation used by repository callers. It uses the organization-installed `Gamnacken` GitHub App so Release Please pull requests trigger normal repository workflows. The workflow requests native auto-merge for the exact Release Please pull request it just created or updated using `SQUASH`; repository rulesets and merge queues remain the final merge authority.
+`.github/workflows/dependabot-automerge.yml` is the reusable implementation used by repository callers. It uses the organization-installed `Gamnacken` GitHub App to request native Dependabot auto-merge or merge-queue entry according to the central authorization in `AGENTS.md`.
 
 The App-backed reconciliation is invoked from scheduled or manual caller runs. Do not invoke the secret-backed App workflow directly from Dependabot pull-request events: GitHub withholds normal Actions secrets for Dependabot-triggered runs, which prevents this credential model from starting reliably. The recurring reconciliation is the authoritative retry path and still leaves repository rulesets, required checks, reviews and merge queues as the final merge authority.
 
