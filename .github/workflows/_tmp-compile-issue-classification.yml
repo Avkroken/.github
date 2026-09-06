@@ -6,17 +6,14 @@ on:
       - fix/issue-61-copilot-billing
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   compile:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
 
       - name: Install pinned gh-aw compiler
         shell: bash
@@ -58,16 +55,12 @@ jobs:
           head -n 1 .github/workflows/issue-classification.lock.yml | grep -F '"compiler_version":"v0.87.10"'
           git diff --check
 
-      - name: Commit source and generated lock
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm .github/workflows/_tmp-compile-issue-classification.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/issue-classification.md \
-                  .github/workflows/issue-classification.lock.yml \
-                  .github/workflows/_tmp-compile-issue-classification.yml
-          git diff --cached --check
-          git commit -m 'fix: use Copilot org billing for issue triage'
-          git push origin HEAD:fix/issue-61-copilot-billing
+      - name: Upload generated source and lock
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: issue-classification-gh-aw-v0.87.10
+          path: |
+            .github/workflows/issue-classification.md
+            .github/workflows/issue-classification.lock.yml
+          if-no-files-found: error
+          retention-days: 1
