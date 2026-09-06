@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "$PR_NUMBER" ]] || exit 0
+          [[ -n "$PR_NUMBER" && "$PR_NUMBER" != "null" ]] || exit 0
           [[ "$BASE_REF" == "dev" ]] || exit 0
 
           is_draft="$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json isDraft --jq '.isDraft')"
