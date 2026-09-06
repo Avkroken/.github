@@ -83,8 +83,7 @@ jobs:
             --repo "$REPOSITORY" \
             --color "D4C5F9" \
             --description "Temporary deterministic issue classification"; then
-            if ! gh label list --repo "$REPOSITORY" --limit 1000 --json name --jq '.[].name' \
-              | grep -Fxq "$classification"; then
+            if ! gh api "repos/$REPOSITORY/labels/$classification" >/dev/null 2>&1; then
               echo "Failed to ensure classification label: $classification" >&2
               exit 1
             fi
