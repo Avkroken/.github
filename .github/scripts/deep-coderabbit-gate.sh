@@ -45,17 +45,7 @@ critical_central_path() {
   local path="$1"
   case "$path" in
     AGENTS.md|GITHUB.md|REPO.md|.coderabbit.yaml|\
-    .github/workflows/ai-review-router.yml|\
-    .github/workflows/dependabot-automerge.yml|\
-    .github/workflows/governance-drift-audit.yml|\
-    .github/workflows/issue-classification.md|\
-    .github/workflows/issue-classification.lock.yml|\
-    .github/workflows/metadata-orchestration.yml|\
-    .github/workflows/metadata-routing.yml|\
-    .github/workflows/osv-scanner.yml|\
-    .github/workflows/reconcile-reusable-workflow-pins.yml|\
-    .github/workflows/release-please.yml|\
-    .github/workflows/sync-reusable-workflow-pins.yml|\
+    .github/workflows/*|\
     .github/scripts/ai-review-router.sh|\
     .github/scripts/ai-review-router.test.sh|\
     .github/scripts/deep-coderabbit-gate.sh|\
@@ -68,6 +58,19 @@ critical_central_path() {
   esac
 }
 
+central_changed_file_is_critical() {
+  local path="$1" previous_path="$2" status="$3"
+
+  if critical_central_path "$path"; then
+    return 0
+  fi
+  if [[ "$status" == "renamed" && "$previous_path" != "-" ]] \
+    && critical_central_path "$previous_path"; then
+    return 0
+  fi
+  return 1
+}
+
 # Returns 0 when critical, 1 when non-critical, and 2 when the GitHub listing
 # cannot be trusted. Callers must propagate status 2 rather than treating it as
 # a non-critical result.
@@ -75,21 +78,21 @@ central_pr_is_critical() {
   local repository="$1" pr="$2"
   [[ "$repository" == "$OWNER/.github" ]] || return 1
 
-  local paths path
-  if ! paths="$(
+  local files path previous_path status
+  if ! files="$(
     gh api --paginate "repos/$repository/pulls/$pr/files?per_page=100" \
-      --jq '.[].filename'
+      --jq '.[] | [.filename, (.previous_filename // "-"), .status] | @tsv'
   )"; then
     echo "::error::Could not list changed files for $repository#$pr; refusing to classify it as non-critical." >&2
     return 2
   fi
 
-  while IFS= read -r path; do
+  while IFS=$'\t' read -r path previous_path status; do
     [[ -n "$path" ]] || continue
-    if critical_central_path "$path"; then
+    if central_changed_file_is_critical "$path" "${previous_path:--}" "${status:-modified}"; then
       return 0
     fi
-  done <<< "$paths"
+  done <<< "$files"
   return 1
 }
 
