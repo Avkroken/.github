@@ -48,6 +48,7 @@ critical_central_path() {
     .github/workflows/ai-review-router.yml|\
     .github/workflows/dependabot-automerge.yml|\
     .github/workflows/governance-drift-audit.yml|\
+    .github/workflows/issue-classification.md|\
     .github/workflows/issue-classification.lock.yml|\
     .github/workflows/metadata-orchestration.yml|\
     .github/workflows/metadata-routing.yml|\
