@@ -38,12 +38,14 @@ När `dev`-piloten är aktiverad i `Avkroken/.github` gäller detta i stället f
 3. Skapa pull requesten mot `dev` som draft.
 4. Låt CodeRabbit granska draften och åtgärda relevant feedback.
 5. Markera pull requesten Ready först när ändringen bedöms produktionsklar.
-6. `CodeRabbit` och `CI / admission` ska passera.
+6. CodeRabbit ska ha godkänt aktuell kod och `CI / admission` ska passera.
 7. Aktivera auto-merge med squash till `dev`.
 8. När ändringen ligger på `dev` är programmerarens normala arbete klart.
-9. Ett deterministiskt workflow skapar en oföränderlig promotion av aktuell `dev` mot `main`.
+9. Ett deterministiskt workflow skapar en oföränderlig promotion av endast de `dev`-commits som inte redan har promotats.
 10. Promotionen går via merge queue. `CI / required` kör den fulla kontrollen på merge-gruppen mot aktuell `main`.
 11. Grönt resultat mergas med squash till `main`.
+
+`CI / admission` körs inte medan pull requesten är draft. Den startar först när programmeraren markerar ändringen Ready.
 
 En misslyckad `CI / admission` gör pull requesten till draft igen. Den ska då behandlas som ofärdig kod, inte som något som ska studsa vidare genom fler kontroller.
 
@@ -57,12 +59,13 @@ Skapa inte vanliga feature-PR:er direkt mot `main` i pilotförrådet. Release- o
 
 Mot `dev`:
 
-- `CodeRabbit` – required botkontroll på draft/Ready-flödet.
-- `CI / admission` – snabb och deterministisk syntax-/strukturkontroll.
+- CodeRabbit använder Request Changes Workflow på draften. Fynd blockerar tills de är åtgärdade och boten godkänner aktuell kod.
+- Ett godkännande krävs. Ny push gör tidigare godkännande inaktuellt.
+- `CI / admission` är den required status check som kör snabb och deterministisk syntax-/strukturkontroll efter Ready.
 
 Mot `main`:
 
-- `CI / required` – required check. På vanlig PR är den billig; i `merge_group` kör den produktionskontrollen mot aktuell `main`.
+- `CI / required` är required check. På vanlig PR är den billig; i `merge_group` kör den produktionskontrollen mot aktuell `main`.
 - merge queue används.
 - `Require branches to be up to date before merging` används inte.
 
@@ -142,7 +145,7 @@ Ett problem är anledning att undersöka problemet. Frånvaro av problem är int
 
 - Läs relevant granskningsfeedback som faktiskt finns när uppgiften kräver arbete med pull requesten.
 - Åtgärda konkreta fel och användbara förbättringar.
-- I `dev`-piloten är den konfigurerade botkontrollen en gate. Övriga AI- och botkommentarer är rådgivande om GitHub inte kräver annat.
+- I `dev`-piloten är CodeRabbits Request Changes/Approve-flöde en gate. Övriga AI- och botkommentarer är rådgivande om GitHub inte kräver annat.
 - Jaga inte nya granskningar eller statusuppdateringar utan anledning.
 - En gammal kommentar som redan är åtgärdad ska inte skapa mer arbete.
 
