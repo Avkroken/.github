@@ -133,13 +133,22 @@ fi
 main_state="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/rulesets/$required_id")"
 dev_state="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/rulesets?includes_parents=false")"
 
-jq -e '
+jq -e \
+  --arg main_sha "$main_sha" \
+  --argjson repo_id "$repo_id" \
+  '
   .rules
   | (map(select(.type == "required_status_checks"))[0].parameters.strict_required_status_checks_policy == false)
     and (any(.[]; .type == "merge_queue"))
     and (
       any(.[]; .type == "workflows"
-        and any(.parameters.workflows[]?; .path == ".github/workflows/osv-scanner.yml"))
+        and any(
+          .parameters.workflows[]?;
+          .repository_id == $repo_id
+          and .path == ".github/workflows/osv-scanner.yml"
+          and .ref == "refs/heads/main"
+          and .sha == $main_sha
+        ))
     )
 ' <<< "$main_state" >/dev/null
 
