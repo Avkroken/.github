@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/metadata-orchestration.yml
-      - .github/workflows/metadata-routing.yml
-      - .github/workflows/issue-classification.lock.yml
       - .github/workflows/dependabot-automerge.yml
       - .github/workflows/release-please.yml
   workflow_dispatch:
@@ -16,9 +13,6 @@ on:
         required: true
         type: choice
         options:
-          - metadata-orchestration
-          - metadata-routing
-          - classification
           - dependabot
           - release
       target_sha:
@@ -69,8 +63,15 @@ jobs:
 
           declare -A targets=()
 
-          add_target() {
-            targets["$1"]=1
+          add_scope() {
+            case "$1" in
+              dependabot) targets[dependabot-automerge.yml]=1 ;;
+              release) targets[release-please.yml]=1 ;;
+              *)
+                echo "::error::Unsupported scope: $1"
+                exit 1
+                ;;
+            esac
           }
 
           arm_auto_merge() {
@@ -92,34 +93,6 @@ jobs:
             gh pr merge "$pr_number" --repo "$repository" --auto --squash
           }
 
-          add_scope() {
-            case "$1" in
-              metadata-orchestration)
-                add_target metadata-orchestration.yml
-                ;;
-              metadata-routing)
-                # The orchestrator calls metadata-routing.yml by a relative ref, so
-                # a routing implementation change affects both direct routing callers
-                # and metadata-orchestration callers.
-                add_target metadata-orchestration.yml
-                add_target metadata-routing.yml
-                ;;
-              classification)
-                add_target issue-classification.lock.yml
-                ;;
-              dependabot)
-                add_target dependabot-automerge.yml
-                ;;
-              release)
-                add_target release-please.yml
-                ;;
-              *)
-                echo "::error::Unsupported scope: $1"
-                exit 1
-                ;;
-            esac
-          }
-
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             add_scope "$REQUESTED_SCOPE"
           else
@@ -127,27 +100,8 @@ jobs:
               gh api "repos/$SOURCE_REPOSITORY/compare/$BEFORE_SHA...$TARGET_SHA" \
                 --jq '.files[].filename'
             )"
-
-            while IFS= read -r path; do
-              case "$path" in
-                .github/workflows/metadata-orchestration.yml)
-                  add_target metadata-orchestration.yml
-                  ;;
-                .github/workflows/metadata-routing.yml)
-                  add_target metadata-orchestration.yml
-                  add_target metadata-routing.yml
-                  ;;
-                .github/workflows/issue-classification.lock.yml)
-                  add_target issue-classification.lock.yml
-                  ;;
-                .github/workflows/dependabot-automerge.yml)
-                  add_target dependabot-automerge.yml
-                  ;;
-                .github/workflows/release-please.yml)
-                  add_target release-please.yml
-                  ;;
-              esac
-            done <<< "$changed_files"
+            grep -Fxq '.github/workflows/dependabot-automerge.yml' <<< "$changed_files" && targets[dependabot-automerge.yml]=1 || true
+            grep -Fxq '.github/workflows/release-please.yml' <<< "$changed_files" && targets[release-please.yml]=1 || true
           fi
 
           if (( ${#targets[@]} == 0 )); then
@@ -167,7 +121,6 @@ jobs:
 
           for repository in "${repositories[@]}"; do
             default_branch="$(gh api "repos/$repository" --jq '.default_branch')"
-
             workflow_listing="$RUNNER_TEMP/workflows.json"
             if ! gh api "repos/$repository/contents/.github/workflows?ref=$default_branch" > "$workflow_listing" 2>/dev/null; then
               echo "Skipping $repository: no workflow directory."
@@ -234,20 +187,18 @@ jobs:
               if [[ -n "$existing_pr" ]]; then
                 echo "$repository already has open rollout PR #$existing_pr on $branch; re-arming squash auto-merge."
                 if ! arm_auto_merge "$repository" "$existing_pr"; then
-                  echo "::warning::$repository#$existing_pr still could not arm squash auto-merge; later reconciliation will retry."
+                  echo "::warning::$repository#$existing_pr still could not arm squash auto-merge."
                 fi
                 continue
               fi
 
-              echo "$repository has stale rollout branch $branch without an open PR; deleting only that owned rollout branch before recreating it."
               gh api --method DELETE "repos/$repository/git/refs/heads/$branch" >/dev/null
             fi
 
             base_sha="$(gh api "repos/$repository/git/ref/heads/$default_branch" --jq '.object.sha')"
             gh api --method POST "repos/$repository/git/refs" \
               -f "ref=refs/heads/$branch" \
-              -f "sha=$base_sha" \
-              >/dev/null
+              -f "sha=$base_sha" >/dev/null
 
             while IFS=$'\t' read -r workflow_path blob_sha encoded; do
               jq -n \
@@ -259,22 +210,12 @@ jobs:
                 | gh api --method PUT "repos/$repository/contents/$workflow_path" --input - >/dev/null
             done < "$workdir/changes.tsv"
 
-            body="$(cat <<EOF
-          ## Summary
-          - update exact full-SHA references to Avkroken-owned reusable workflows affected by central commit \`$TARGET_SHA\`
-          - affected central workflow references: \`$(tr '\n' ',' <<< "$TARGET_NAMES" | sed 's/,$//')\`
-          - keep repository-local triggers, permissions, schedules, CI, reviews, rulesets, and merge-queue behavior unchanged
-
-          Generated by \`Avkroken/.github/.github/workflows/sync-reusable-workflow-pins.yml\`.
-          EOF
-          )"
-
             pr_number="$(
               jq -n \
                 --arg title "chore: sync central reusable workflow pins" \
                 --arg head "$branch" \
                 --arg base "$default_branch" \
-                --arg body "$body" \
+                --arg body "Update exact full-SHA references to reviewed Avkroken reusable workflows from central commit $TARGET_SHA." \
                 '{title: $title, head: $head, base: $base, body: $body}' \
                 | gh api --method POST "repos/$repository/pulls" --input - --jq '.number'
             )"
