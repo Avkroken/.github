@@ -27,6 +27,8 @@ Om någon klassificeringsdimension saknas sätts `triage:pending`. Om flera labe
 
 `.github/workflows/issue-classification.lock.yml` är den centrala reusable workflowen för nya och återöppnade issues. Filnamnet behålls för kompatibilitet med befintliga SHA-pinnade callers, men filen är en vanlig deterministisk GitHub Actions-workflow och genereras inte av `gh-aw`.
 
+Verifierat 2026-09-06: upstream `github/gh-aw` (commit `16aa6c45979b55cabee7002bba35fbeb6fb361a4`) emitterar fortfarande stale cross-repo-fallbacktexten `COPILOT_GITHUB_TOKEN must be configured in the CALLER repository's secrets.` via `addActivationCrossRepoGuidanceStep` i `pkg/workflow/compiler_activation_steps.go`, så enbart regenerering kan inte korrigera den texten utan upstream-fix.
+
 Klassificeringen läser issue-titel och body via GitHub API och väljer deterministiskt exakt en temporär kombinationslabel:
 
 `classification:<difficulty>:<security>`
