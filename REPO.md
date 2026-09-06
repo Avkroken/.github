@@ -17,7 +17,7 @@ Automated AI reviews are advisory. This repository must not maintain a second me
 
 ## Credentials
 
-GitHub App credentials used by shared Actions are supplied through organization Actions configuration. Canonical names are `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`.
+Organization Actions stores the GitHub App values as `GAMNACKEN_CLIENT_ID` and `GAMNACKEN_PRIVATE_KEY`. Reusable workflows that declare a private-key secret input use the name `app-private-key`; callers map `GAMNACKEN_PRIVATE_KEY` to that input explicitly.
 
 Never commit credential values or expose them in logs, generated files, PR text or documentation.
 
