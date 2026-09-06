@@ -8,6 +8,7 @@ permissions: {}
 
 jobs:
   classify:
+    if: ${{ !contains(github.event.issue.body || '', '<!-- gh-aw-detection-runs -->') }}
     permissions:
       issues: write
     uses: ./.github/workflows/issue-classification.lock.yml
