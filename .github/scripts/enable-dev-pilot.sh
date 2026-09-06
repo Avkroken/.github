@@ -13,6 +13,7 @@ for path in \
 done
 
 main_sha="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/main" --jq '.object.sha')"
+repo_id="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo" --jq '.id')"
 
 if ! gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/dev" >/dev/null 2>&1; then
   gh api -H "X-GitHub-Api-Version: $api_version" --method POST "repos/$repo/git/refs" \
@@ -37,7 +38,10 @@ main_payload="$(mktemp)"
 dev_payload="$(mktemp)"
 trap 'rm -f "$main_payload" "$dev_payload"' EXIT
 
-jq -n '{
+jq -n \
+  --arg main_sha "$main_sha" \
+  --argjson repo_id "$repo_id" \
+  '{
   name: "required-ci",
   target: "branch",
   enforcement: "active",
@@ -62,6 +66,20 @@ jq -n '{
         merge_method: "SQUASH",
         min_entries_to_merge: 1,
         min_entries_to_merge_wait_minutes: 0
+      }
+    },
+    {
+      type: "workflows",
+      parameters: {
+        do_not_enforce_on_create: true,
+        workflows: [
+          {
+            repository_id: $repo_id,
+            path: ".github/workflows/osv-scanner.yml",
+            ref: "refs/heads/main",
+            sha: $main_sha
+          }
+        ]
       }
     }
   ]
@@ -119,6 +137,10 @@ jq -e '
   .rules
   | (map(select(.type == "required_status_checks"))[0].parameters.strict_required_status_checks_policy == false)
     and (any(.[]; .type == "merge_queue"))
+    and (
+      any(.[]; .type == "workflows"
+        and any(.parameters.workflows[]?; .path == ".github/workflows/osv-scanner.yml"))
+    )
 ' <<< "$main_state" >/dev/null
 
 jq -e '
