@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.11](https://github.com/Avkroken/.github/compare/v1.2.10...v1.2.11) (2026-09-06)
+
+
+### Documentation
+
+* förenkla och översätt agentregler ([#91](https://github.com/Avkroken/.github/issues/91)) ([914eb7f](https://github.com/Avkroken/.github/commit/914eb7f0e96128e02c98a1ca5427eadb6555ffbf))
+
 ## [1.2.10](https://github.com/Avkroken/.github/compare/v1.2.9...v1.2.10) (2026-09-06)
 
 
