@@ -44,7 +44,7 @@ coderabbit_activity_is_fresh() {
 critical_central_path() {
   local path="$1"
   case "$path" in
-    AGENTS.md|GITHUB.md|.coderabbit.yaml|\
+    AGENTS.md|GITHUB.md|REPO.md|.coderabbit.yaml|\
     .github/workflows/ai-review-router.yml|\
     .github/workflows/dependabot-automerge.yml|\
     .github/workflows/governance-drift-audit.yml|\
@@ -302,9 +302,10 @@ main() {
   local retry_candidates="$RUNNER_TEMP/deep-coderabbit-retries.tsv"
   : > "$retry_candidates"
 
-  local repository pr created head_sha labels is_deep state critical_status pr_listing row
+  local repository pr created head_sha labels is_deep state critical_status pr_listing row labels_ensured
   for repository in "${repositories[@]}"; do
     local prs=()
+    labels_ensured=false
     if ! pr_listing="$(
       gh api --paginate "repos/$repository/pulls?state=open&per_page=100" \
         --jq '.[] | [.number, .created_at, .head.sha] | @tsv'
@@ -317,8 +318,6 @@ main() {
     done <<< "$pr_listing"
     (( ${#prs[@]} > 0 )) || continue
 
-    ensure_repository_labels "$repository"
-
     for row in "${prs[@]}"; do
       IFS=$'\t' read -r pr created head_sha <<< "$row"
       [[ -n "$pr" && -n "$head_sha" ]] || continue
@@ -329,6 +328,10 @@ main() {
         is_deep=true
       elif central_pr_is_critical "$repository" "$pr"; then
         is_deep=true
+        if [[ "$labels_ensured" != "true" ]]; then
+          ensure_repository_labels "$repository"
+          labels_ensured=true
+        fi
         set_central_deep_level "$repository" "$pr" "$labels"
         labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
       else
@@ -339,6 +342,10 @@ main() {
       fi
 
       [[ "$is_deep" == "true" ]] || continue
+      if [[ "$labels_ensured" != "true" ]]; then
+        ensure_repository_labels "$repository"
+        labels_ensured=true
+      fi
 
       state="$(coderabbit_gate_state "$repository" "$pr" "$head_sha")"
       case "$state" in
@@ -372,68 +379,79 @@ main() {
 
   # Re-trigger at most one deep PR per scheduled run. Re-read all mutable state
   # before doing so because CodeRabbit or the PR can change during the org sweep.
+  # Stale candidates are skipped so a later still-missing candidate can recover.
   sort -t $'\t' -k1,1 "$retry_candidates" -o "$retry_candidates"
-  local selected pr_json pr_fields current_state current_head
-  selected="$(head -n1 "$retry_candidates")"
-  IFS=$'\t' read -r created repository pr head_sha <<< "$selected"
+  local pr_json pr_fields current_state current_head labels_ready
+  while IFS=$'\t' read -r created repository pr head_sha; do
+    [[ -n "$pr" ]] || continue
 
-  if ! pr_json="$(gh api "repos/$repository/pulls/$pr")"; then
-    echo "::error::Could not refresh retry candidate $repository#$pr." >&2
-    return 1
-  fi
-  if ! pr_fields="$(jq -r '[.state, .head.sha] | @tsv' <<< "$pr_json")"; then
-    echo "::error::Could not parse refreshed retry candidate $repository#$pr." >&2
-    return 1
-  fi
-  IFS=$'\t' read -r current_state current_head <<< "$pr_fields"
-  if [[ "$current_state" != "open" ]]; then
-    echo "Skipping stale retry candidate $repository#$pr: PR is now $current_state."
-    return 0
-  fi
-
-  labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
-  is_deep=false
-  if has_label "$labels" review:deep || has_label "$labels" review:level:deep; then
-    is_deep=true
-  elif central_pr_is_critical "$repository" "$pr"; then
-    is_deep=true
-    set_central_deep_level "$repository" "$pr" "$labels"
-    labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
-  else
-    critical_status=$?
-    if (( critical_status != 1 )); then
-      return "$critical_status"
-    fi
-  fi
-  if [[ "$is_deep" != "true" ]]; then
-    echo "Skipping stale retry candidate $repository#$pr: it is no longer deep."
-    return 0
-  fi
-
-  state="$(coderabbit_gate_state "$repository" "$pr" "$current_head")"
-  case "$state" in
-    complete)
-      echo "Skipping retry for $repository#$pr: CodeRabbit now covers current HEAD $current_head."
-      ensure_coderabbit_primary "$repository" "$pr" "$labels" false
-      clear_waiting "$repository" "$pr" "$labels"
-      return 0
-      ;;
-    in_progress)
-      echo "Skipping retry for $repository#$pr: CodeRabbit is now reviewing current HEAD $current_head."
-      ensure_coderabbit_primary "$repository" "$pr" "$labels" false
-      mark_waiting "$repository" "$pr" "$labels"
-      return 0
-      ;;
-    missing)
-      echo "Retrying deep CodeRabbit gate for $repository#$pr at refreshed HEAD $current_head."
-      mark_waiting "$repository" "$pr" "$labels"
-      ensure_coderabbit_primary "$repository" "$pr" "$labels" true
-      ;;
-    *)
-      echo "::error::Unexpected refreshed CodeRabbit gate state '$state' for $repository#$pr." >&2
+    if ! pr_json="$(gh api "repos/$repository/pulls/$pr")"; then
+      echo "::error::Could not refresh retry candidate $repository#$pr." >&2
       return 1
-      ;;
-  esac
+    fi
+    if ! pr_fields="$(jq -r '[.state, .head.sha] | @tsv' <<< "$pr_json")"; then
+      echo "::error::Could not parse refreshed retry candidate $repository#$pr." >&2
+      return 1
+    fi
+    IFS=$'\t' read -r current_state current_head <<< "$pr_fields"
+    if [[ "$current_state" != "open" ]]; then
+      echo "Skipping stale retry candidate $repository#$pr: PR is now $current_state."
+      continue
+    fi
+
+    labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+    is_deep=false
+    labels_ready=false
+    if has_label "$labels" review:deep || has_label "$labels" review:level:deep; then
+      is_deep=true
+    elif central_pr_is_critical "$repository" "$pr"; then
+      is_deep=true
+      ensure_repository_labels "$repository"
+      labels_ready=true
+      set_central_deep_level "$repository" "$pr" "$labels"
+      labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+    else
+      critical_status=$?
+      if (( critical_status != 1 )); then
+        return "$critical_status"
+      fi
+    fi
+    if [[ "$is_deep" != "true" ]]; then
+      echo "Skipping stale retry candidate $repository#$pr: it is no longer deep."
+      continue
+    fi
+    if [[ "$labels_ready" != "true" ]]; then
+      ensure_repository_labels "$repository"
+    fi
+
+    state="$(coderabbit_gate_state "$repository" "$pr" "$current_head")"
+    case "$state" in
+      complete)
+        echo "Skipping retry for $repository#$pr: CodeRabbit now covers current HEAD $current_head."
+        ensure_coderabbit_primary "$repository" "$pr" "$labels" false
+        clear_waiting "$repository" "$pr" "$labels"
+        continue
+        ;;
+      in_progress)
+        echo "Skipping retry for $repository#$pr: CodeRabbit is now reviewing current HEAD $current_head."
+        ensure_coderabbit_primary "$repository" "$pr" "$labels" false
+        mark_waiting "$repository" "$pr" "$labels"
+        continue
+        ;;
+      missing)
+        echo "Retrying deep CodeRabbit gate for $repository#$pr at refreshed HEAD $current_head."
+        mark_waiting "$repository" "$pr" "$labels"
+        ensure_coderabbit_primary "$repository" "$pr" "$labels" true
+        return 0
+        ;;
+      *)
+        echo "::error::Unexpected refreshed CodeRabbit gate state '$state' for $repository#$pr." >&2
+        return 1
+        ;;
+    esac
+  done < "$retry_candidates"
+
+  echo "No deep CodeRabbit retry remains after refreshing candidates."
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
