@@ -25,19 +25,17 @@ Om någon klassificeringsdimension saknas sätts `triage:pending`. Om flera labe
 
 ## Automatisk issueklassificering
 
-`.github/workflows/issue-classification.md` är den centrala källan för GitHub Agentic Workflows-baserad metadata-only triage. Den kompilerade `.github/workflows/issue-classification.lock.yml` exponeras som en reusable `workflow_call` och anropas av tunna repo-local triggers på nya och återöppnade issues.
+`.github/workflows/issue-classification.lock.yml` är den centrala reusable workflowen för nya och återöppnade issues. Filnamnet behålls för kompatibilitet med befintliga SHA-pinnade callers, men filen är en vanlig deterministisk GitHub Actions-workflow och genereras inte av `gh-aw`.
 
-AI-triagen får endast lägga till **en temporär kombinationslabel** från en fast allowlist:
+Klassificeringen läser issue-titel och body via GitHub API och väljer deterministiskt exakt en temporär kombinationslabel:
 
 `classification:<difficulty>:<security>`
 
-Exempel: `classification:medium:none`.
+Svårighetsgraden använder explicita signaler för dokumentationsändringar, större arkitektur/migreringar och textomfång; säkerhetsgraden använder en konservativ, prioriterad uppsättning explicita säkerhetssignaler och faller annars tillbaka till `security:none`.
 
-Den deterministiska metadata-workflowen översätter sedan den temporära labeln till exakt en kanonisk `difficulty:*` och exakt en kanonisk `security:*`, tar bort temporärlabeln och härleder därefter `agent:*` och `priority:*`. Befintliga kanoniska labels tar företräde över AI-output, så AI:n skriver aldrig över en manuell eller GitHub-native klassificering.
+Den deterministiska metadata-workflowen översätter sedan temporärlabeln till exakt en kanonisk `difficulty:*` och exakt en kanonisk `security:*`, tar bort temporärlabeln och härleder därefter `agent:*` och `priority:*`. Befintliga kanoniska labels tar företräde, så automatiken skriver inte över en manuell eller GitHub-native klassificering.
 
-Labelskrivningen sker genom `gh-aw` safe outputs med `max: 1` och en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data. Missing-tool, missing-data, incomplete-report, noop och workflow-failure får inte skapa fallback-issues. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
-
-Workflowen använder organisationens Copilot-billing via `GITHUB_TOKEN`. Caller-jobbet måste uttryckligen ge `copilot-requests: write`; ingen separat `COPILOT_GITHUB_TOKEN` eller annan PAT ska skickas till reusable workflowen.
+Issueklassificeringen använder endast repositoryts normala `GITHUB_TOKEN` med `issues: write`. Den använder ingen Copilot-modell, ingen `copilot-requests`-permission, ingen `COPILOT_GITHUB_TOKEN`, ingen PAT och inga externa AI-provider credentials.
 
 ## Deterministisk metadata-routing
 
@@ -49,7 +47,7 @@ Workflowen använder organisationens Copilot-billing via `GITHUB_TOKEN`. Caller-
 4. konverterar eventuell temporär `classification:*`-label,
 5. härleder `agent:*` och `priority:*` deterministiskt.
 
-Workflowen checkar inte ut eller exekverar kod från pull requests. `.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar den centrala reusable workflowen med en full commit-SHA.
+Workflowen checkar inte ut eller exekverar kod från pull requests. `.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar de centrala reusable workflowsen med fulla commit-SHA:n.
 
 ## Visibility och secrets
 
@@ -70,4 +68,4 @@ Dessa namn och värden hör till **GitHub Actions**. Externa runtimes, till exem
 
 ## Repository-policy
 
-Metadata-only AI-triage är ett uttryckligt begränsat undantag från förbud mot AI-delegering. Det undantaget tillåter inte kodändringar, remediation, reviewautomation, branch-/PR-mutation eller deployment. Varje caller-repository måste dessutom tillåta metadataautomation i sin egen `AGENTS.md` och live-policy.
+Issueklassificeringen är deterministisk metadataautomation och är inte ett AI-delegeringsundantag. Den får endast läsa issue-metadata och skriva de labels som krävs för klassificering/routing; den får inte ändra kod, skapa remediation, reviewa, mergea eller deploya.

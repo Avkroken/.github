@@ -1,4 +1,4 @@
-name: AI issue classification
+name: Deterministic issue classification
 
 on:
   issues:
@@ -9,8 +9,84 @@ permissions: {}
 jobs:
   classify:
     permissions:
-      actions: read
-      contents: read
       issues: write
-      copilot-requests: write
     uses: ./.github/workflows/issue-classification.lock.yml
+
+  route:
+    needs: classify
+    permissions:
+      issues: write
+    uses: ./.github/workflows/metadata-routing.yml
+    with:
+      item-kind: issue
+      item-number: ${{ github.event.issue.number }}
+
+  validate-classification:
+    needs: route
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+    steps:
+      - name: Verify complete classification metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          ITEM_NUMBER: ${{ github.event.issue.number }}
+          OWNER_ASSIGNEE: blixten85
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          issue_json="$(gh api "repos/$REPOSITORY/issues/$ITEM_NUMBER")"
+          mapfile -t labels < <(jq -r '.labels[].name' <<<"$issue_json")
+          mapfile -t assignees < <(jq -r '.assignees[].login' <<<"$issue_json")
+
+          difficulty_count="$(printf '%s\n' "${labels[@]}" | grep -Ec '^difficulty:(low|medium|high)$' || true)"
+          security_count="$(printf '%s\n' "${labels[@]}" | grep -Ec '^security:(critical|high|medium|low|none)$' || true)"
+          agent_count="$(printf '%s\n' "${labels[@]}" | grep -Ec '^agent:(copilot|codex|claude)$' || true)"
+          priority_count="$(printf '%s\n' "${labels[@]}" | grep -Ec '^priority:p[0-4]$' || true)"
+          classification_count="$(printf '%s\n' "${labels[@]}" | grep -Ec '^classification:' || true)"
+
+          if printf '%s\n' "${labels[@]}" | grep -Eq '^triage:(pending|invalid)$'; then
+            echo "Classification routing ended in pending or invalid state" >&2
+            exit 1
+          fi
+
+          if [[ "$difficulty_count" != "1" || "$security_count" != "1" || "$agent_count" != "1" || "$priority_count" != "1" || "$classification_count" != "0" ]]; then
+            echo "Expected one canonical difficulty/security label, one derived agent/priority label, and no temporary classification label" >&2
+            exit 1
+          fi
+
+          difficulty="$(printf '%s\n' "${labels[@]}" | grep -E '^difficulty:(low|medium|high)$')"
+          security="$(printf '%s\n' "${labels[@]}" | grep -E '^security:(critical|high|medium|low|none)$')"
+
+          case "$difficulty" in
+            difficulty:low) expected_agent="agent:copilot" ;;
+            difficulty:medium) expected_agent="agent:codex" ;;
+            difficulty:high) expected_agent="agent:claude" ;;
+            *) exit 1 ;;
+          esac
+
+          case "$security" in
+            security:critical) expected_priority="priority:p0" ;;
+            security:high) expected_priority="priority:p1" ;;
+            security:medium) expected_priority="priority:p2" ;;
+            security:low) expected_priority="priority:p3" ;;
+            security:none) expected_priority="priority:p4" ;;
+            *) exit 1 ;;
+          esac
+
+          if ! printf '%s\n' "${labels[@]}" | grep -Fxq "$expected_agent"; then
+            echo "Expected derived routing label: $expected_agent" >&2
+            exit 1
+          fi
+
+          if ! printf '%s\n' "${labels[@]}" | grep -Fxq "$expected_priority"; then
+            echo "Expected derived priority label: $expected_priority" >&2
+            exit 1
+          fi
+
+          if ! printf '%s\n' "${assignees[@]}" | grep -Fxq "$OWNER_ASSIGNEE"; then
+            echo "Expected owner assignee: $OWNER_ASSIGNEE" >&2
+            exit 1
+          fi
