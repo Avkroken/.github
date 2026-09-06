@@ -6,14 +6,17 @@ on:
       - fix/issue-61-copilot-billing
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   compile:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Install pinned gh-aw compiler
         shell: bash
@@ -46,7 +49,7 @@ jobs:
           PY
           /tmp/gh-aw compile .github/workflows/issue-classification.md
 
-      - name: Verify generated output
+      - name: Verify and stage generated blobs
         shell: bash
         run: |
           set -euo pipefail
@@ -54,13 +57,17 @@ jobs:
           grep -F 'copilot-requests: write' .github/workflows/issue-classification.lock.yml
           head -n 1 .github/workflows/issue-classification.lock.yml | grep -F '"compiler_version":"v0.87.10"'
           git diff --check
+          mkdir -p .ghaw-output
+          cp .github/workflows/issue-classification.md .ghaw-output/issue-classification.md
+          cp .github/workflows/issue-classification.lock.yml .ghaw-output/issue-classification.lock.yml
 
-      - name: Upload generated source and lock
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: issue-classification-gh-aw-v0.87.10
-          path: |
-            .github/workflows/issue-classification.md
-            .github/workflows/issue-classification.lock.yml
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit generated blobs outside workflow paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .ghaw-output/issue-classification.md .ghaw-output/issue-classification.lock.yml
+          git diff --cached --check
+          git commit -m 'chore: stage official gh-aw output'
+          git push origin HEAD:fix/issue-61-copilot-billing
