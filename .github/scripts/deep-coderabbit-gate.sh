@@ -278,6 +278,14 @@ clear_waiting() {
   gh pr edit "$pr" --repo "$repository" --remove-label "$waiting_label" >/dev/null
 }
 
+get_pr_labels() {
+  local repository="$1" pr="$2"
+  if ! gh api "repos/$repository/issues/$pr" --jq '.labels[].name'; then
+    echo "::error::Could not list labels for $repository#$pr during deep-gate reconciliation." >&2
+    return 1
+  fi
+}
+
 main() {
   if [[ -z "$OWNER" ]]; then
     echo "::error::OWNER is required"
@@ -328,7 +336,9 @@ main() {
       IFS=$'\t' read -r pr created head_sha <<< "$row"
       [[ -n "$pr" && -n "$head_sha" ]] || continue
 
-      labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+      if ! labels="$(get_pr_labels "$repository" "$pr")"; then
+        return 1
+      fi
       is_deep=false
       if has_label "$labels" review:deep || has_label "$labels" review:level:deep; then
         is_deep=true
@@ -339,7 +349,9 @@ main() {
           labels_ensured=true
         fi
         set_central_deep_level "$repository" "$pr" "$labels"
-        labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+        if ! labels="$(get_pr_labels "$repository" "$pr")"; then
+          return 1
+        fi
       else
         critical_status=$?
         if (( critical_status != 1 )); then
@@ -405,7 +417,9 @@ main() {
       continue
     fi
 
-    labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+    if ! labels="$(get_pr_labels "$repository" "$pr")"; then
+      return 1
+    fi
     is_deep=false
     labels_ready=false
     if has_label "$labels" review:deep || has_label "$labels" review:level:deep; then
@@ -415,7 +429,9 @@ main() {
       ensure_repository_labels "$repository"
       labels_ready=true
       set_central_deep_level "$repository" "$pr" "$labels"
-      labels="$(gh api "repos/$repository/issues/$pr" --jq '.labels[].name')"
+      if ! labels="$(get_pr_labels "$repository" "$pr")"; then
+        return 1
+      fi
     else
       critical_status=$?
       if (( critical_status != 1 )); then
