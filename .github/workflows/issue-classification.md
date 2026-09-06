@@ -6,7 +6,9 @@ description: >-
 on:
   workflow_call:
   roles: all
-engine: copilot
+engine:
+  id: copilot
+  model: gpt-5.3-codex
 permissions:
   contents: read
   issues: read
@@ -34,6 +36,10 @@ safe-outputs:
     create-if-missing: true
     issues: true
     pull-requests: false
+  threat-detection:
+    engine:
+      id: copilot
+      model: detection
   missing-tool:
     create-issue: false
   missing-data:
