@@ -83,6 +83,18 @@ classify_change_tsv() {
   printf '%s\n' "$level"
 }
 
+effective_level_for_labels() {
+  local classified_level="$1" labels="$2"
+
+  # review:level:deep may be set by the binding deep-gate reconciler. Once
+  # present, the advisory router must never downgrade it from file heuristics.
+  if has_label "$labels" review:deep || has_label "$labels" review:level:deep; then
+    printf 'deep\n'
+  else
+    printf '%s\n' "$classified_level"
+  fi
+}
+
 actor_matches_bot() {
   local bot="$1" actor="${2,,}"
   case "$bot" in
@@ -292,8 +304,10 @@ clear_primary_routes() {
 
 mark_level() {
   local repository="$1" pr="$2" level="$3" current_labels="$4"
-  local selected="review:level:$level" current=""
-  local label
+  local selected current="" label
+
+  level="$(effective_level_for_labels "$level" "$current_labels")"
+  selected="review:level:$level"
 
   for label in "${level_labels[@]}"; do
     if has_label "$current_labels" "$label"; then
@@ -477,10 +491,7 @@ main() {
         gh api --paginate "repos/$repository/pulls/$pr/files?per_page=100" \
           --jq '.[] | [.filename, .additions, .deletions] | @tsv'
       )"
-      level="$(classify_change_tsv "$files_tsv")"
-      if [[ "$manual_deep" == "true" ]]; then
-        level="deep"
-      fi
+      level="$(effective_level_for_labels "$(classify_change_tsv "$files_tsv")" "$labels")"
       mark_level "$repository" "$pr" "$level" "$labels"
 
       if [[ "$primary" == "true" && "$pending" != "true" ]]; then
