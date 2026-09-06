@@ -32,7 +32,7 @@ jobs:
       - name: Reject conflict markers and whitespace errors
         shell: bash
         run: |
-          if git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- ':!*.lock.yml'; then
+          if git grep -n -E '^(<<<<<<<|=======|>>>>>>>)'; then
             echo 'Unresolved conflict marker found.' >&2
             exit 1
           fi
