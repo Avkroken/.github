@@ -7,6 +7,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: issue-classification-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   classify:
     name: Classify issue metadata
