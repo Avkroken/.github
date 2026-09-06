@@ -35,6 +35,8 @@ safe-outputs:
     create-if-missing: true
     issues: true
     pull-requests: false
+  # Keep threat detection on its built-in detection model; only the main
+  # issue-classification agent is pinned to gpt-5-mini.
   threat-detection:
     engine:
       id: copilot
