@@ -67,6 +67,14 @@ if ! critical_central_path REPO.md; then
   echo "FAIL: REPO.md must be central deep-risk scope" >&2
   exit 1
 fi
+if ! critical_central_path .github/workflows/issue-classification.md; then
+  echo "FAIL: Agentic Workflow source must be central deep-risk scope" >&2
+  exit 1
+fi
+if ! critical_central_path .github/workflows/issue-classification.lock.yml; then
+  echo "FAIL: generated Agentic Workflow lock must be central deep-risk scope" >&2
+  exit 1
+fi
 if ! critical_central_path .github/workflows/dependabot-automerge.yml; then
   echo "FAIL: central Dependabot workflow must be deep-risk scope" >&2
   exit 1
