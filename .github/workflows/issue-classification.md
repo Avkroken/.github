@@ -6,7 +6,9 @@ description: >-
 on:
   workflow_call:
   roles: all
-engine: copilot
+engine:
+  id: copilot
+  model: gpt-5.3-codex
 permissions:
   contents: read
   issues: read
