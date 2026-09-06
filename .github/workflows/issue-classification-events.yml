@@ -12,6 +12,5 @@ jobs:
       actions: read
       contents: read
       issues: write
+      copilot-requests: write
     uses: ./.github/workflows/issue-classification.lock.yml
-    secrets:
-      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}

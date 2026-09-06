@@ -37,7 +37,7 @@ Den deterministiska metadata-workflowen översätter sedan den temporära labeln
 
 Labelskrivningen sker genom `gh-aw` safe outputs med `max: 1` och en uttrycklig allowlist. Agentdelen är read-only för repository/issue-data. Missing-tool, missing-data, incomplete-report, noop och workflow-failure får inte skapa fallback-issues. Workflowen får inte kommentera, assigna, skapa eller ändra branches/PR:er, starta coding agents, reviewa, mergea eller utföra remediation.
 
-För organisationer utan central Copilot-billing använder workflowen `COPILOT_GITHUB_TOKEN`, en GitHub Actions-secret som innehåller en fine-grained PAT från ett användarkonto med `Copilot Requests`-behörighet. Tokenvärdet får aldrig committas. Caller-repon mappar endast `COPILOT_GITHUB_TOKEN` explicit; `secrets: inherit` används inte.
+Workflowen använder organisationens Copilot-billing via `GITHUB_TOKEN`. Caller-jobbet måste uttryckligen ge `copilot-requests: write`; ingen separat `COPILOT_GITHUB_TOKEN` eller annan PAT ska skickas till reusable workflowen.
 
 ## Deterministisk metadata-routing
 
