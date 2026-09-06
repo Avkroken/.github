@@ -4,10 +4,6 @@ on:
   issues:
     types: [opened, reopened]
 
-concurrency:
-  group: issue-classification-${{ github.repository }}-${{ github.event.issue.number }}
-  cancel-in-progress: false
-
 permissions: {}
 
 jobs:
