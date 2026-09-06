@@ -1,0 +1,117 @@
+name: Promote dev to main
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-dev-to-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'promote/dev-'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Create repository-scoped Gamnacken token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.GAMNACKEN_CLIENT_ID }}
+          private-key: ${{ secrets.GAMNACKEN_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Create next immutable promotion
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          open_promotion="$(
+            gh pr list --repo "$GH_REPO" --base main --state open --limit 100 \
+              --json number,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("promote/dev-"))][0].number // empty'
+          )"
+          if [[ -n "$open_promotion" ]]; then
+            echo "Promotion #$open_promotion is already active."
+            exit 0
+          fi
+
+          git fetch origin main dev
+          dev_sha="$(git rev-parse origin/dev)"
+          branch="promote/dev-${dev_sha:0:12}"
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git push origin --delete "$branch"
+          fi
+
+          git checkout -B "$branch" origin/main
+          git config user.name "gamnacken[bot]"
+          git config user.email "316993076+gamnacken[bot]@users.noreply.github.com"
+
+          if ! git merge --no-ff --no-commit origin/dev; then
+            git merge --abort || true
+            echo "::error::dev cannot be promoted cleanly onto current main."
+            exit 1
+          fi
+
+          if git diff --cached --quiet; then
+            git merge --abort 2>/dev/null || true
+            echo "dev has no unpromoted changes."
+            exit 0
+          fi
+
+          git commit -m "chore: promote dev ${dev_sha:0:12}"
+          git push origin "$branch"
+
+          pr_number="$(
+            gh pr create --repo "$GH_REPO" --base main --head "$branch" \
+              --title "promote: dev ${dev_sha:0:12}" \
+              --body "Automatisk, oföränderlig promotion av \`dev\` vid \`$dev_sha\`. Full produktionskontroll körs på merge-gruppen mot aktuell \`main\`." \
+              --json number --jq '.number'
+          )"
+          gh pr edit "$pr_number" --repo "$GH_REPO" --add-label review:high
+
+          set +e
+          output="$(gh pr merge "$pr_number" --repo "$GH_REPO" --auto --squash --delete-branch 2>&1)"
+          status=$?
+          set -e
+
+          if (( status == 0 )); then
+            exit 0
+          fi
+
+          if grep -Fq 'Pull request is in unstable status' <<< "$output"; then
+            sleep 2
+            gh pr merge "$pr_number" --repo "$GH_REPO" --auto --squash --delete-branch
+            exit 0
+          fi
+
+          printf '%s\n' "$output" >&2
+          exit "$status"
