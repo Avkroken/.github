@@ -136,7 +136,7 @@ For each in-scope pull request:
 7. When a PR is removed from the merge queue, identify the exact cause. Fix it if it is a verified PR-scope defect; otherwise leave legitimate external gates intact. Re-arm or requeue only after the applicable conditions are again satisfied.
 8. Inspect merge-group checks when the repository uses a merge queue. Green pull-request checks do not prove that the merge-group revision is valid.
 9. Do not report a PR as complete until GitHub confirms the merged/closed state, including `merged=true` or equivalent and a verified merge timestamp when available.
-10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate unless repository-specific governance or live enforcement explicitly makes it one.
+10. Leave only legitimate repository or external gates unresolved, and report the exact blocker rather than a generic waiting state. Advisory bot-review quota, outage, or non-response is not such a gate unless repository-specific governance or live enforcement explicitly makes one required.
 
 A request such as “run an organization review/sweep” is sufficient to invoke this procedure. The owner does not need to repeat these details on every run.
 
@@ -195,8 +195,8 @@ GitHub Agentic Workflows are allowed only for metadata-only issue triage under t
 - The agent portion must remain read-only; temporary label mutation must occur through `gh-aw` safe outputs and deterministic routing must perform canonical conversion.
 - Missing-tool, missing-data, incomplete-report, noop and workflow-failure fallbacks must not create issues or other repository records.
 - The workflow must not comment, assign users or coding agents, create or update branches or pull requests, edit or close issues, perform review, merge, deploy, start a coding-agent session, or propose or perform remediation.
-- Callers must grant `copilot-requests: write` to the reusable triage job and must not pass `COPILOT_GITHUB_TOKEN`; `secrets: inherit` is prohibited for AI triage.
-- Copilot inference for this central triage path uses organization Copilot billing through the caller's `GITHUB_TOKEN` with `copilot-requests: write`; no separate PAT or Copilot token secret is part of the current contract.
+- Callers must grant `copilot-requests: write` to the reusable triage job and must not provide a PAT or Actions secret through `COPILOT_GITHUB_TOKEN`; `secrets: inherit` is prohibited for AI triage.
+- Copilot inference for this central triage path uses organization Copilot billing through the caller's `GITHUB_TOKEN` with `copilot-requests: write`. The generated reusable workflow may expose that token internally as `COPILOT_GITHUB_TOKEN` for Copilot tool compatibility; callers do not supply a separate PAT or Copilot token secret.
 - Do not add external AI-provider credentials without separate explicit owner approval.
 - Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, safe-output cardinality and failure behavior before merge.
 
