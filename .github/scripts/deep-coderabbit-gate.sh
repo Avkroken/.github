@@ -94,10 +94,11 @@ central_pr_is_critical() {
 
 # Input rows are TSV: kind, actor, commit SHA/sentinel, review state/sentinel,
 # observable activity time/sentinel, body. For comments the timestamp is the
-# CodeRabbit status comment's created_at. Review timestamps are never used to
-# age a PENDING review because GitHub does not expose a reliable start time for
-# that state. Sentinels keep intermediate fields non-empty because Bash treats
-# tab as IFS whitespace and otherwise collapses adjacent empty fields.
+# CodeRabbit status comment's created_at; for reviews it is GraphQL
+# PullRequestReview.createdAt. A fresh current-HEAD PENDING review therefore
+# suppresses duplicate retries while an old PENDING review becomes retryable.
+# Sentinels keep intermediate fields non-empty because Bash treats tab as IFS
+# whitespace and otherwise collapses adjacent empty fields.
 coderabbit_gate_state_from_tsv() {
   local head_sha="$1"
   local now_epoch="${2:-$(date +%s)}"
@@ -112,6 +113,10 @@ coderabbit_gate_state_from_tsv() {
       if review_state_is_submitted "$review_state"; then
         echo complete
         return 0
+      fi
+      if [[ "$review_state" == "PENDING" ]] \
+        && coderabbit_activity_is_fresh "$activity_created_at" "$now_epoch"; then
+        saw_in_progress=true
       fi
     fi
 
@@ -135,7 +140,7 @@ coderabbit_gate_state_from_tsv() {
     echo in_progress
   else
     # Missing also intentionally covers skipped/quota/unavailable responses and
-    # orphaned/stale PENDING reviews without fresh observable HEAD activity.
+    # stale PENDING reviews without any other fresh observable HEAD activity.
     echo missing
   fi
 }
