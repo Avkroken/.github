@@ -67,16 +67,32 @@ if ! critical_central_path REPO.md; then
   echo "FAIL: REPO.md must be central deep-risk scope" >&2
   exit 1
 fi
-if ! critical_central_path .github/workflows/issue-classification.md; then
-  echo "FAIL: Agentic Workflow source must be central deep-risk scope" >&2
+for workflow_path in \
+  .github/workflows/dependabot-events.yml \
+  .github/workflows/issue-classification-events.yml \
+  .github/workflows/metadata-events.yml \
+  .github/workflows/release.yml \
+  .github/workflows/issue-classification.md \
+  .github/workflows/issue-classification.lock.yml; do
+  if ! critical_central_path "$workflow_path"; then
+    echo "FAIL: $workflow_path must be central deep-risk scope" >&2
+    exit 1
+  fi
+done
+if ! central_changed_file_is_critical docs/moved-release.yml .github/workflows/release.yml renamed; then
+  echo "FAIL: renaming a central workflow out of .github/workflows must remain deep-risk" >&2
   exit 1
 fi
-if ! critical_central_path .github/workflows/issue-classification.lock.yml; then
-  echo "FAIL: generated Agentic Workflow lock must be central deep-risk scope" >&2
+if ! central_changed_file_is_critical .github/workflows/new-security.yml - added; then
+  echo "FAIL: a newly added central workflow must be deep-risk" >&2
   exit 1
 fi
-if ! critical_central_path .github/workflows/dependabot-automerge.yml; then
-  echo "FAIL: central Dependabot workflow must be deep-risk scope" >&2
+if ! central_changed_file_is_critical .github/workflows/release.yml - removed; then
+  echo "FAIL: deleting a central workflow must be deep-risk" >&2
+  exit 1
+fi
+if central_changed_file_is_critical docs/new-name.md README.md renamed; then
+  echo "FAIL: ordinary documentation rename must not be forced deep" >&2
   exit 1
 fi
 if critical_central_path README.md; then
