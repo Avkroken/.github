@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  required:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate workflow YAML syntax
+        shell: bash
+        run: |
+          ruby -e 'require "psych"; Dir[".github/workflows/*.{yml,yaml}"].sort.each { |file| Psych.parse_file(file) }'
+
+      - name: Validate shell syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find .github -type f -name '*.sh' -print0)
+
+      - name: Reject conflict markers and whitespace errors
+        shell: bash
+        run: |
+          if git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- ':!*.lock.yml'; then
+            echo 'Unresolved conflict marker found.' >&2
+            exit 1
+          fi
+          git diff --check "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"...HEAD
+
+      - name: Verify generated issue-classification pair
+        shell: bash
+        run: |
+          test -f .github/workflows/issue-classification.md
+          test -f .github/workflows/issue-classification.lock.yml
