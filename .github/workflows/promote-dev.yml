@@ -38,6 +38,24 @@ jobs:
           permission-pull-requests: write
           permission-workflows: write
 
+      - name: Advance promotion watermark after merge
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          promoted_sha="${HEAD_REF#promote/dev-}"
+          if [[ ! "$promoted_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid promotion branch: $HEAD_REF"
+            exit 1
+          fi
+          gh api --method PATCH "repos/$GH_REPO/git/refs/tags/dev-promoted" \
+            -f sha="$promoted_sha" \
+            -F force=true >/dev/null
+
       - name: Check out main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
@@ -63,10 +81,25 @@ jobs:
             exit 0
           fi
 
-          git fetch origin main dev
-          dev_sha="$(git rev-parse origin/dev)"
-          branch="promote/dev-${dev_sha:0:12}"
+          git fetch --force origin \
+            main \
+            dev \
+            refs/tags/dev-promoted:refs/tags/dev-promoted
 
+          promoted_sha="$(git rev-parse refs/tags/dev-promoted)"
+          dev_sha="$(git rev-parse origin/dev)"
+
+          if [[ "$promoted_sha" == "$dev_sha" ]]; then
+            echo "dev has no unpromoted changes."
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor "$promoted_sha" "$dev_sha"; then
+            echo "::error::dev history no longer contains the promotion watermark."
+            exit 1
+          fi
+
+          branch="promote/dev-$dev_sha"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
             git push origin --delete "$branch"
           fi
@@ -75,22 +108,23 @@ jobs:
           git config user.name "gamnacken[bot]"
           git config user.email "316993076+gamnacken[bot]@users.noreply.github.com"
 
-          if ! git merge --no-ff --no-commit origin/dev; then
-            git merge --abort || true
-            echo "::error::dev cannot be promoted cleanly onto current main."
-            exit 1
-          fi
-
-          if git diff --cached --quiet; then
-            git merge --abort 2>/dev/null || true
-            echo "dev has no unpromoted changes."
+          mapfile -t commits < <(git rev-list --reverse "$promoted_sha..$dev_sha")
+          if (( ${#commits[@]} == 0 )); then
+            echo "dev has no unpromoted commits."
             exit 0
           fi
 
-          git commit -m "chore: promote dev ${dev_sha:0:12}"
+          for commit in "${commits[@]}"; do
+            if ! git cherry-pick "$commit"; then
+              git cherry-pick --abort || true
+              echo "::error::Unpromoted dev commit $commit cannot be applied cleanly to current main."
+              exit 1
+            fi
+          done
+
           git push origin "$branch"
 
-          pr_body="Automatisk, oföränderlig promotion av \`dev\` vid \`$dev_sha\`. Full produktionskontroll körs på merge-gruppen mot aktuell \`main\`."
+          pr_body="Automatisk, oföränderlig promotion av \`dev\` till och med \`$dev_sha\`. Endast commits efter föregående promotion återspelas ovanpå aktuell \`main\`."
           pr_number="$(
             jq -n \
               --arg title "promote: dev ${dev_sha:0:12}" \
