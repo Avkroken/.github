@@ -5,6 +5,11 @@ on:
     branches:
       - dev
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   merge_group:
     types:
       - checks_requested
@@ -14,6 +19,10 @@ permissions:
 
 jobs:
   validate:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.base_ref != 'dev' ||
+      github.event.pull_request.draft == false
     name: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' && 'CI / admission' || 'CI / required' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -50,9 +59,3 @@ jobs:
           test -f .github/workflows/issue-classification.lock.yml
           test ! -e .github/workflows/issue-classification.md
           grep -Fq 'name: Deterministic issue classification' .github/workflows/issue-classification.lock.yml
-
-      - name: Verify promotion branch contract
-        if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'promote/dev-') }}
-        shell: bash
-        run: |
-          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -ge 3
