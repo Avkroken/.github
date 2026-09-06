@@ -82,8 +82,8 @@ jq -n '{
     {
       type: "pull_request",
       parameters: {
-        required_approving_review_count: 0,
-        dismiss_stale_reviews_on_push: false,
+        required_approving_review_count: 1,
+        dismiss_stale_reviews_on_push: true,
         require_code_owner_review: false,
         require_last_push_approval: false,
         required_review_thread_resolution: false,
@@ -96,7 +96,6 @@ jq -n '{
         strict_required_status_checks_policy: false,
         do_not_enforce_on_create: true,
         required_status_checks: [
-          {context: "CodeRabbit"},
           {context: "CI / admission"}
         ]
       }
@@ -125,8 +124,9 @@ jq -e '
 jq -e '
   any(.[];
     .name == "dev-pilot"
+    and (map(.rules[] | select(.type == "pull_request"))[0].parameters.required_approving_review_count == 1)
     and any(.rules[]; .type == "required_status_checks"
-      and ([.parameters.required_status_checks[].context] | sort) == (["CI / admission", "CodeRabbit"] | sort)))
+      and [.parameters.required_status_checks[].context] == ["CI / admission"]))
 ' <<< "$dev_state" >/dev/null
 
 gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/dev" >/dev/null
