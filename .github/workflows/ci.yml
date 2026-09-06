@@ -59,3 +59,9 @@ jobs:
           test -f .github/workflows/issue-classification.lock.yml
           test ! -e .github/workflows/issue-classification.md
           grep -Fq 'name: Deterministic issue classification' .github/workflows/issue-classification.lock.yml
+          grep -Fq 'name: Classify issue metadata' .github/workflows/issue-classification.lock.yml
+          grep -Fq 'issues: write' .github/workflows/issue-classification.lock.yml
+          if grep -Eqi 'copilot|copilot-requests|agentic' .github/workflows/issue-classification.lock.yml; then
+            echo "issue-classification.lock.yml must remain metadata-only and deterministic" >&2
+            exit 1
+          fi
