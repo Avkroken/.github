@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.12](https://github.com/Avkroken/.github/compare/v1.2.11...v1.2.12) (2026-09-06)
+
+
+### Documentation
+
+* förenkla REPO.md på svenska ([#93](https://github.com/Avkroken/.github/issues/93)) ([ff7bb65](https://github.com/Avkroken/.github/commit/ff7bb653784185f6cd8f40ae03e9b99f38003fd3))
+
 ## [1.2.11](https://github.com/Avkroken/.github/compare/v1.2.10...v1.2.11) (2026-09-06)
 
 
