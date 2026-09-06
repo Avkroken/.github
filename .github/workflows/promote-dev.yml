@@ -80,13 +80,19 @@ jobs:
             exit 0
           fi
 
-          git fetch --force origin \
-            main \
-            dev \
-            refs/tags/dev-promoted:refs/tags/dev-promoted
-
-          promoted_sha="$(git rev-parse refs/tags/dev-promoted)"
+          git fetch --force origin main dev
           dev_sha="$(git rev-parse origin/dev)"
+
+          if ! git ls-remote --exit-code --tags origin refs/tags/dev-promoted >/dev/null 2>&1; then
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f ref='refs/tags/dev-promoted' \
+              -f sha="$dev_sha" >/dev/null
+            echo "Initialized dev-promoted at $dev_sha; bootstrap is complete."
+            exit 0
+          fi
+
+          git fetch --force origin refs/tags/dev-promoted:refs/tags/dev-promoted
+          promoted_sha="$(git rev-parse refs/tags/dev-promoted)"
 
           if [[ "$promoted_sha" == "$dev_sha" ]]; then
             echo "dev has no unpromoted changes."
