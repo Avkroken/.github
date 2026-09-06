@@ -124,7 +124,7 @@ jq -e '
 jq -e '
   any(.[];
     .name == "dev-pilot"
-    and (map(.rules[] | select(.type == "pull_request"))[0].parameters.required_approving_review_count == 1)
+    and ((.rules | map(select(.type == "pull_request")))[0].parameters.required_approving_review_count == 1)
     and any(.rules[]; .type == "required_status_checks"
       and [.parameters.required_status_checks[].context] == ["CI / admission"]))
 ' <<< "$dev_state" >/dev/null
