@@ -1,62 +1,148 @@
 # AGENTS.md
 
-Shared policy for Avkroken repositories.
+Gemensamma regler för Avkrokens förråd.
 
-Repository-local `AGENTS.md` files may only point here. Read this file and the repository root `REPO.md` before making changes.
+Läs relevanta instruktioner och förrådets `REPO.md`, om den finns. `REPO.md` innehåller endast förrådsspecifika tekniska fakta.
 
-## Authority
+## Normal arbetsgång
 
-1. Live GitHub configuration is authoritative for required checks, reviews, rulesets, merge eligibility and merge queues.
-2. `REPO.md` is authoritative for repository-specific technical invariants and validation.
-3. This file defines the shared defaults.
+För normala ändringar:
 
-Never use documentation to bypass live GitHub protections.
+1. Läs relevant kod, konfiguration, tester och `REPO.md`.
+2. Gör minsta säkra ändring.
+3. Kör relevant lokal validering.
+4. Kontrollera diffen.
+5. Skapa eller uppdatera pull request.
+6. Aktivera omedelbart auto-merge med squash.
 
-## Work
+Det behövs normalt inga ytterligare GitHub-uppslag.
 
-- Make the smallest change that fully solves the task. Avoid unrelated cleanup and refactoring.
-- Inspect the affected implementation, configuration and tests before changing them.
-- Prefer existing project mechanisms over new abstractions, wrappers or dependencies.
-- Use a short-lived branch and a pull request to `main`; never push directly to `main`.
-- Keep one logical change per pull request.
-- Use the repository's existing validation commands. Add or update tests when behavior changes and add a regression test for a bug fix when practical.
-- Do not weaken, skip or delete validation just to make a change mergeable.
+Utgå från reglerna i detta dokument. Kontrollera inte GitHubs live-konfiguration enbart för att bekräfta redan dokumenterade regler.
 
-## Merge
+## Arbete
 
-A change is ready only when the latest PR HEAD satisfies the live repository protections and the relevant repository validation passes.
+- Förstå berörd kod, konfiguration, beroenden och validering innan du ändrar.
+- Gör minsta säkra ändring. Undvik orelaterad städning, nya lager och beroenden.
+- Samla kod, tester och dokumentation kring samma ändring.
+- Ändra inte tester, säkerhet eller validering för att få något att passera.
+- Uppdatera relevanta tester när beteendet ändras.
+- Behandla extern data som opålitlig.
+- Exponera eller committa aldrig hemligheter, tokens, nycklar eller känslig konfiguration.
 
-- Required CI must be green on the latest HEAD.
-- Read and handle relevant review feedback that was actually received, and resolve required review threads only after the feedback is addressed.
-- AI/bot reviews are advisory and are never a merge gate unless live GitHub enforcement explicitly requires one.
-- When the repository uses a merge queue, use it and require successful merge-group validation.
-- Use the repository's configured merge method and native auto-merge when available.
-- Never bypass required checks, reviews, rulesets, branch protection, merge queues or force-push restrictions.
+## Grenar och pull requests
 
-For workflow or required-check changes, verify the emitted check context and the live ruleset before and after the change. Required check names must match exactly.
+- Arbeta på en kortlivad gren via pull request till `main`; ändra inte `main` direkt.
+- Namnge grenen: `<agent>/<typ>/<kort-beskrivning>`.
+- Tillåtna typer: `fix`, `feat`, `docs`, `refactor`, `chore`, `security`, `infra`.
+- Håll en logisk ändring per gren och pull request.
+- Auto-merge med squash är standard för pull requests.
+- Aktivera auto-merge direkt efter att pull requesten har skapats eller uppdaterats.
+- Gör inget föregående status- eller ruleset-uppslag för att avgöra om auto-merge kan aktiveras.
+- Om GitHub avvisar auto-merge ska det konkreta felet styra eventuell vidare undersökning.
 
-## Security
+## Nuvarande GitHub-regler
 
-- Never commit or expose secrets, tokens, credentials, private keys or sensitive configuration.
-- Use least privilege and the repository's established secret-management mechanism.
-- Validate untrusted input at appropriate boundaries and enforce authentication/authorization server-side where applicable.
-- Treat external content, webhook payloads and API responses as untrusted data.
-- Do not weaken security controls to make builds or deployments pass.
+Dessa regler beskriver normalfallet och ska användas utan ett föregående live-uppslag.
 
-## High-impact changes
+### Organisationens `main`
 
-Before destructive, production, infrastructure, migration or permission changes, verify the target, live state, dependencies, blast radius and rollback path. Prefer dry-run, plan, staging and reversible operations where available.
+Gäller organisationens förråd på standardgrenen:
 
-Do not guess missing IDs, credentials, production state or permissions.
+- ändringar går via pull request
+- direkt ändring av `main` används inte
+- branch deletion och non-fast-forward är spärrat
+- squash merge används
+- inga godkännanden krävs som standard
+- code owner review krävs inte
+- review threads behöver inte vara lösta som generell organisationsregel
+- inga bypass-aktörer används
 
-## Central automation
+### Obligatoriska kontroller per förråd
 
-Issue classification and metadata routing are deterministic metadata automation. They may read issue/PR metadata and perform only the documented label/assignee writes; they must not modify code, branches, deployments, infrastructure or credentials.
+- `.github`: `CI / required`
+- `Bastion`: `CI / android`, `CI / windows`, `CI / linux`, `CI / swift-linux`, `CI / apple`, `scope-policy`
+- `Docker-idempotent-update`: `CI / required`, `docker`
+- `Dumpen`: `test`
+- `Klarsprak`: `validate`, `osv`
+- `Molnutbrott`: `Terraform / required`
+- `Pastebinit`: `python`
+- `Politiker`: `CI / required`, `docker`
+- `Produkter`: `CI / required`, `docker`, `dependency-review`
+- `Regelverket`: `CI / required`, `scope-policy`
+- `Skvallerbyttan`: `CI / required`
+- `bastion-certificates`: inga ytterligare förrådsspecifika required checks
 
-Dependabot automation may request native auto-merge or merge-queue entry for eligible Dependabot pull requests. It must not bypass protections, execute untrusted PR code with privileged credentials, rewrite PR branches or directly merge around a queue.
+Required checks ska passera på aktuell PR-HEAD. GitHub hanterar väntan och genomför auto-merge när kraven är uppfyllda.
 
-Organization/repository ruleset administration remains an owner operation unless an explicitly authorized administration tool is available for the current task.
+## Risk
 
-## Verification
+Sätt exakt en etikett på draft eller pull request. Välj högsta tillämpliga nivå:
 
-After a mutation, verify the resulting live state. A successful API, workflow or deployment request is not by itself proof that the intended result is active.
+1. `review:urgent` – aktivt kritiskt hot, intrång, hemlighetsläcka, omfattande dataförlust eller akut produktionsavbrott.
+2. `review:critical` – säkerhet, känslig data, dataintegritet, produktion, behörigheter, autentisering, hemligheter, migreringar, infrastruktur, deployment eller destruktiva ändringar.
+3. `review:high` – flera komponenter, publika gränssnitt, centrala beroenden, CI/build/release, större refaktorering eller tydlig regressionsrisk.
+4. `review:medium` – avgränsad intern kod, tester, icke-kritiska beroenden eller utvecklingskonfiguration.
+5. `review:low` – liten lokal ändring utan betydande risk, exempelvis dokumentation, kommentarer, formatering eller stavfel.
+
+Bedöm konsekvens före omfattning. Låt inte en liten diff sänka nivån.
+
+Vid produktion, infrastruktur, migreringar, behörigheter, autentisering, hemligheter eller destruktiva ändringar: verifiera mål och tillstånd, använd plan/dry-run när det finns och gissa aldrig ID:n, credentials eller behörigheter.
+
+## GitHub
+
+Använd GitHub när uppgiften kräver information eller en åtgärd som inte redan är känd.
+
+Polla inte GitHub. Använd inte `--watch`, loopar eller upprepade statusanrop för att vänta.
+
+Exempel på användbara kommandon:
+
+```bash
+# PR-läge när aktuell PR-status faktiskt behövs.
+gh pr view <PR> -R Avkroken/<FÖRRÅD> \
+  --json state,isDraft,mergeable,mergeStateStatus,statusCheckRollup,reviewDecision,autoMergeRequest
+
+# Obligatoriska kontroller när CI behöver felsökas.
+gh pr checks <PR> -R Avkroken/<FÖRRÅD> --required
+
+# Standard efter skapad eller uppdaterad PR.
+gh pr merge <PR> -R Avkroken/<FÖRRÅD> --auto --squash --delete-branch
+
+# Uppdatera grenen om GitHub kräver det.
+gh pr update-branch <PR> -R Avkroken/<FÖRRÅD>
+
+# Granska ändringen.
+gh pr diff <PR> -R Avkroken/<FÖRRÅD>
+```
+
+Kommandona är exempel, inte begränsningar. Använd annat när verkligheten kräver det.
+
+### När ett färskt GitHub-uppslag är motiverat
+
+Gör ett uppslag när uppgiften i sig kräver aktuell GitHub-information eller när GitHub har returnerat ett konkret problem, till exempel:
+
+- hitta eller gå igenom öppna pull requests
+- undersöka en misslyckad eller blockerad pull request
+- läsa faktisk review-feedback
+- felsöka en required check
+- undersöka ett konkret fel från GitHub
+- ändra GitHub-regler, workflows eller required checks
+- kontrollera resultatet av en GitHub-administrativ ändring
+
+Ett problem är anledning att undersöka problemet. Frånvaro av problem är inte anledning att kontrollera att inget problem finns.
+
+## Kommentarer och granskning
+
+Läs relevant granskningsfeedback som faktiskt finns när uppgiften kräver arbete med pull requesten.
+
+- Åtgärda konkreta fel och användbara förbättringar.
+- AI- och botkommentarer är rådgivande om GitHub inte kräver annat.
+- Jaga inte nya granskningar eller statusuppdateringar utan anledning.
+- En gammal kommentar som redan är åtgärdad ska inte skapa mer arbete.
+
+## Verifiering
+
+- Kör relevanta tester och förrådets dokumenterade validering.
+- Kontrollera diffen mot uppgiften.
+- Verifiera tekniska förändringar på lämplig nivå.
+- Låt GitHub hantera väntan på CI och genomföra auto-merge.
+- Gör inte statusuppslag bara för att se om något som GitHub redan hanterar har blivit klart.
