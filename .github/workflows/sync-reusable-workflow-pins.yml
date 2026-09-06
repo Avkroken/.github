@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/metadata-orchestration.yml
-      - .github/workflows/metadata-routing.yml
-      - .github/workflows/issue-classification.lock.yml
       - .github/workflows/dependabot-automerge.yml
       - .github/workflows/release-please.yml
   workflow_dispatch:
@@ -16,9 +13,6 @@ on:
         required: true
         type: choice
         options:
-          - metadata-orchestration
-          - metadata-routing
-          - classification
           - dependabot
           - release
       target_sha:
@@ -94,19 +88,6 @@ jobs:
 
           add_scope() {
             case "$1" in
-              metadata-orchestration)
-                add_target metadata-orchestration.yml
-                ;;
-              metadata-routing)
-                # The orchestrator calls metadata-routing.yml by a relative ref, so
-                # a routing implementation change affects both direct routing callers
-                # and metadata-orchestration callers.
-                add_target metadata-orchestration.yml
-                add_target metadata-routing.yml
-                ;;
-              classification)
-                add_target issue-classification.lock.yml
-                ;;
               dependabot)
                 add_target dependabot-automerge.yml
                 ;;
@@ -130,16 +111,6 @@ jobs:
 
             while IFS= read -r path; do
               case "$path" in
-                .github/workflows/metadata-orchestration.yml)
-                  add_target metadata-orchestration.yml
-                  ;;
-                .github/workflows/metadata-routing.yml)
-                  add_target metadata-orchestration.yml
-                  add_target metadata-routing.yml
-                  ;;
-                .github/workflows/issue-classification.lock.yml)
-                  add_target issue-classification.lock.yml
-                  ;;
                 .github/workflows/dependabot-automerge.yml)
                   add_target dependabot-automerge.yml
                   ;;

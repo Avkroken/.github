@@ -4,8 +4,6 @@
 
 ## Automation
 
-- `.github/workflows/issue-classification.lock.yml` är en deterministisk återanvändbar issue-klassificerare. Namnet `.lock.yml` finns kvar för kompatibilitet med befintliga anropare; workflowet är inte genererat av `gh-aw` och använder inga AI-credentials.
-- `.github/workflows/metadata-orchestration.yml` och `.github/workflows/metadata-routing.yml` hanterar deterministisk metadata-routing.
 - `.github/workflows/sync-reusable-workflow-pins.yml` och `.github/workflows/reconcile-reusable-workflow-pins.yml` uppdaterar SHA-pins till återanvändbara workflows.
 - `.github/workflows/dependabot-automerge.yml` hanterar Dependabot-automation enligt workflowets villkor.
 - `.github/workflows/release-please.yml` innehåller det delade release-flödet för förråd som använder det.

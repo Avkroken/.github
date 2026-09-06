@@ -2,52 +2,6 @@
 
 Det här repositoryt är den centrala källan för Avkrokens gemensamma GitHub-metadataautomation och organisationsgemensamma agentkonfiguration.
 
-## Metadata policy
-
-Alla nya issues och pull requests ska ha `blixten85` som mänsklig owner/assignee.
-
-Issues routas först när de har exakt en svårighetsgrad och exakt en säkerhetsgrad:
-
-| Classification | Derived routing |
-| --- | --- |
-| `difficulty:low` | `agent:copilot` |
-| `difficulty:medium` | `agent:codex` |
-| `difficulty:high` | `agent:claude` |
-| `security:critical` | `priority:p0` |
-| `security:high` | `priority:p1` |
-| `security:medium` | `priority:p2` |
-| `security:low` | `priority:p3` |
-| `security:none` | `priority:p4` |
-
-Om någon klassificeringsdimension saknas sätts `triage:pending`. Om flera labels inom samma dimension finns samtidigt sätts `triage:invalid`. I båda fallen tas eventuella härledda `agent:*`- och `priority:*`-labels bort så att routingen är fail-closed.
-
-`agent:*` är routingmetadata. Den deterministiska workflowen startar inte Claude, Codex eller Copilot som coding agent.
-
-## Automatisk issueklassificering
-
-`.github/workflows/issue-classification.lock.yml` är den centrala reusable workflowen för nya och återöppnade issues. Filnamnet behålls för kompatibilitet med befintliga SHA-pinnade callers, men filen är en vanlig deterministisk GitHub Actions-workflow och genereras inte av `gh-aw`.
-
-Klassificeringen läser issue-titel och body via GitHub API och väljer deterministiskt exakt en temporär kombinationslabel:
-
-`classification:<difficulty>:<security>`
-
-Svårighetsgraden använder explicita signaler för dokumentationsändringar, större arkitektur/migreringar och textomfång; säkerhetsgraden använder en konservativ, prioriterad uppsättning explicita säkerhetssignaler och faller annars tillbaka till `security:none`.
-
-Den deterministiska metadata-workflowen översätter sedan temporärlabeln till exakt en kanonisk `difficulty:*` och exakt en kanonisk `security:*`, tar bort temporärlabeln och härleder därefter `agent:*` och `priority:*`. Befintliga kanoniska labels tar företräde, så automatiken skriver inte över en manuell eller GitHub-native klassificering.
-
-Issueklassificeringen använder endast repositoryts normala `GITHUB_TOKEN` med `issues: write`. Den använder ingen Copilot-modell, ingen `copilot-requests`-permission, ingen `COPILOT_GITHUB_TOKEN`, ingen PAT och inga externa AI-provider credentials.
-
-## Deterministisk metadata-routing
-
-`.github/workflows/metadata-routing.yml` är en reusable workflow. Caller-repon skickar `item-kind` (`issue` eller `pull_request`) och `item-number`. Workflowen:
-
-1. säkerställer de standardiserade labels som policyn använder,
-2. lägger till `blixten85` som assignee,
-3. validerar och normaliserar issueklassificeringen,
-4. konverterar eventuell temporär `classification:*`-label,
-5. härleder `agent:*` och `priority:*` deterministiskt.
-
-Workflowen checkar inte ut eller exekverar kod från pull requests. `.github/workflows/metadata-events.yml` kopplar samma policy till issues och pull requests i detta repository. Övriga repositories använder tunna callers och refererar de centrala reusable workflowsen med fulla commit-SHA:n.
 
 ## Visibility och secrets
 
