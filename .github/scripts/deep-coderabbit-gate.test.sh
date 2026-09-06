@@ -61,6 +61,10 @@ if ! critical_central_path AGENTS.md; then
   echo "FAIL: AGENTS.md must be central deep-risk scope" >&2
   exit 1
 fi
+if ! critical_central_path REPO.md; then
+  echo "FAIL: REPO.md must be central deep-risk scope" >&2
+  exit 1
+fi
 if ! critical_central_path .github/workflows/dependabot-automerge.yml; then
   echo "FAIL: central Dependabot workflow must be deep-risk scope" >&2
   exit 1
