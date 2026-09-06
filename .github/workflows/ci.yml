@@ -38,4 +38,3 @@ jobs:
             exit 1
           fi
           git diff --check "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"...HEAD
-
