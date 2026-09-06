@@ -36,7 +36,6 @@ jobs:
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
           permission-pull-requests: write
-          permission-workflows: write
 
       - name: Advance promotion watermark after merge
         if: ${{ github.event_name == 'pull_request' }}
