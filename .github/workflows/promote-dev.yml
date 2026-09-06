@@ -1,0 +1,179 @@
+name: Promote dev to main
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-dev-to-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login == 'gamnacken[bot]' &&
+       startsWith(github.event.pull_request.head.ref, 'promote/dev-'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Create repository-scoped Gamnacken token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.GAMNACKEN_CLIENT_ID }}
+          private-key: ${{ secrets.GAMNACKEN_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Advance promotion watermark after merge
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          promoted_sha="${HEAD_REF#promote/dev-}"
+          if [[ ! "$promoted_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid promotion branch: $HEAD_REF"
+            exit 1
+          fi
+
+          dev_sha="$(gh api "repos/$GH_REPO/git/ref/heads/dev" --jq '.object.sha')"
+          current_watermark="$(gh api "repos/$GH_REPO/git/ref/tags/dev-promoted" --jq '.object.sha')"
+
+          promoted_to_dev="$(gh api "repos/$GH_REPO/compare/$promoted_sha...$dev_sha" --jq '.status')"
+          if [[ "$promoted_to_dev" != "ahead" && "$promoted_to_dev" != "identical" ]]; then
+            echo "::error::Promotion SHA is not in current dev history: $promoted_sha"
+            exit 1
+          fi
+
+          watermark_to_promoted="$(gh api "repos/$GH_REPO/compare/$current_watermark...$promoted_sha" --jq '.status')"
+          if [[ "$watermark_to_promoted" != "ahead" && "$watermark_to_promoted" != "identical" ]]; then
+            echo "::error::Promotion SHA would move dev-promoted backwards or off dev history."
+            exit 1
+          fi
+
+          gh api --method PATCH "repos/$GH_REPO/git/refs/tags/dev-promoted" \
+            -f sha="$promoted_sha" \
+            -F force=true >/dev/null
+
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Create next immutable promotion
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          open_promotion="$(
+            gh pr list --repo "$GH_REPO" --base main --state open --limit 100 \
+              --json number,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("promote/dev-"))][0].number // empty'
+          )"
+          if [[ -n "$open_promotion" ]]; then
+            echo "Promotion #$open_promotion is already active."
+            exit 0
+          fi
+
+          git fetch --force origin main dev
+          dev_sha="$(git rev-parse origin/dev)"
+
+          if ! git ls-remote --exit-code --tags origin refs/tags/dev-promoted >/dev/null 2>&1; then
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f ref='refs/tags/dev-promoted' \
+              -f sha="$dev_sha" >/dev/null
+            echo "Initialized dev-promoted at $dev_sha; bootstrap is complete."
+            exit 0
+          fi
+
+          git fetch --force origin refs/tags/dev-promoted:refs/tags/dev-promoted
+          promoted_sha="$(git rev-parse refs/tags/dev-promoted)"
+
+          if [[ "$promoted_sha" == "$dev_sha" ]]; then
+            echo "dev has no unpromoted changes."
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor "$promoted_sha" "$dev_sha"; then
+            echo "::error::dev history no longer contains the promotion watermark."
+            exit 1
+          fi
+
+          branch="promote/dev-$dev_sha"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git push origin --delete "$branch"
+          fi
+
+          git checkout -B "$branch" origin/main
+          git config user.name "gamnacken[bot]"
+          git config user.email "316993076+gamnacken[bot]@users.noreply.github.com"
+
+          mapfile -t commits < <(git rev-list --reverse "$promoted_sha..$dev_sha")
+          if (( ${#commits[@]} == 0 )); then
+            echo "dev has no unpromoted commits."
+            exit 0
+          fi
+
+          for commit in "${commits[@]}"; do
+            if ! git cherry-pick "$commit"; then
+              git cherry-pick --abort || true
+              echo "::error::Unpromoted dev commit $commit cannot be applied cleanly to current main."
+              exit 1
+            fi
+          done
+
+          git push origin "$branch"
+
+          pr_body="Automatisk, oföränderlig promotion av \`dev\` till och med \`$dev_sha\`. Endast commits efter föregående promotion återspelas ovanpå aktuell \`main\`."
+          pr_number="$(
+            jq -n \
+              --arg title "promote: dev ${dev_sha:0:12}" \
+              --arg head "$branch" \
+              --arg base "main" \
+              --arg body "$pr_body" \
+              '{title:$title,head:$head,base:$base,body:$body}' \
+              | gh api --method POST "repos/$GH_REPO/pulls" --input - --jq '.number'
+          )"
+          gh pr edit "$pr_number" --repo "$GH_REPO" --add-label review:high
+
+          set +e
+          output="$(gh pr merge "$pr_number" --repo "$GH_REPO" --auto --squash --delete-branch 2>&1)"
+          status=$?
+          set -e
+
+          if (( status == 0 )); then
+            exit 0
+          fi
+
+          if grep -Fq 'Pull request is in unstable status' <<< "$output"; then
+            sleep 2
+            gh pr merge "$pr_number" --repo "$GH_REPO" --auto --squash --delete-branch
+            exit 0
+          fi
+
+          printf '%s\n' "$output" >&2
+          exit "$status"
