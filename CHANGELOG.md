@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/Avkroken/.github/compare/v1.2.13...v1.3.0) (2026-09-06)
+
+
+### Features
+
+* pilotera dev-gate och merge queue ([#97](https://github.com/Avkroken/.github/issues/97)) ([3257fc5](https://github.com/Avkroken/.github/commit/3257fc5e47f61edb04e2dae780627a83252a29b3))
+
 ## [1.2.13](https://github.com/Avkroken/.github/compare/v1.2.12...v1.2.13) (2026-09-06)
 
 
