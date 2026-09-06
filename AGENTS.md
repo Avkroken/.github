@@ -51,7 +51,7 @@ Do not guess missing IDs, credentials, production state or permissions.
 
 ## Central automation
 
-Metadata-only AI issue triage may classify issues only. The AI portion is read-only; deterministic routing performs allowed label writes. It must not change code, branches, pull requests, deployments, infrastructure or credentials.
+Issue classification and metadata routing are deterministic metadata automation. They may read issue/PR metadata and perform only the documented label/assignee writes; they must not modify code, branches, deployments, infrastructure or credentials.
 
 Dependabot automation may request native auto-merge or merge-queue entry for eligible Dependabot pull requests. It must not bypass protections, execute untrusted PR code with privileged credentials, rewrite PR branches or directly merge around a queue.
 
