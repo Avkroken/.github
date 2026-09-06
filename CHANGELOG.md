@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.8](https://github.com/Avkroken/.github/compare/v1.2.7...v1.2.8) (2026-09-06)
+
+
+### Fixes
+
+* use Copilot org billing for issue triage ([#75](https://github.com/Avkroken/.github/issues/75)) ([a5e7586](https://github.com/Avkroken/.github/commit/a5e758629298a189ed183d08852c1b65f32f3c4e))
+
 ## [1.2.7](https://github.com/Avkroken/.github/compare/v1.2.6...v1.2.7) (2026-09-05)
 
 
