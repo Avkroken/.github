@@ -3,13 +3,17 @@
 inheritance: true
 
 reviews:
+  review_status: true
   auto_review:
-    enabled: false
-    auto_incremental_review: false
-    auto_pause_after_reviewed_commits: 0
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
     drafts: true
-    labels:
-      - review:coderabbit
+    base_branches:
+      - dev
+    labels: []
+    ignore_title_keywords:
+      - "promote:"
   path_instructions:
     - path: ".github/workflows/**"
       instructions: |
