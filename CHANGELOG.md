@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.9](https://github.com/Avkroken/.github/compare/v1.2.8...v1.2.9) (2026-09-06)
+
+
+### Fixes
+
+* align issue classification caller with Copilot billing ([#77](https://github.com/Avkroken/.github/issues/77)) ([1180395](https://github.com/Avkroken/.github/commit/118039507903447345cfb2a17587bf98ebaa324d))
+
 ## [1.2.8](https://github.com/Avkroken/.github/compare/v1.2.7...v1.2.8) (2026-09-06)
 
 
