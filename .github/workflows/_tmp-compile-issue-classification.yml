@@ -1,0 +1,73 @@
+name: Temporary gh-aw regeneration
+
+on:
+  push:
+    branches:
+      - fix/issue-61-copilot-billing
+
+permissions:
+  contents: write
+
+jobs:
+  compile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned gh-aw compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            https://github.com/github/gh-aw/releases/download/v0.87.10/linux-amd64 \
+            --output /tmp/gh-aw
+          echo '1624fb3a6e93b48046377c7b26c9b326e2b25056b3f36cc3fd3bf0ebee7d59fd  /tmp/gh-aw' | sha256sum --check --strict
+          chmod +x /tmp/gh-aw
+          /tmp/gh-aw --version
+
+      - name: Apply source fix and compile
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/issue-classification.md')
+          text = path.read_text()
+          old = 'permissions:\n  contents: read\n  issues: read\n'
+          new = 'permissions:\n  contents: read\n  issues: read\n  copilot-requests: write\n'
+          if new not in text:
+              if old not in text:
+                  raise SystemExit('expected permissions block not found')
+              path.write_text(text.replace(old, new, 1))
+          PY
+          /tmp/gh-aw compile .github/workflows/issue-classification.md
+
+      - name: Verify generated output
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'copilot-requests: write' .github/workflows/issue-classification.md
+          grep -F 'copilot-requests: write' .github/workflows/issue-classification.lock.yml
+          head -n 1 .github/workflows/issue-classification.lock.yml | grep -F '"compiler_version":"v0.87.10"'
+          git diff --check
+
+      - name: Commit source and generated lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/_tmp-compile-issue-classification.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/issue-classification.md \
+                  .github/workflows/issue-classification.lock.yml \
+                  .github/workflows/_tmp-compile-issue-classification.yml
+          git diff --cached --check
+          git commit -m 'fix: use Copilot org billing for issue triage'
+          git push origin HEAD:fix/issue-61-copilot-billing
