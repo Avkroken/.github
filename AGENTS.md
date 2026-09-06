@@ -38,7 +38,8 @@ Utgå från reglerna i detta dokument. Kontrollera inte GitHubs live-konfigurati
 - Auto-merge med squash är standard för pull requests.
 - Aktivera auto-merge direkt efter att pull requesten har skapats eller uppdaterats.
 - Gör inget föregående status- eller ruleset-uppslag för att avgöra om auto-merge kan aktiveras.
-- Om GitHub avvisar auto-merge ska det konkreta felet styra eventuell vidare undersökning.
+- Om GitHub direkt svarar `Pull request is in unstable status`, vänta 2 sekunder och gör exakt ett nytt försök att aktivera auto-merge. Gör inget status- eller ruleset-uppslag mellan försöken.
+- Om det andra försöket misslyckas, eller GitHub returnerar ett annat fel, ska det konkreta felet styra eventuell vidare undersökning.
 
 ## Nuvarande GitHub-regler
 
