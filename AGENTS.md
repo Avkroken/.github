@@ -197,6 +197,7 @@ GitHub Agentic Workflows are allowed only for metadata-only issue triage under t
 - The workflow must not comment, assign users or coding agents, create or update branches or pull requests, edit or close issues, perform review, merge, deploy, start a coding-agent session, or propose or perform remediation.
 - Callers must grant `copilot-requests: write` to the reusable triage job and must not provide a PAT or Actions secret through `COPILOT_GITHUB_TOKEN`; `secrets: inherit` is prohibited for AI triage.
 - Copilot inference for this central triage path uses organization Copilot billing through the caller's `GITHUB_TOKEN` with `copilot-requests: write`. The generated reusable workflow may expose that token internally as `COPILOT_GITHUB_TOKEN` for Copilot tool compatibility; callers do not supply a separate PAT or Copilot token secret.
+- Generic cross-repository fallback text in a generated lock file that tells callers to configure a `COPILOT_GITHUB_TOKEN` secret is stale for this central workflow and does not override the caller contract above. Do not hand-edit the generated lock solely to suppress that message; correct it through the official `gh-aw` source/toolchain path.
 - Do not add external AI-provider credentials without separate explicit owner approval.
 - Keep the `.md` source and generated `.lock.yml` together. Compile with the official `github/gh-aw` toolchain and review generated permissions, actions, containers, safe-output cardinality and failure behavior before merge.
 
