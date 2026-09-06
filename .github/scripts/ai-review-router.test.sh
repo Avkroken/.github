@@ -22,6 +22,12 @@ assert_eq deep "$(classify_change_tsv $'app/security/permissions.ts\t15\t2')" "s
 assert_eq elevated "$(classify_change_tsv $'src/a.ts\t250\t0')" "medium diffs are elevated"
 assert_eq deep "$(classify_change_tsv $'src/a.ts\t800\t0')" "large diffs are deep"
 
+assert_eq deep "$(effective_level_for_labels normal $'review:level:deep\nreview:coderabbit')" "binding deep level overrides normal file classification"
+assert_eq deep "$(effective_level_for_labels elevated $'review:level:deep\nreview:pending')" "binding deep level overrides elevated file classification"
+assert_eq deep "$(effective_level_for_labels normal 'review:deep')" "manual deep override remains authoritative"
+assert_eq elevated "$(effective_level_for_labels elevated 'review:pending')" "non-deep labels preserve file classification"
+assert_eq '' "$(mark_level Avkroken/example 1 normal 'review:level:deep')" "mark_level never downgrades an existing deep level"
+
 since='2026-09-04T20:00:00Z'
 assert_eq acknowledged "$(printf '%s\n' $'2026-09-04T20:00:05Z\tcoderabbitai[bot]\tReview is in progress' | activity_state_from_tsv coderabbit "$since")" "CodeRabbit preliminary comment acknowledges the request"
 assert_eq unavailable "$(printf '%s\n' $'2026-09-04T20:00:05Z\tcoderabbitai[bot]\tReview skipped because quota is unavailable' | activity_state_from_tsv coderabbit "$since")" "CodeRabbit explicit unavailability falls back"
