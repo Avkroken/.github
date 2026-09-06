@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.10](https://github.com/Avkroken/.github/compare/v1.2.9...v1.2.10) (2026-09-06)
+
+
+### Fixes
+
+* pin issue triage Copilot model ([#81](https://github.com/Avkroken/.github/issues/81)) ([4272230](https://github.com/Avkroken/.github/commit/42722302dbb510d4f3152ef9ddf57ab1bfb6f3eb))
+
 ## [1.2.9](https://github.com/Avkroken/.github/compare/v1.2.8...v1.2.9) (2026-09-06)
 
 
