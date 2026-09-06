@@ -2,14 +2,19 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - dev
+      - main
   merge_group:
+    types:
+      - checks_requested
 
 permissions:
   contents: read
 
 jobs:
-  required:
-    name: CI / required
+  validate:
+    name: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' && 'CI / admission' || 'CI / required' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -45,3 +50,9 @@ jobs:
           test -f .github/workflows/issue-classification.lock.yml
           test ! -e .github/workflows/issue-classification.md
           grep -Fq 'name: Deterministic issue classification' .github/workflows/issue-classification.lock.yml
+
+      - name: Verify promotion branch contract
+        if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'promote/dev-') }}
+        shell: bash
+        run: |
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -ge 3
