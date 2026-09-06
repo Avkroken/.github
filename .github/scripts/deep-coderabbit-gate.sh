@@ -8,6 +8,8 @@ DRY_RUN="${DRY_RUN:-false}"
 waiting_label="review:coderabbit-waiting"
 primary_labels=(review:coderabbit review:copilot review:codex)
 level_labels=(review:level:normal review:level:elevated review:level:deep)
+# A PENDING review that has not progressed within this window can be retried.
+pending_review_retry_after_seconds=1800
 
 has_label() {
   local labels="$1" wanted="$2"
@@ -28,6 +30,16 @@ review_state_is_submitted() {
       return 1
       ;;
   esac
+}
+
+pending_review_is_retryable() {
+  local review_created_at="$1" now_epoch="$2" review_created_epoch
+
+  [[ "$review_created_at" != "-" ]] || return 1
+  if ! review_created_epoch="$(date --date="$review_created_at" +%s 2>/dev/null)"; then
+    return 1
+  fi
+  (( now_epoch - review_created_epoch >= pending_review_retry_after_seconds ))
 }
 
 critical_central_path() {
@@ -82,14 +94,16 @@ central_pr_is_critical() {
 }
 
 # Input rows are TSV: kind, actor, commit SHA/sentinel, review state/sentinel,
-# body. Sentinels keep intermediate fields non-empty because Bash treats tab as
-# IFS whitespace and otherwise collapses adjacent empty fields.
+# creation time/sentinel, body. Sentinels keep intermediate fields non-empty
+# because Bash treats tab as IFS whitespace and otherwise collapses adjacent
+# empty fields.
 coderabbit_gate_state_from_tsv() {
   local head_sha="$1"
-  local kind actor commit_sha review_state body
+  local now_epoch="${2:-$(date +%s)}"
+  local kind actor commit_sha review_state review_created_at body
   local saw_in_progress=false
 
-  while IFS=$'\t' read -r kind actor commit_sha review_state body; do
+  while IFS=$'\t' read -r kind actor commit_sha review_state review_created_at body; do
     [[ -n "$actor" ]] || continue
     actor_is_coderabbit "$actor" || continue
 
@@ -99,7 +113,9 @@ coderabbit_gate_state_from_tsv() {
         return 0
       fi
       if [[ "$review_state" == "PENDING" ]]; then
-        saw_in_progress=true
+        if ! pending_review_is_retryable "$review_created_at" "$now_epoch"; then
+          saw_in_progress=true
+        fi
       fi
     fi
 
@@ -128,14 +144,34 @@ coderabbit_gate_state_from_tsv() {
 
 collect_coderabbit_gate_rows() {
   local repository="$1" pr="$2"
+  local repository_owner="${repository%%/*}" repository_name="${repository#*/}"
 
   if ! gh api --paginate "repos/$repository/issues/$pr/comments?per_page=100" \
-    --jq '.[] | ["comment", .user.login, "-", "-", (.body // "")] | @tsv'; then
+    --jq '.[] | ["comment", .user.login, "-", "-", "-", (.body // "")] | @tsv'; then
     echo "::error::Could not list issue comments for CodeRabbit gate on $repository#$pr." >&2
     return 1
   fi
-  if ! gh api --paginate "repos/$repository/pulls/$pr/reviews?per_page=100" \
-    --jq '.[] | ["review", .user.login, (.commit_id // "-"), (.state // "-"), (.body // "")] | @tsv'; then
+  if ! gh api graphql --paginate \
+    -f query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+      repository(owner: $owner, name: $name) {
+        pullRequest(number: $number) {
+          reviews(first: 100, after: $endCursor) {
+            nodes {
+              author { login }
+              body
+              commit { oid }
+              createdAt
+              state
+            }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+      }
+    }' \
+    -f owner="$repository_owner" \
+    -f name="$repository_name" \
+    -F number="$pr" \
+    --jq '.data.repository.pullRequest.reviews.nodes[] | ["review", (.author.login // "-"), (.commit.oid // "-"), (.state // "-"), (.createdAt // "-"), (.body // "")] | @tsv'; then
     echo "::error::Could not list pull-request reviews for CodeRabbit gate on $repository#$pr." >&2
     return 1
   fi
