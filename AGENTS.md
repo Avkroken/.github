@@ -45,9 +45,7 @@ När `dev`-piloten är aktiverad i `Avkroken/.github` gäller detta i stället f
 10. Promotionen går via merge queue. `CI / required` kör den fulla kontrollen på merge-gruppen mot aktuell `main`.
 11. Grönt resultat mergas med squash till `main`.
 
-`CI / admission` körs inte medan pull requesten är draft. Den startar först när programmeraren markerar ändringen Ready.
-
-En misslyckad `CI / admission` gör pull requesten till draft igen. Den ska då behandlas som ofärdig kod, inte som något som ska studsa vidare genom fler kontroller.
+`CI / admission` körs inte medan pull requesten är draft. Den startar först när programmeraren markerar ändringen Ready. En misslyckad kontroll blockerar native auto-merge tills koden har rättats och kontrollen passerar.
 
 Arbetsgrenar ska inte rutinmässigt synkas med `main`. Merge queue ansvarar för att verifiera den faktiska merge-kandidaten mot aktuell `main`.
 
