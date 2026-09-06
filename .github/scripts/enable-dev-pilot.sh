@@ -10,13 +10,20 @@ for path in \
   .github/workflows/promote-dev.yml \
   .github/workflows/redraft-failed-admission.yml; do
   gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/contents/$path?ref=main" >/dev/null
- done
+done
+
+main_sha="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/main" --jq '.object.sha')"
 
 if ! gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/dev" >/dev/null 2>&1; then
-  main_sha="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/main" --jq '.object.sha')"
   gh api -H "X-GitHub-Api-Version: $api_version" --method POST "repos/$repo/git/refs" \
     -f ref='refs/heads/dev' \
     -f sha="$main_sha" >/dev/null
+  gh api -H "X-GitHub-Api-Version: $api_version" --method POST "repos/$repo/git/refs" \
+    -f ref='refs/tags/dev-promoted' \
+    -f sha="$main_sha" >/dev/null
+elif ! gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/tags/dev-promoted" >/dev/null 2>&1; then
+  echo "dev exists but refs/tags/dev-promoted does not; refusing to guess the promotion baseline" >&2
+  exit 1
 fi
 
 rulesets="$(gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/rulesets?includes_parents=false")"
@@ -121,5 +128,8 @@ jq -e '
     and any(.rules[]; .type == "required_status_checks"
       and ([.parameters.required_status_checks[].context] | sort) == (["CI / admission", "CodeRabbit"] | sort)))
 ' <<< "$dev_state" >/dev/null
+
+gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/heads/dev" >/dev/null
+gh api -H "X-GitHub-Api-Version: $api_version" "repos/$repo/git/ref/tags/dev-promoted" >/dev/null
 
 printf 'dev pilot enabled for %s\n' "$repo"
