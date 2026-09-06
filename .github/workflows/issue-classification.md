@@ -36,6 +36,10 @@ safe-outputs:
     create-if-missing: true
     issues: true
     pull-requests: false
+  threat-detection:
+    engine:
+      id: copilot
+      model: detection
   missing-tool:
     create-issue: false
   missing-data:
