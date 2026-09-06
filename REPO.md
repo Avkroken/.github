@@ -4,10 +4,10 @@
 
 ## Automation
 
-- `.github/workflows/sync-reusable-workflow-pins.yml` och `.github/workflows/reconcile-reusable-workflow-pins.yml` uppdaterar SHA-pins till återanvändbara workflows.
-- `.github/workflows/dependabot-automerge.yml` hanterar Dependabot-automation enligt workflowets villkor.
+- `.github/workflows/ci.yml` validerar pilotflödet.
+- `.github/workflows/promote-dev.yml` promoterar godkända ändringar från `dev` till `main`.
+- `.github/workflows/redraft-failed-admission.yml` gör en misslyckad admission-PR till draft igen.
 - `.github/workflows/release-please.yml` innehåller det delade release-flödet för förråd som använder det.
-- `.github/workflows/governance-drift-audit.yml` upptäcker avvikelser i regler men ändrar dem inte.
 
 ## Credentials
 
