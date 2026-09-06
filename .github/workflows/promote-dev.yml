@@ -22,7 +22,10 @@ jobs:
   promote:
     if: >-
       github.event_name != 'pull_request' ||
-      (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'promote/dev-'))
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login == 'gamnacken[bot]' &&
+       startsWith(github.event.pull_request.head.ref, 'promote/dev-'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,6 +54,22 @@ jobs:
             echo "::error::Invalid promotion branch: $HEAD_REF"
             exit 1
           fi
+
+          dev_sha="$(gh api "repos/$GH_REPO/git/ref/heads/dev" --jq '.object.sha')"
+          current_watermark="$(gh api "repos/$GH_REPO/git/ref/tags/dev-promoted" --jq '.object.sha')"
+
+          promoted_to_dev="$(gh api "repos/$GH_REPO/compare/$promoted_sha...$dev_sha" --jq '.status')"
+          if [[ "$promoted_to_dev" != "ahead" && "$promoted_to_dev" != "identical" ]]; then
+            echo "::error::Promotion SHA is not in current dev history: $promoted_sha"
+            exit 1
+          fi
+
+          watermark_to_promoted="$(gh api "repos/$GH_REPO/compare/$current_watermark...$promoted_sha" --jq '.status')"
+          if [[ "$watermark_to_promoted" != "ahead" && "$watermark_to_promoted" != "identical" ]]; then
+            echo "::error::Promotion SHA would move dev-promoted backwards or off dev history."
+            exit 1
+          fi
+
           gh api --method PATCH "repos/$GH_REPO/git/refs/tags/dev-promoted" \
             -f sha="$promoted_sha" \
             -F force=true >/dev/null
