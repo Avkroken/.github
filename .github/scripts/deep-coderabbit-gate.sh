@@ -6,9 +6,7 @@ REPOSITORY_FILTER="${REPOSITORY_FILTER:-}"
 DRY_RUN="${DRY_RUN:-false}"
 
 waiting_label="review:coderabbit-waiting"
-primary_labels=(review:coderabbit review:copilot review:codex)
-level_labels=(review:level:normal review:level:elevated review:level:deep)
-# A PENDING review that has not progressed within this window can be retried.
+# HEAD-bound CodeRabbit activity older than this window no longer suppresses a retry.
 pending_review_retry_after_seconds=1800
 
 has_label() {
@@ -32,14 +30,15 @@ review_state_is_submitted() {
   esac
 }
 
-pending_review_is_retryable() {
-  local review_created_at="$1" now_epoch="$2" review_created_epoch
+coderabbit_activity_is_fresh() {
+  local activity_created_at="$1" now_epoch="$2" activity_epoch age_seconds
 
-  [[ "$review_created_at" != "-" ]] || return 1
-  if ! review_created_epoch="$(date --date="$review_created_at" +%s 2>/dev/null)"; then
+  [[ "$activity_created_at" != "-" ]] || return 1
+  if ! activity_epoch="$(date --date="$activity_created_at" +%s 2>/dev/null)"; then
     return 1
   fi
-  (( now_epoch - review_created_epoch >= pending_review_retry_after_seconds ))
+  age_seconds=$(( now_epoch - activity_epoch ))
+  (( age_seconds >= 0 && age_seconds < pending_review_retry_after_seconds ))
 }
 
 critical_central_path() {
@@ -94,16 +93,18 @@ central_pr_is_critical() {
 }
 
 # Input rows are TSV: kind, actor, commit SHA/sentinel, review state/sentinel,
-# creation time/sentinel, body. Sentinels keep intermediate fields non-empty
-# because Bash treats tab as IFS whitespace and otherwise collapses adjacent
-# empty fields.
+# observable activity time/sentinel, body. For comments the timestamp is the
+# CodeRabbit status comment's created_at. Review timestamps are never used to
+# age a PENDING review because GitHub does not expose a reliable start time for
+# that state. Sentinels keep intermediate fields non-empty because Bash treats
+# tab as IFS whitespace and otherwise collapses adjacent empty fields.
 coderabbit_gate_state_from_tsv() {
   local head_sha="$1"
   local now_epoch="${2:-$(date +%s)}"
-  local kind actor commit_sha review_state review_created_at body
+  local kind actor commit_sha review_state activity_created_at body
   local saw_in_progress=false
 
-  while IFS=$'\t' read -r kind actor commit_sha review_state review_created_at body; do
+  while IFS=$'\t' read -r kind actor commit_sha review_state activity_created_at body; do
     [[ -n "$actor" ]] || continue
     actor_is_coderabbit "$actor" || continue
 
@@ -111,11 +112,6 @@ coderabbit_gate_state_from_tsv() {
       if review_state_is_submitted "$review_state"; then
         echo complete
         return 0
-      fi
-      if [[ "$review_state" == "PENDING" ]]; then
-        if ! pending_review_is_retryable "$review_created_at" "$now_epoch"; then
-          saw_in_progress=true
-        fi
       fi
     fi
 
@@ -128,7 +124,9 @@ coderabbit_gate_state_from_tsv() {
 
       if [[ "$body" == *"review in progress by coderabbit.ai"* \
         && "$body" == *"$head_sha"* ]]; then
-        saw_in_progress=true
+        if coderabbit_activity_is_fresh "$activity_created_at" "$now_epoch"; then
+          saw_in_progress=true
+        fi
       fi
     fi
   done
@@ -136,8 +134,8 @@ coderabbit_gate_state_from_tsv() {
   if [[ "$saw_in_progress" == "true" ]]; then
     echo in_progress
   else
-    # Missing also intentionally covers skipped/quota/unavailable responses.
-    # They never satisfy the gate and remain eligible for a later retry.
+    # Missing also intentionally covers skipped/quota/unavailable responses and
+    # orphaned/stale PENDING reviews without fresh observable HEAD activity.
     echo missing
   fi
 }
@@ -147,7 +145,7 @@ collect_coderabbit_gate_rows() {
   local repository_owner="${repository%%/*}" repository_name="${repository#*/}"
 
   if ! gh api --paginate "repos/$repository/issues/$pr/comments?per_page=100" \
-    --jq '.[] | ["comment", .user.login, "-", "-", "-", (.body // "")] | @tsv'; then
+    --jq '.[] | ["comment", .user.login, "-", "-", (.created_at // "-"), (.body // "")] | @tsv'; then
     echo "::error::Could not list issue comments for CodeRabbit gate on $repository#$pr." >&2
     return 1
   fi
