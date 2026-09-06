@@ -35,7 +35,7 @@ Svårighetsgraden använder explicita signaler för dokumentationsändringar, st
 
 Den deterministiska metadata-workflowen översätter sedan temporärlabeln till exakt en kanonisk `difficulty:*` och exakt en kanonisk `security:*`, tar bort temporärlabeln och härleder därefter `agent:*` och `priority:*`. Befintliga kanoniska labels tar företräde, så automatiken skriver inte över en manuell eller GitHub-native klassificering.
 
-Issueklassificeringen använder endast repositoryts normala `GITHUB_TOKEN` med `issues: write`. Den använder ingen Copilot-modell, ingen `copilot-requests`-permission, ingen `COPILOT_GITHUB_TOKEN`, ingen PAT och inga externa AI-provider credentials.
+Issueklassificeringen använder endast repositoryts normala `GITHUB_TOKEN` med `issues: write`. Om en körning ändå validerar `COPILOT_GITHUB_TOKEN` kommer den kontrollen från en annan eller äldre caller-workflow, inte från denna deterministiska klassificerare.
 
 ## Deterministisk metadata-routing
 
