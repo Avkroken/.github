@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.2.10](https://github.com/Avkroken/.github/compare/v1.2.9...v1.2.10) (2026-09-06)
+
+
+### Fixes
+
+* pin issue triage Copilot model ([#81](https://github.com/Avkroken/.github/issues/81)) ([4272230](https://github.com/Avkroken/.github/commit/42722302dbb510d4f3152ef9ddf57ab1bfb6f3eb))
+
+## [1.2.9](https://github.com/Avkroken/.github/compare/v1.2.8...v1.2.9) (2026-09-06)
+
+
+### Fixes
+
+* align issue classification caller with Copilot billing ([#77](https://github.com/Avkroken/.github/issues/77)) ([1180395](https://github.com/Avkroken/.github/commit/118039507903447345cfb2a17587bf98ebaa324d))
+
+## [1.2.8](https://github.com/Avkroken/.github/compare/v1.2.7...v1.2.8) (2026-09-06)
+
+
+### Fixes
+
+* use Copilot org billing for issue triage ([#75](https://github.com/Avkroken/.github/issues/75)) ([a5e7586](https://github.com/Avkroken/.github/commit/a5e758629298a189ed183d08852c1b65f32f3c4e))
+
+## [1.2.7](https://github.com/Avkroken/.github/compare/v1.2.6...v1.2.7) (2026-09-05)
+
+
+### Documentation
+
+* standardize governance filename as REPO.md ([#71](https://github.com/Avkroken/.github/issues/71)) ([d19cab4](https://github.com/Avkroken/.github/commit/d19cab4d0d3ab8a9ee99ff2f31f228267e7820b7))
+
 ## [1.2.6](https://github.com/Avkroken/.github/compare/v1.2.5...v1.2.6) (2026-09-05)
 
 
