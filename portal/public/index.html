@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="AVKROKEN — publika projekt, verktyg och experiment.">
+  <meta name="theme-color" content="#050912">
+  <meta name="robots" content="index,follow">
+  <title>AVKROKEN — Public endpoints</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="shell topbar">
+    <div class="brand-mini"><span class="brand-dot"></span> AVKROKEN // PUBLIC</div>
+    <div class="privacy-pill">Endast publika resurser</div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="logo-wrap">
+        <img src="/avkroken-login-logo.svg" alt="AVKROKEN">
+      </div>
+      <div class="hero-copy">
+        <div class="eyebrow">public endpoint index</div>
+        <h1>AVKROKEN</h1>
+        <p>
+          En samlingspunkt för publika projekt, tjänster och webbsidor.
+          Privata resurser bakom Cloudflare Access eller Tunnel publiceras inte här.
+        </p>
+        <div class="manifesto" aria-label="AVKROKEN">
+          <span>CODE</span><span>DATA</span><span>VISIONS</span><span>IDEAS</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="public-sites">
+      <div class="section-head">
+        <div>
+          <h2 id="public-sites"><span class="gradient-text">Publika endpoints</span></h2>
+          <p>
+            Repon i GitHub-organisationen Avkroken visas endast när de uttryckligen
+            märkts med ämnet <code>avkroken-portal</code> och har en publik Website-adress.
+          </p>
+        </div>
+        <div class="count" id="site-count">LOADING…</div>
+      </div>
+
+      <div class="grid" id="site-grid">
+        <div class="empty">Läser publika projekt från GitHub…</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <span>AVKROKEN · CODE · DATA · VISIONS · IDEAS</span>
+      <span>public surface only</span>
+    </div>
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
