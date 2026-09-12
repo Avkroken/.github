@@ -1,6 +1,10 @@
 const grid = document.querySelector("#site-grid");
 const count = document.querySelector("#site-count");
 const portalState = document.querySelector("#portal-state");
+const focusLinks = [...document.querySelectorAll(".manifesto [data-focus]")];
+
+let allSites = [];
+let activeFocus = null;
 
 const escapeHtml = (value = "") =>
   String(value).replace(/[&<>"']/g, c => ({
@@ -42,42 +46,112 @@ function metric(label, value) {
     </div>`;
 }
 
+const focusByProject = {
+  klarsprak: ["data", "ideas"],
+  dumpen: ["code", "ideas"],
+  politiker: ["data", "visions"],
+  produkter: ["code", "data"],
+  skvallerbyttan: ["code", "ideas"]
+};
+
+function focusesForSite(site) {
+  const key = String(site.name || "").toLowerCase();
+  if (focusByProject[key]) return focusByProject[key];
+
+  const text = `${site.name || ""} ${site.description || ""} ${site.category || ""} ${site.language || ""}`.toLowerCase();
+  const focuses = new Set();
+
+  if (site.language || /verktyg|tjänst|worker|app|api|kod|code/.test(text)) focuses.add("code");
+  if (/data|statistik|register|katalog|analys|index|arkiv|produkt|pris/.test(text)) focuses.add("data");
+  if (/experiment|vision|framtid|prototyp|utforsk/.test(text)) focuses.add("visions");
+  if (/idé|idea|koncept|språk|projekt|dokument|experiment/.test(text)) focuses.add("ideas");
+
+  if (!focuses.size) focuses.add("ideas");
+  return [...focuses];
+}
+
+function renderSites() {
+  const sites = activeFocus
+    ? allSites.filter(site => focusesForSite(site).includes(activeFocus))
+    : allSites;
+
+  count.textContent = activeFocus
+    ? `${sites.length} / ${allSites.length}`
+    : `${allSites.length} ENDPOINT${allSites.length === 1 ? "" : "S"}`;
+
+  focusLinks.forEach(link => {
+    const selected = link.dataset.focus === activeFocus;
+    link.classList.toggle("active", selected);
+    link.setAttribute("aria-pressed", selected ? "true" : "false");
+  });
+
+  if (!sites.length) {
+    grid.innerHTML = `<div class="empty"><strong>Inga projekt i den här vyn ännu.</strong></div>`;
+    return;
+  }
+
+  grid.innerHTML = sites.map(site => `
+    <a class="card"
+       href="${escapeHtml(site.url)}"
+       target="_blank"
+       rel="noopener noreferrer"
+       style="--glow:${accentColor(site.accent)}">
+      <div class="card-top">
+        <span class="badge">${escapeHtml(site.category)}</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </div>
+      <h3>${escapeHtml(site.name)}</h3>
+      <p>${escapeHtml(site.description || "Avkroken-projekt.")}</p>
+      <div class="host">${escapeHtml(site.host)}</div>
+      <div class="metrics" aria-label="Projektdata">
+        ${metric("STACK", site.language || "—")}
+        ${metric("REPO", formatSize(site.repoSizeKb))}
+        ${metric("UPDATED", formatDate(site.updatedAt))}
+      </div>
+    </a>`).join("");
+}
+
+function setFocus(focus, { updateHash = true, scroll = true } = {}) {
+  const next = activeFocus === focus ? null : focus;
+  activeFocus = next;
+
+  if (updateHash) {
+    const hash = next ? `#${next}` : `${location.pathname}${location.search}`;
+    history.replaceState(null, "", hash);
+  }
+
+  renderSites();
+
+  if (scroll) {
+    document.querySelector("#public-sites")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+focusLinks.forEach(link => {
+  link.addEventListener("click", event => {
+    event.preventDefault();
+    setFocus(link.dataset.focus);
+  });
+});
+
 async function loadSites() {
   try {
     const response = await fetch("/api/sites", { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const sites = await response.json();
+    allSites = await response.json();
 
-    count.textContent = `${sites.length} ENDPOINT${sites.length === 1 ? "" : "S"}`;
-    if (portalState) portalState.textContent = `${sites.length} LIVE`;
+    if (portalState) portalState.textContent = `${allSites.length} LIVE`;
 
-    if (!sites.length) {
-      grid.innerHTML = `
-        <div class="empty">
-          <strong>Inga projekt publicerade ännu.</strong>
-        </div>`;
+    const hashFocus = location.hash.slice(1).toLowerCase();
+    activeFocus = focusLinks.some(link => link.dataset.focus === hashFocus) ? hashFocus : null;
+
+    if (!allSites.length) {
+      count.textContent = "0 ENDPOINTS";
+      grid.innerHTML = `<div class="empty"><strong>Inga projekt publicerade ännu.</strong></div>`;
       return;
     }
 
-    grid.innerHTML = sites.map(site => `
-      <a class="card"
-         href="${escapeHtml(site.url)}"
-         target="_blank"
-         rel="noopener noreferrer"
-         style="--glow:${accentColor(site.accent)}">
-        <div class="card-top">
-          <span class="badge">${escapeHtml(site.category)}</span>
-          <span class="arrow" aria-hidden="true">↗</span>
-        </div>
-        <h3>${escapeHtml(site.name)}</h3>
-        <p>${escapeHtml(site.description || "Avkroken-projekt.")}</p>
-        <div class="host">${escapeHtml(site.host)}</div>
-        <div class="metrics" aria-label="Projektdata">
-          ${metric("STACK", site.language || "—")}
-          ${metric("REPO", formatSize(site.repoSizeKb))}
-          ${metric("UPDATED", formatDate(site.updatedAt))}
-        </div>
-      </a>`).join("");
+    renderSites();
   } catch (error) {
     count.textContent = "UNAVAILABLE";
     if (portalState) portalState.textContent = "INDEX OFFLINE";

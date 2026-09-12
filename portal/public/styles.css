@@ -170,7 +170,7 @@ h1 {
   gap: 10px;
   margin-top: 26px;
 }
-.manifesto span {
+.manifesto a {
   padding: 8px 11px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -178,11 +178,25 @@ h1 {
   font: 650 .72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: .15em;
   color: #b6c8df;
+  text-decoration: none;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
-.manifesto span:nth-child(1) { color: #4ce9e6; }
-.manifesto span:nth-child(2) { color: #62aefa; }
-.manifesto span:nth-child(3) { color: #9c78ff; }
-.manifesto span:nth-child(4) { color: #dc55d5; }
+.manifesto a:nth-child(1) { color: #4ce9e6; }
+.manifesto a:nth-child(2) { color: #62aefa; }
+.manifesto a:nth-child(3) { color: #9c78ff; }
+.manifesto a:nth-child(4) { color: #dc55d5; }
+.manifesto a:hover,
+.manifesto a:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(123,183,255,.45);
+  background: rgba(13,25,45,.82);
+  outline: none;
+}
+.manifesto a.active {
+  border-color: currentColor;
+  background: rgba(13,25,45,.94);
+  box-shadow: 0 0 22px color-mix(in srgb, currentColor 20%, transparent);
+}
 
 .section-head {
   display: flex;
