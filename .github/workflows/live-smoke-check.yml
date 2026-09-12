@@ -27,9 +27,13 @@ jobs:
             local method="$1" url="$2"
             : >"$tmp_headers"
             : >"$tmp_body"
-            curl --silent --show-error --max-time 20 \
+            curl --silent --show-error --compressed --max-time 20 \
               --request "$method" --output "$tmp_body" --dump-header "$tmp_headers" \
-              --user-agent "Avkroken-live-smoke/1.0" "$url" || return 90
+              --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36" \
+              --header "Accept: text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8" \
+              --header "Accept-Language: sv-SE,sv;q=0.9,en;q=0.7" \
+              --header "Cache-Control: no-cache" \
+              "$url" || return 90
             awk 'toupper($1) ~ /^HTTP\// { code=$2 } END { print code }' "$tmp_headers"
           }
 
