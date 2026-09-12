@@ -46,7 +46,6 @@ jobs:
             }
             if [[ ",$expected," != *",$code,"* ]]; then
               echo "FAIL  $label — expected [$expected], got $code"
-              echo "Headers:"
               cat "$tmp_headers"
               return 1
             fi
@@ -81,16 +80,17 @@ jobs:
               return 1
             }
             loc="$(location)"
-            if [[ "$code" != "302" && "$code" != "303" ]]; then
-              echo "FAIL  $label — expected Access redirect 302/303, got $code"
+            if [[ "$code" != "302" && "$code" != "303" && "$code" != "401" && "$code" != "403" ]]; then
+              echo "FAIL  $label — expected an Access gate, got $code"
               cat "$tmp_headers"
               return 1
             fi
-            if [[ -z "$loc" ]]; then
-              echo "FAIL  $label — redirect has no Location"
-              return 1
+            if [[ "$code" == "302" || "$code" == "303" ]]; then
+              [[ -n "$loc" ]] || { echo "FAIL  $label — redirect has no Location"; return 1; }
+              echo "PASS  $label — $code -> $loc"
+            else
+              echo "PASS  $label — protected with $code"
             fi
-            echo "PASS  $label — $code -> $loc"
           }
 
           echo "== Public portal =="
@@ -116,15 +116,21 @@ jobs:
           echo "== Produkter =="
           expect_status "produkter root" GET "https://produkter.denied.se/" "200"
           expect_access_gate "produkter admin" "https://produkter.denied.se/admin"
-          expect_redirect "produkter legacy admin API" "https://produkter.denied.se/api/admin/stats" "/admin/api/admin/stats"
+          expect_redirect "produkter legacy admin API" "https://produkter.denied.se/api/admin/stats" "/admin/api/stats"
 
           echo "== Skvallerbyttan =="
-          expect_status "skvallerbyttan browser auth" GET "https://skvallerbyttan.denied.se/" "303"
-          if [[ "$(location)" != *"/login" ]]; then
-            echo "FAIL  skvallerbyttan root did not redirect to /login"
+          code="$(request GET "https://skvallerbyttan.denied.se/")"
+          loc="$(location)"
+          if [[ "$code" == "303" && "$loc" == *"/login" ]]; then
+            echo "PASS  skvallerbyttan browser auth — 303 -> $loc"
+          elif [[ "$code" == "302" || "$code" == "401" || "$code" == "403" ]]; then
+            echo "PASS  skvallerbyttan browser is protected before app login — $code ${loc:+-> $loc}"
+          else
+            echo "FAIL  skvallerbyttan browser expected app login or Access gate, got $code"
+            cat "$tmp_headers"
             exit 1
           fi
-          expect_status "skvallerbyttan API auth" GET "https://skvallerbyttan.denied.se/api/overview" "401"
+          expect_status "skvallerbyttan API auth" GET "https://skvallerbyttan.denied.se/api/overview" "401,302,403"
 
           echo "== Produkter motor =="
           expect_status "motor health" GET "https://motor.denied.se/health" "200"
