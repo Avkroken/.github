@@ -2,6 +2,8 @@
 
 Den här standarden gör Cloudflare Access-regler återanvändbara mellan appar på `*.denied.se`.
 
+Aktuell klassificering av domäner och undantag finns i [Access-inventeringen](./access-inventory.md).
+
 ## Publik yta
 
 Normala webb- och API-vägar är publika om appen är avsedd att vara publik.
