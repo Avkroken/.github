@@ -1,5 +1,6 @@
 const grid = document.querySelector("#site-grid");
 const count = document.querySelector("#site-count");
+const portalState = document.querySelector("#portal-state");
 
 const escapeHtml = (value = "") =>
   String(value).replace(/[&<>"']/g, c => ({
@@ -16,20 +17,44 @@ function accentColor(accent) {
   }[accent] || "rgba(45,155,255,.18)";
 }
 
+function formatSize(kb) {
+  if (!Number.isFinite(kb) || kb < 0) return "—";
+  if (kb < 1024) return `${Math.max(1, Math.round(kb))} KB`;
+  return `${(kb / 1024).toFixed(kb >= 10240 ? 0 : 1)} MB`;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("sv-SE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  }).format(date);
+}
+
+function metric(label, value) {
+  return `
+    <div class="metric">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>`;
+}
+
 async function loadSites() {
   try {
     const response = await fetch("/api/sites", { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const sites = await response.json();
 
-    count.textContent = `${sites.length} PUBLIC ENDPOINT${sites.length === 1 ? "" : "S"}`;
+    count.textContent = `${sites.length} ENDPOINT${sites.length === 1 ? "" : "S"}`;
+    if (portalState) portalState.textContent = `${sites.length} LIVE`;
 
     if (!sites.length) {
       grid.innerHTML = `
         <div class="empty">
-          <strong>Inga projekt är publicerade i portalen ännu.</strong>
-          Lägg ämnet <code>avkroken-portal</code> på ett publikt Avkroken-repo
-          och fyll i repots <code>Website</code>-fält.
+          <strong>Inga projekt publicerade ännu.</strong>
         </div>`;
       return;
     }
@@ -45,15 +70,20 @@ async function loadSites() {
           <span class="arrow" aria-hidden="true">↗</span>
         </div>
         <h3>${escapeHtml(site.name)}</h3>
-        <p>${escapeHtml(site.description || "Publikt Avkroken-projekt.")}</p>
+        <p>${escapeHtml(site.description || "Avkroken-projekt.")}</p>
         <div class="host">${escapeHtml(site.host)}</div>
+        <div class="metrics" aria-label="Projektdata">
+          ${metric("STACK", site.language || "—")}
+          ${metric("REPO", formatSize(site.repoSizeKb))}
+          ${metric("UPDATED", formatDate(site.updatedAt))}
+        </div>
       </a>`).join("");
   } catch (error) {
-    count.textContent = "GITHUB ERROR";
+    count.textContent = "UNAVAILABLE";
+    if (portalState) portalState.textContent = "INDEX OFFLINE";
     grid.innerHTML = `
       <div class="empty">
-        <strong>Kunde inte läsa projektlistan från GitHub.</strong>
-        Försök igen om en stund.
+        <strong>Projektlistan är tillfälligt otillgänglig.</strong>
       </div>`;
     console.error(error);
   }

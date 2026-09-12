@@ -35,7 +35,7 @@ function isPublicHttpUrl(value) {
 
 async function getPortalSites(env, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v1");
+  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v2");
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
@@ -45,7 +45,6 @@ async function getPortalSites(env, ctx) {
     "User-Agent": "Avkroken-Portal-Worker"
   };
 
-  // Optional. The portal works without a token because it only requests public repositories.
   if (env.GITHUB_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_TOKEN}`;
 
   const github = await fetch(GITHUB_API, { headers });
@@ -76,7 +75,11 @@ async function getPortalSites(env, ctx) {
         description: repo.description || "",
         category: categoryFromTopics(repo.topics),
         accent: accentFromTopics(repo.topics),
-        repository: repo.html_url
+        repository: repo.html_url,
+        language: repo.language || null,
+        repoSizeKb: Number.isFinite(repo.size) ? repo.size : null,
+        updatedAt: repo.pushed_at || repo.updated_at || null,
+        stars: Number.isFinite(repo.stargazers_count) ? repo.stargazers_count : 0
       };
     });
 

@@ -224,7 +224,7 @@ h1 {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 220px;
+  min-height: 250px;
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -278,7 +278,7 @@ h1 {
 .card:hover .arrow { transform: translate(2px,-2px); color: var(--cyan); }
 
 .card h3 {
-  margin: 44px 0 8px;
+  margin: 34px 0 8px;
   font-size: 1.28rem;
   letter-spacing: .02em;
 }
@@ -297,6 +297,41 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.metrics {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(137, 167, 207, .12);
+}
+
+.metric {
+  min-width: 0;
+}
+
+.metric span,
+.metric strong {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.metric span {
+  margin-bottom: 5px;
+  color: #506984;
+  font: 650 .56rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .12em;
+}
+
+.metric strong {
+  color: #9fb4ce;
+  font: 600 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .empty {
