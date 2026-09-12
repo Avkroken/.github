@@ -1,0 +1,131 @@
+name: Live smoke check
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/live-smoke-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify denied.se production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp_headers="$(mktemp)"
+          tmp_body="$(mktemp)"
+          trap 'rm -f "$tmp_headers" "$tmp_body"' EXIT
+
+          request() {
+            local method="$1" url="$2"
+            : >"$tmp_headers"
+            : >"$tmp_body"
+            curl --silent --show-error --max-time 20 \
+              --request "$method" --output "$tmp_body" --dump-header "$tmp_headers" \
+              --user-agent "Avkroken-live-smoke/1.0" "$url" || return 90
+            awk 'toupper($1) ~ /^HTTP\// { code=$2 } END { print code }' "$tmp_headers"
+          }
+
+          location() {
+            awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); loc=$0} END {print loc}' "$tmp_headers"
+          }
+
+          expect_status() {
+            local label="$1" method="$2" url="$3" expected="$4"
+            local code
+            code="$(request "$method" "$url")" || {
+              echo "FAIL  $label — request error"
+              return 1
+            }
+            if [[ ",$expected," != *",$code,"* ]]; then
+              echo "FAIL  $label — expected [$expected], got $code"
+              echo "Headers:"
+              cat "$tmp_headers"
+              return 1
+            fi
+            echo "PASS  $label — $code"
+          }
+
+          expect_redirect() {
+            local label="$1" url="$2" target_suffix="$3"
+            local code loc
+            code="$(request GET "$url")" || {
+              echo "FAIL  $label — request error"
+              return 1
+            }
+            loc="$(location)"
+            if [[ "$code" != "307" && "$code" != "308" ]]; then
+              echo "FAIL  $label — expected 307/308, got $code"
+              cat "$tmp_headers"
+              return 1
+            fi
+            if [[ "$loc" != *"$target_suffix" ]]; then
+              echo "FAIL  $label — redirect target '$loc' does not end with '$target_suffix'"
+              return 1
+            fi
+            echo "PASS  $label — $code -> $loc"
+          }
+
+          expect_access_gate() {
+            local label="$1" url="$2"
+            local code loc
+            code="$(request GET "$url")" || {
+              echo "FAIL  $label — request error"
+              return 1
+            }
+            loc="$(location)"
+            if [[ "$code" != "302" && "$code" != "303" ]]; then
+              echo "FAIL  $label — expected Access redirect 302/303, got $code"
+              cat "$tmp_headers"
+              return 1
+            fi
+            if [[ -z "$loc" ]]; then
+              echo "FAIL  $label — redirect has no Location"
+              return 1
+            fi
+            echo "PASS  $label — $code -> $loc"
+          }
+
+          echo "== Public portal =="
+          expect_status "avkroken root" GET "https://avkroken.denied.se/" "200"
+          expect_status "access denied page" GET "https://avkroken.denied.se/access-denied/" "200"
+          expect_status "portal API" GET "https://avkroken.denied.se/api/sites" "200"
+
+          echo "== Klarsprak =="
+          expect_status "klarsprak root" GET "https://klarsprak.denied.se/" "200"
+          expect_access_gate "klarsprak admin" "https://klarsprak.denied.se/admin"
+          expect_redirect "klarsprak legacy admin API" "https://klarsprak.denied.se/api/admin/queue" "/admin/api/queue"
+
+          echo "== Dumpen =="
+          expect_status "dumpen root" GET "https://dumpen.denied.se/" "200"
+          expect_access_gate "dumpen admin" "https://dumpen.denied.se/admin"
+          expect_redirect "dumpen legacy objects" "https://dumpen.denied.se/api/objects" "/admin/api/objects"
+
+          echo "== Politiker =="
+          expect_status "politiker root" GET "https://politiker.denied.se/" "200"
+          expect_access_gate "politiker admin" "https://politiker.denied.se/admin"
+          expect_redirect "politiker legacy admin API" "https://politiker.denied.se/api/admin/accounts" "/admin/api/accounts"
+
+          echo "== Produkter =="
+          expect_status "produkter root" GET "https://produkter.denied.se/" "200"
+          expect_access_gate "produkter admin" "https://produkter.denied.se/admin"
+          expect_redirect "produkter legacy admin API" "https://produkter.denied.se/api/admin/stats" "/admin/api/admin/stats"
+
+          echo "== Skvallerbyttan =="
+          expect_status "skvallerbyttan browser auth" GET "https://skvallerbyttan.denied.se/" "303"
+          if [[ "$(location)" != *"/login" ]]; then
+            echo "FAIL  skvallerbyttan root did not redirect to /login"
+            exit 1
+          fi
+          expect_status "skvallerbyttan API auth" GET "https://skvallerbyttan.denied.se/api/overview" "401"
+
+          echo "== Produkter motor =="
+          expect_status "motor health" GET "https://motor.denied.se/health" "200"
+          expect_status "motor requires API key" GET "https://motor.denied.se/jobs/lease" "401"
