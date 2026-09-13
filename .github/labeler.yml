@@ -1,0 +1,13 @@
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+
+enhancement:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**/*.yml"
+          - ".github/**/*.yaml"
+          - "portal/**"
+          - "CODEOWNERS"

@@ -1,25 +1,35 @@
 # Avkroken/.github
 
-Central organization repository for Avkroken.
+Centralt organisationsrepository för Avkroken. Här finns GitHub-standarder som ska vara gemensamma mellan organisationens repositories samt koden för `avkroken.denied.se`.
 
-## Structure
+## Organisationsstandard
 
-- `profile/README.md` — public GitHub organization profile
-- `portal/` — Cloudflare Worker for `https://avkroken.denied.se`
-- `CODEOWNERS` — ownership/review mapping
-- `workflow-templates/` — reserved for shared GitHub Actions templates
+Filerna nedan fungerar som standard för repositories som inte har en egen motsvarighet:
 
-## Portal opt-in
+- `.github/FUNDING.yml` — GitHub Sponsors-konfiguration.
+- `.github/ISSUE_TEMPLATE/` — gemensamma formulär för felrapporter och förbättringsförslag.
+- `SECURITY.md` — gemensam policy för privat rapportering av säkerhetsproblem.
+- `.github/labeler.yml` — labeler-regler för detta repository och bas för repo-specifika regler.
+- `.github/workflows/labeler.yml` — PR-labeler för detta repository.
+- `profile/README.md` — publik organisationsprofil på GitHub.
 
-The portal reads only **public** repositories in the GitHub organization.
+Repo-specifika community health-filer har företräde framför standarderna i detta repository.
 
-To show a repository on `avkroken.denied.se`:
+## Arbetsflöde
 
-1. Set the repository **Website** field to the public website URL.
-2. Add the repository topic `avkroken-portal`.
-3. Use the repository description as the portal card description.
+Ändringar görs på `dev` och förs till `main` via pull request. `main` är repositoryts default branch och den gren som GitHub använder för organisationsstandarderna.
 
-Optional category topics:
+## Portal
+
+Portalen läser endast **publika** repositories i GitHub-organisationen.
+
+För att visa ett repository på `avkroken.denied.se`:
+
+1. Sätt repositoryts **Website**-fält till den publika webbplatsens URL.
+2. Lägg till topic `avkroken-portal`.
+3. Använd repositoryts description som text på portalkortet.
+
+Valfria kategoritopics:
 
 - `portal-project`
 - `portal-tool`
@@ -27,7 +37,7 @@ Optional category topics:
 - `portal-service`
 - `portal-experiment`
 
-Optional accent topics:
+Valfria accenttopics:
 
 - `portal-cyan`
 - `portal-blue`
@@ -35,27 +45,24 @@ Optional accent topics:
 - `portal-magenta`
 - `portal-pink`
 
-Remove `avkroken-portal` to hide the site again. No portal redeploy is required.
-The Worker caches GitHub metadata for 5 minutes.
+Ta bort `avkroken-portal` för att dölja webbplatsen igen. Ingen ny deploy krävs. Workern cachelagrar GitHub-metadata i 5 minuter.
 
-## Privacy boundary
+## Integritetsgräns
 
-The Worker calls GitHub's public organization-repository endpoint with `type=public`.
-Private Cloudflare Tunnel/Access hostnames are not stored in this repository and are
-not discovered by the portal.
+Workern använder GitHubs publika endpoint för organisationsrepositories med `type=public`. Privata Cloudflare Tunnel/Access-hostnames lagras inte i detta repository och upptäcks inte av portalen.
 
 ## Cloudflare
 
-Use `portal/` as the Worker project root.
+Använd `portal/` som Worker-projektets root.
 
-The Worker serves:
+Workern serverar:
+
 - `/`
 - `/avkroken-login-logo.svg`
 - `/access-denied.svg`
 - `/access-denied/`
 - `/api/sites`
 
-No D1, KV or R2 is required.
+D1, KV och R2 behövs inte.
 
-An optional `GITHUB_TOKEN` Worker secret can be added later for authenticated GitHub
-API requests. It is not required for public repository metadata.
+Ett valfritt `GITHUB_TOKEN` kan läggas till som Worker secret för autentiserade GitHub API-anrop. Det behövs inte för publik repository-metadata.
