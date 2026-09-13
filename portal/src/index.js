@@ -24,10 +24,10 @@ function accentFromTopics(topics = []) {
   return "blue";
 }
 
-function isPublicHttpUrl(value) {
+function isPublicHttpsUrl(value) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
+    return url.protocol === "https:";
   } catch {
     return false;
   }
@@ -35,7 +35,7 @@ function isPublicHttpUrl(value) {
 
 async function getPortalSites(env, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v2");
+  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v3");
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
@@ -64,7 +64,7 @@ async function getPortalSites(env, ctx) {
       Array.isArray(repo.topics) &&
       repo.topics.includes(PORTAL_TOPIC) &&
       typeof repo.homepage === "string" &&
-      isPublicHttpUrl(repo.homepage)
+      isPublicHttpsUrl(repo.homepage)
     )
     .map(repo => {
       const url = new URL(repo.homepage);
