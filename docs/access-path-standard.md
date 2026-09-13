@@ -1,24 +1,49 @@
 # Access-standard för Avkrokens webbappar
 
-Den här standarden gör Cloudflare Access-regler återanvändbara mellan appar på `*.denied.se`.
+Grundprincipen är **neka som standard**. Ingenting ska bli publikt bara för att det råkar ligga på en Worker eller under `*.denied.se`.
 
-Aktuell klassificering av domäner och undantag finns i [Access-inventeringen](./access-inventory.md).
+## Två Access-policys
 
-## Publik yta
+### Privat
 
-Normala webb- och API-vägar är publika om appen är avsedd att vara publik.
+Används där en människa måste vara autentiserad innan ytan får nås.
 
 ```text
-/                       publik
-/kontakt                publik
-/api/...                publik om endpointen uttryckligen är publik
+Decision: Allow
+Include: Cloudflare account member
 ```
 
-En app som i sin helhet ska vara privat är ett undantag och ska använda en egen Access-app/policy, normalt `Konto`.
+Samma policy återanvänds för privata appar, adminytor och den globala Worker-fallbacken. Applikationen avgör därefter roller och behörigheter.
 
-## Admin
+### Publik
 
-All operatörs- och administrationsfunktionalitet ska exponeras under:
+Används endast där Internet uttryckligen ska få komma åt ytan.
+
+```text
+Decision: Bypass
+Include: Everyone
+```
+
+`Publik` får **inte** appliceras på `*.denied.se` som wildcard. Varje publik host ska öppnas uttryckligen.
+
+## Global fallback
+
+`All Workers` ska använda policyn `Privat`.
+
+Det gör befintliga och framtida Workers privata tills en mer specifik host eller path uttryckligen öppnas.
+
+`workers.dev` och preview-URL:er ska vara avstängda i repo-konfiguration när de inte behövs.
+
+## Publika webbappar
+
+En publik webbapp öppnas per host, till exempel:
+
+```text
+politiker.denied.se  -> Publik
+produkter.denied.se  -> Publik
+```
+
+Privilegierade delar av en publik app ligger under en faktisk pathname:
 
 ```text
 /admin
@@ -26,47 +51,40 @@ All operatörs- och administrationsfunktionalitet ska exponeras under:
 /admin/api/*
 ```
 
-Cloudflare Access skyddar detta med den återanvändbara policyn `Admin`.
+Dessa paths använder policyn `Privat`.
 
-Privilegierade API-endpoints får inte ha en alternativ fungerande väg utanför `/admin`. Under migrering ska en gammal adminväg redirecta till den kanoniska `/admin/...`-vägen i stället för att fortsätta hantera anropet direkt.
+Det finns ingen separat Access-nivå för "kritisk". Viktiga operationer skyddas av appens egen behörighetskontroll, färsk autentisering, bekräftelse och loggning där det behövs.
 
-Appens egen sessions-, roll- eller tokenkontroll ska behållas som defense in depth även när Cloudflare Access ligger framför.
+Privilegierade API-endpoints får inte ha en alternativ fungerande väg utanför `/admin`. En äldre väg får endast redirecta till den kanoniska `/admin/...`-vägen.
 
-## Kritisk
+## Helprivata appar
 
-Operationer som behöver den hårdaste Access-nivån reserveras för:
+En app som inte har någon publik funktion ska få en hostspecifik Access-app med policyn `Privat`.
 
-```text
-/admin/critical
-/admin/critical/*
-/admin/critical/api/*
-```
-
-Cloudflare Access skyddar detta med policyn `Kritisk`.
-
-Flytta inte en åtgärd hit utan att även kontrollera användarflödet. Interaktiv MFA måste kunna slutföras innan ett API-anrop görs; ett dolt `fetch()`-anrop ska inte vara den första kontakten med en ny kritisk Access-session.
-
-## URL-fragment är inte en säkerhetsgräns
-
-En route som `/#admin` skyddas inte av en Access-regel för `/admin`, eftersom delen efter `#` aldrig skickas till servern eller Cloudflare.
-
-Admin-SPA:er ska därför använda `/admin` som faktisk pathname. Ett fragment kan fortfarande användas internt efter den skyddade pathen, exempelvis:
+Exempel:
 
 ```text
-/admin#accounts
+skvallerbyttan.denied.se -> Privat
 ```
 
-## Undantag
+## Protokollundantag
 
-Publika capability-/engångstoken-endpoints, OAuth-callbacks, webhooks och maskin-till-maskin-endpoints får ligga utanför `/admin` när protokollet kräver det. Undantaget ska vara avsiktligt och endpointen ska ha egen autentisering, begränsad behörighet och lämplig rate limiting.
+OAuth-callbacks, webhooks, capability-/engångstoken-endpoints och maskin-till-maskin-endpoints får vara publikt routbara när protokollet kräver det.
 
-## Migreringsmönster
+De ska då ha egen autentisering eller capability, minsta möjliga behörighet och lämplig rate limiting. Ett protokollundantag är inte skäl att göra hela hosten publik.
 
-För befintliga appar används i första hand ett tunt routinglager:
+## URL-fragment
 
-1. Den nya externa `/admin/...`-vägen skrivs internt om till befintlig handler.
-2. Den gamla privilegierade vägen redirectas med `307` eller `308` till `/admin/...`.
-3. Befintlig affärslogik och app-auth lämnas oförändrad.
-4. Tester verifierar både canonical route, legacy-redirect och publika undantag.
+En route som `/#admin` är aldrig en säkerhetsgräns eftersom delen efter `#` inte skickas till Cloudflare eller servern.
 
-Detta gör att den generiska Access-konfigurationen kan börja skydda appen utan en riskfylld omskrivning av kärnlogiken.
+Admin-SPA:er ska använda `/admin` som faktisk pathname.
+
+## Regel för nya Access-policys
+
+Skapa inte en ny policy om den inte ändrar minst en av följande saker:
+
+1. vilken grupp som får tillgång,
+2. autentiseringsmekanismen,
+3. exponeringstypen på ett fundamentalt sätt.
+
+Om inget av detta ändras ska en befintlig policy återanvändas.

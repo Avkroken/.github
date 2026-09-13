@@ -1,49 +1,53 @@
 # Access-inventering för `denied.se`
 
-Den här filen kompletterar [Access-standarden](./access-path-standard.md) med aktuell klassificering av Avkrokens webb- och Worker-ytor. Den beskriver vilken URL-modell koden ska följa; den ersätter inte kontroll av faktisk Cloudflare-konfiguration.
+Den här filen beskriver vilken exponering varje host ska ha. Grundregeln är **privat tills motsatsen är uttryckligen beslutad**.
 
-## Publika appar med standardiserad adminyta
+## Publika webbappar
 
-Följande appar använder den gemensamma modellen där normal yta är publik och privilegierad trafik ligger under `/admin`:
+Dessa hosts ska vara uttryckligen publika med policyn `Publik` på normal webb-/API-yta. Privilegierade delar ligger under `/admin` och använder policyn `Privat`.
 
-| Host | Repo | Adminmodell |
+| Host | Repo | Exponering |
 | --- | --- | --- |
-| `klarsprak.denied.se` | `Avkroken/Klarsprak` | `/admin`, `/admin/*`, `/admin/api/*` |
-| `xn--klarsprk-g0a.denied.se` | `Avkroken/Klarsprak` | samma Worker och adminmodell |
-| `dumpen.denied.se` | `Avkroken/Dumpen` | `/admin`, `/admin/*`, `/admin/api/*` |
-| `politiker.denied.se` | `Avkroken/Politiker` | `/admin`, `/admin/*`, `/admin/api/*` |
-| `produkter.denied.se` | `Avkroken/Produkter` | `/admin`, `/admin/*`, `/admin/api/*` |
+| `avkroken.denied.se` | `Avkroken/.github` | Publik portal, ingen adminyta |
+| `klarsprak.denied.se` | `Avkroken/Klarsprak` | Publik, `/admin*` privat |
+| `xn--klarsprk-g0a.denied.se` | `Avkroken/Klarsprak` | Alias till Klarspråk, samma modell |
+| `dumpen.denied.se` | `Avkroken/Dumpen` | Publik startsida/protokollyta, `/admin*` privat |
+| `politiker.denied.se` | `Avkroken/Politiker` | Publik, `/admin*` privat |
+| `produkter.denied.se` | `Avkroken/Produkter` | Publik, `/admin*` privat |
 
-Gamla privilegierade API-vägar ska inte fortsätta fungera som alternativa säkerhetsgränser. Under migrering får de bara redirecta till den kanoniska `/admin/...`-vägen.
+`Publik` ska appliceras på dessa hosts uttryckligen. Wildcard `*.denied.se` ska inte användas för publik bypass.
 
-## Publik portal
+Gamla privilegierade API-vägar får inte fortsätta fungera som alternativa säkerhetsgränser; de får endast redirecta till `/admin/...`.
 
-`avkroken.denied.se` är den publika organisationsportalen. Den har ingen adminyta i portal-Workern.
+## Helprivat app
 
-`/access-denied/` är avsedd som gemensam publik felsida för Access-avslag och får därför inte göras beroende av en `/admin`-session eller annan Access-inloggning som kan skapa en redirect-loop.
+`skvallerbyttan.denied.se` ska ha en hostspecifik Access-app med policyn `Privat`.
 
-## Helprivat undantag
+Workerns egen GitHub-inloggning behålls som defense in depth och för applikationsbehörighet.
 
-`skvallerbyttan.denied.se` är klassificerad som en helprivat dashboard och behöver därför inte delas upp i publik `/` plus `/admin`. Workern kräver autentiserad användare för dashboard och API, med undantag för explicita inloggnings-/callbackvägar och hälsokontroller.
+Om tjänsten behöver publika webhook-, callback- eller health-paths ska de öppnas som smala, uttryckliga protokollundantag i stället för att göra hela hosten publik.
 
-Detta är ett avsiktligt undantag enligt standarden. Om tjänsten senare får en publik yta ska privilegierade funktioner först flyttas till `/admin` innan den publika delen öppnas.
+## Maskin-till-maskin
 
-## Maskin-till-maskin-undantag
+`motor.denied.se` i `Avkroken/Produkter` är en operatörsägd M2M-yta.
 
-`motor.denied.se` i `Avkroken/Produkter` är en operatörsägd maskin-till-maskin-yta. Den ska inte flyttas till `/admin` bara för att den är privilegierad, eftersom den inte är ett interaktivt admin-gränssnitt.
+`/health` är avsiktligt publik. Övriga HTTP-endpoints kräver `X-API-Key`. Interna Worker-anrop ska använda Service Bindings där det är möjligt.
 
-Den publika hälsokontrollen är avsiktlig. Övriga HTTP-endpoints ska fortsätta kräva egen autentisering (`X-API-Key`) och begränsad funktionalitet. Interna Worker-anrop bör använda Service Bindings där det är möjligt.
+## Global Worker-standard
 
-## Repon utan webb-/custom-domain-yta
+`All Workers` ska använda policyn `Privat` och fungera som fallback för befintliga och framtida Workers.
 
-`Avkroken/Bastion`, `Avkroken/Pastebinit` och `Avkroken/Docker-idempotent-update` ingår inte i den här URL-migreringen eftersom de inte exponerar någon motsvarande `*.denied.se`-webbapp i nuvarande repo-konfiguration.
+`workers.dev` och preview-URL:er ska vara avstängda när de inte behövs. Ingen ny Worker ska bli publik utan ett uttryckligt beslut och en hostspecifik öppning.
+
+## Repon utan publik webbyta
+
+`Avkroken/Bastion`, `Avkroken/Pastebinit` och `Avkroken/Docker-idempotent-update` har ingen motsvarande publik `*.denied.se`-webbapp i nuvarande repo-konfiguration och ska därför inte få något publikt Access-undantag.
 
 ## Kontroll vid framtida ändringar
 
-När en ny webbapp eller ny privilegierad endpoint läggs till ska den klassificeras här samtidigt som routingen byggs:
+En ny yta klassificeras som en av fyra saker:
 
-- publik funktion → normal route eller `/api/...`
-- interaktiv adminfunktion → `/admin/...` eller `/admin/api/...`
-- kritisk interaktiv funktion → `/admin/critical/...`
-- helprivat app → dokumenterat undantag
-- OAuth, webhook, capability-token eller M2M → dokumenterat protokollundantag med egen autentisering
+- publik webb/API → explicit `Publik` host/path,
+- privat mänsklig yta → `Privat`,
+- M2M/protokollundantag → egen autentisering/capability och minsta möjliga publik path,
+- ej behövd yta → exponera den inte alls.
