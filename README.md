@@ -45,19 +45,21 @@ För att visa ett repository på `avkroken.denied.se`:
 
 Valfria kategoritopics:
 
-- `portal-project`
-- `portal-tool`
-- `portal-docs`
-- `portal-service`
-- `portal-experiment`
+- `project`
+- `tool`
+- `docs`
+- `service`
+- `experiment`
 
 Valfria accenttopics:
 
-- `portal-cyan`
-- `portal-blue`
-- `portal-violet`
-- `portal-magenta`
-- `portal-pink`
+- `cyan`
+- `blue`
+- `violet`
+- `magenta`
+- `pink`
+
+Äldre `portal-*`-varianter för kategori och accent stöds tills vidare för bakåtkompatibilitet, men nya ändringar bör använda de kortare topic-namnen ovan.
 
 Ta bort `avkroken-portal` för att dölja webbplatsen igen. Ingen ny deploy krävs. Workern cachelagrar GitHub-metadata i 5 minuter.
 
