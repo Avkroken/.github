@@ -26,7 +26,6 @@ Följande gäller detta repository och är inte automatiskt organisationsgemensa
 - `.github/workflows/labeler.yml` — PR-labeler för detta repository.
 - `profile/README.md` — publik organisationsprofil på GitHub.
 - `docs/` — publik teknisk dokumentation.
-- `workflow-templates/` — reserverad plats för framtida workflow-mallar.
 
 ## Arbetsflöde
 
@@ -40,7 +39,7 @@ Portalen läser endast **publika** repositories i GitHub-organisationen.
 
 För att visa ett repository på `avkroken.denied.se`:
 
-1. Sätt repositoryts **Website**-fält till den publika webbplatsens URL.
+1. Sätt repositoryts **Website**-fält till den publika webbplatsens **HTTPS-URL** (`https://...`). `http://` publiceras inte i portalen.
 2. Lägg till topic `avkroken-portal`.
 3. Använd repositoryts description som text på portalkortet.
 
