@@ -1,2 +1,8 @@
 blank_issues_enabled: false
-contact_links: []
+contact_links:
+  - name: Frågor och diskussion
+    url: https://github.com/orgs/Avkroken/discussions/categories/q-a
+    about: Ställ frågor och diskutera sådant som inte är ett reproducerbart fel eller ett konkret förbättringsförslag.
+  - name: Idéer
+    url: https://github.com/orgs/Avkroken/discussions/categories/ideas
+    about: Diskutera idéer innan de blir konkreta issues.
