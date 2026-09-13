@@ -35,33 +35,18 @@ Pull requests öppnas mot `main`. Låt repositoryts automatiska kontroller och r
 
 ## Portal
 
-Portalen läser endast **publika** repositories i GitHub-organisationen.
+Portalen läser endast **publika**, ej arkiverade repositories i GitHub-organisationen.
 
 För att visa ett repository på `avkroken.denied.se`:
 
 1. Sätt repositoryts **Website**-fält till den publika webbplatsens **HTTPS-URL** (`https://...`). `http://` publiceras inte i portalen.
-2. Lägg till topic `avkroken-portal`.
-3. Använd repositoryts description som text på portalkortet.
-
-Valfria kategoritopics:
-
-- `project`
-- `tool`
-- `docs`
-- `service`
-- `experiment`
-
-Valfria accenttopics:
-
-- `cyan`
-- `blue`
-- `violet`
-- `magenta`
-- `pink`
+2. Lägg till en kategoritopic: `project`, `tool`, `docs`, `service` eller `experiment`. Kategorin fungerar samtidigt som publiceringsmarkör för portalen.
+3. Lägg valfritt till en accenttopic: `cyan`, `blue`, `violet`, `magenta` eller `pink`.
+4. Använd repositoryts description som text på portalkortet.
 
 Äldre `portal-*`-varianter för kategori och accent stöds tills vidare för bakåtkompatibilitet, men nya ändringar bör använda de kortare topic-namnen ovan.
 
-Ta bort `avkroken-portal` för att dölja webbplatsen igen. Ingen ny deploy krävs. Workern cachelagrar GitHub-metadata i 5 minuter.
+Ta bort kategoritopicen för att dölja webbplatsen från portalen. Ingen ny deploy krävs för rena metadataändringar. Workern cachelagrar GitHub-metadata i 5 minuter.
 
 ## Integritetsgräns
 
