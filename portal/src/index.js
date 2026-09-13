@@ -1,7 +1,6 @@
 const GITHUB_API =
   "https://api.github.com/orgs/Avkroken/repos?type=public&per_page=100&sort=full_name&direction=asc";
 
-const PORTAL_TOPIC = "avkroken-portal";
 const CACHE_SECONDS = 300;
 
 const CATEGORY_TOPICS = {
@@ -17,6 +16,10 @@ const ACCENT_TOPICS = ["cyan", "blue", "violet", "magenta", "pink"];
 function normalizedTopicName(topic) {
   if (typeof topic !== "string") return "";
   return topic.startsWith("portal-") ? topic.slice("portal-".length) : topic;
+}
+
+function hasPortalCategory(topics = []) {
+  return topics.some(topic => Boolean(CATEGORY_TOPICS[normalizedTopicName(topic)]));
 }
 
 function categoryFromTopics(topics = []) {
@@ -46,7 +49,7 @@ function isPublicHttpsUrl(value) {
 
 async function getPortalSites(env, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v4");
+  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v5");
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
@@ -73,7 +76,7 @@ async function getPortalSites(env, ctx) {
       repo.visibility === "public" &&
       repo.archived === false &&
       Array.isArray(repo.topics) &&
-      repo.topics.includes(PORTAL_TOPIC) &&
+      hasPortalCategory(repo.topics) &&
       typeof repo.homepage === "string" &&
       isPublicHttpsUrl(repo.homepage)
     )
