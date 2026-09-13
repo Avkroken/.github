@@ -4,10 +4,36 @@ documentation:
           - "**/*.md"
           - "docs/**"
 
-enhancement:
+github:
   - changed-files:
       - any-glob-to-any-file:
-          - ".github/**/*.yml"
-          - ".github/**/*.yaml"
-          - "portal/**"
+          - ".github/**"
           - "CODEOWNERS"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/package.json"
+          - "**/package-lock.json"
+          - "**/pyproject.toml"
+          - "**/requirements*.txt"
+          - "**/Dockerfile"
+          - "**/Package.swift"
+          - "**/*.csproj"
+          - "**/*.gradle"
+          - "**/*.gradle.kts"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "test/**"
+          - "tests/**"
+          - "**/*Test.*"
+          - "**/*Tests.*"
+
+source:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**"
+          - "app/**"
+          - "lib/**"
