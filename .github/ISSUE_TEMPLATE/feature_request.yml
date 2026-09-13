@@ -12,6 +12,8 @@ body:
       options:
         - label: Jag har sökt efter ett befintligt issue med samma eller liknande förslag.
           required: true
+        - label: Förslaget innehåller inga hemligheter, personuppgifter eller sårbarhetsdetaljer.
+          required: true
   - type: textarea
     id: problem
     attributes:
