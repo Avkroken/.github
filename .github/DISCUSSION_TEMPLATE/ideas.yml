@@ -6,6 +6,13 @@ body:
         Tack för idén. Använd den här kategorin för förslag som ännu inte är tillräckligt konkreta för ett issue.
 
         När ett förslag blir konkret och genomförbart kan det flyttas vidare till ett issue.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Kontroll
+      options:
+        - label: Inlägget innehåller inga hemligheter, personuppgifter eller sårbarhetsdetaljer.
+          required: true
   - type: textarea
     id: need
     attributes:
