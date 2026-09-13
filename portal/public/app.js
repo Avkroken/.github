@@ -21,6 +21,16 @@ function accentColor(accent) {
   }[accent] || "rgba(45,155,255,.18)";
 }
 
+function accentSolid(accent) {
+  return {
+    cyan: "#24e7e8",
+    blue: "#2d9bff",
+    violet: "#7757ff",
+    magenta: "#d51dcb",
+    pink: "#ff438b"
+  }[accent] || "#2d9bff";
+}
+
 function formatSize(kb) {
   if (!Number.isFinite(kb) || kb < 0) return "—";
   if (kb < 1024) return `${Math.max(1, Math.round(kb))} KB`;
@@ -95,7 +105,7 @@ function renderSites() {
        href="${escapeHtml(site.url)}"
        target="_blank"
        rel="noopener noreferrer"
-       style="--glow:${accentColor(site.accent)}">
+       style="--glow:${accentColor(site.accent)};--accent:${accentSolid(site.accent)}">
       <div class="card-top">
         <span class="badge">${escapeHtml(site.category)}</span>
         <span class="arrow" aria-hidden="true">↗</span>
