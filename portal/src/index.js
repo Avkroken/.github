@@ -4,22 +4,33 @@ const GITHUB_API =
 const PORTAL_TOPIC = "avkroken-portal";
 const CACHE_SECONDS = 300;
 
-function categoryFromTopics(topics = []) {
-  const category = topics.find(t => t.startsWith("portal-") && t !== PORTAL_TOPIC);
-  if (!category) return "Projekt";
+const CATEGORY_TOPICS = {
+  tool: "Verktyg",
+  project: "Projekt",
+  docs: "Dokumentation",
+  service: "Tjänst",
+  experiment: "Experiment"
+};
 
-  return {
-    "portal-tool": "Verktyg",
-    "portal-project": "Projekt",
-    "portal-docs": "Dokumentation",
-    "portal-service": "Tjänst",
-    "portal-experiment": "Experiment"
-  }[category] || "Projekt";
+const ACCENT_TOPICS = ["cyan", "blue", "violet", "magenta", "pink"];
+
+function normalizedTopicName(topic) {
+  if (typeof topic !== "string") return "";
+  return topic.startsWith("portal-") ? topic.slice("portal-".length) : topic;
+}
+
+function categoryFromTopics(topics = []) {
+  for (const topic of topics) {
+    const name = normalizedTopicName(topic);
+    if (CATEGORY_TOPICS[name]) return CATEGORY_TOPICS[name];
+  }
+  return "Projekt";
 }
 
 function accentFromTopics(topics = []) {
-  for (const name of ["cyan", "blue", "violet", "magenta", "pink"]) {
-    if (topics.includes(`portal-${name}`)) return name;
+  for (const topic of topics) {
+    const name = normalizedTopicName(topic);
+    if (ACCENT_TOPICS.includes(name)) return name;
   }
   return "blue";
 }
@@ -35,7 +46,7 @@ function isPublicHttpsUrl(value) {
 
 async function getPortalSites(env, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v3");
+  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v4");
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
