@@ -1,0 +1,70 @@
+name: Python
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Run repository Python CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+
+          case "$GITHUB_REPOSITORY" in
+            Avkroken/Docker-idempotent-update)
+              python -m pip install flake8 pytest PyYAML
+              python -m pip install -r plex-clear-watchlist/requirements.txt
+              flake8 src plex-clear-watchlist --count --select=E9,F63,F7,F82 --show-source --statistics
+              bash tests/test_pr_changes.sh
+              ;;
+
+            Avkroken/Pastebinit)
+              python -m pip install -e '.[test]'
+              pytest
+              ;;
+
+            Avkroken/Produkter)
+              python -m pip install -r requirements.txt
+              python -m pip install -r scraper/requirements.txt
+              pytest tests
+              (
+                cd scraper
+                pytest tests
+              )
+              ;;
+
+            Avkroken/Politiker)
+              python -m pip install -r kontakter/requirements-dev.txt
+              python -m pip install -r kontakter/scraper/requirements.txt
+              python -m pip install -r kontakter/verify/requirements.txt
+              (
+                cd kontakter
+                pytest
+              )
+              ;;
+
+            *)
+              echo "::error::No Python CI profile configured for $GITHUB_REPOSITORY"
+              exit 1
+              ;;
+          esac
