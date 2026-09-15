@@ -31,6 +31,10 @@ jobs:
           python -m pip install --upgrade pip
 
           case "$GITHUB_REPOSITORY" in
+            Avkroken/.github)
+              echo "Source workflow repository; no Python CI profile required."
+              ;;
+
             Avkroken/Docker-idempotent-update)
               python -m pip install flake8 pytest PyYAML
               python -m pip install -r plex-clear-watchlist/requirements.txt
