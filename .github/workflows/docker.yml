@@ -1,0 +1,49 @@
+name: Docker
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Docker builds
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$GITHUB_REPOSITORY" in
+            Avkroken/.github)
+              echo "Source workflow repository; no Docker CI profile required."
+              ;;
+
+            Avkroken/Docker-idempotent-update)
+              docker build --pull -t avkroken/docker-idempotent-update-ci plex-clear-watchlist
+              ;;
+
+            Avkroken/Produkter)
+              docker build --pull -t avkroken/produkter-app-ci .
+              docker build --pull -t avkroken/produkter-scraper-ci scraper
+              ;;
+
+            Avkroken/Politiker)
+              docker compose -f kontakter/docker-compose.yml build --pull
+              ;;
+
+            *)
+              echo "::error::No Docker CI profile configured for $GITHUB_REPOSITORY"
+              exit 1
+              ;;
+          esac
