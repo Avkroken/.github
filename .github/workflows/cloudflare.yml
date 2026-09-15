@@ -1,0 +1,82 @@
+name: Cloudflare
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  cloudflare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Validate Cloudflare projects
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate_locked() {
+            local dir="$1"
+            (
+              cd "$dir"
+              npm ci --ignore-scripts --no-audit --no-fund
+              npx wrangler deploy --dry-run
+            )
+          }
+
+          validate_unlocked() {
+            local dir="$1"
+            (
+              cd "$dir"
+              npm install --ignore-scripts --no-audit --no-fund
+              npx wrangler deploy --dry-run
+            )
+          }
+
+          case "$GITHUB_REPOSITORY" in
+            Avkroken/.github)
+              echo "Source workflow repository; no Cloudflare profile required."
+              ;;
+
+            Avkroken/Klarsprak)
+              validate_locked .
+              ;;
+
+            Avkroken/Dumpen)
+              validate_locked .
+              ;;
+
+            Avkroken/Skvallerbyttan)
+              validate_locked .
+              ;;
+
+            Avkroken/Politiker)
+              validate_locked app
+              validate_unlocked log-archive
+              ;;
+
+            Avkroken/Produkter)
+              validate_locked cloudflare/app
+              validate_locked cloudflare/engine
+              validate_locked cloudflare/processor
+              ;;
+
+            *)
+              echo "::error::No Cloudflare CI profile configured for $GITHUB_REPOSITORY"
+              exit 1
+              ;;
+          esac
