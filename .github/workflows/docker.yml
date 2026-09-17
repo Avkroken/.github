@@ -12,9 +12,6 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
 
     steps:
       - name: Checkout repository
@@ -51,72 +48,48 @@ jobs:
               ;;
           esac
 
-      # Keep reporting and blocking aligned. The previous Produkter workflow
-      # uploaded unfixed LOW/MEDIUM findings to Code Scanning while only
-      # blocking fixable HIGH/CRITICAL findings, which produced green CI runs
-      # alongside remediation issues such as Produkter #502.
-      - name: Scan Produkter app for actionable findings
+      - name: Install verified Trivy for Produkter
         if: ${{ github.repository == 'Avkroken/Produkter' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: avkroken/produkter-app-ci
-          scanners: vuln,secret
-          format: sarif
-          output: trivy-app.sarif
-          ignore-unfixed: true
-          severity: MEDIUM,HIGH,CRITICAL
-          limit-severities-for-sarif: true
-          exit-code: "0"
+        shell: bash
+        env:
+          TRIVY_VERSION: 0.74.0
+          TRIVY_SHA256: 2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/trivy.tar.gz"
+          bin_dir="$RUNNER_TEMP/trivy-bin"
+          curl --fail --silent --show-error --location \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' "$TRIVY_SHA256" "$archive" | sha256sum --check --strict
+          mkdir -p "$bin_dir"
+          tar -xzf "$archive" -C "$bin_dir" trivy
+          echo "$bin_dir" >> "$GITHUB_PATH"
 
-      - name: Upload Produkter app findings
-        if: ${{ always() && github.repository == 'Avkroken/Produkter' && github.event_name != 'merge_group' && hashFiles('trivy-app.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # releases/v4 2026-09-17
-        with:
-          sarif_file: trivy-app.sarif
-          category: trivy-product-describer
-
-      - name: Scan Produkter scraper for actionable findings
-        if: ${{ github.repository == 'Avkroken/Produkter' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: avkroken/produkter-scraper-ci
-          scanners: vuln,secret
-          format: sarif
-          output: trivy-scraper.sarif
-          ignore-unfixed: true
-          severity: MEDIUM,HIGH,CRITICAL
-          limit-severities-for-sarif: true
-          exit-code: "0"
-
-      - name: Upload Produkter scraper findings
-        if: ${{ always() && github.repository == 'Avkroken/Produkter' && github.event_name != 'merge_group' && hashFiles('trivy-scraper.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # releases/v4 2026-09-17
-        with:
-          sarif_file: trivy-scraper.sarif
-          category: trivy-scraper
-
+      # The PR gate and the main-branch Code Scanning refresh intentionally use
+      # the same policy: only fixable MEDIUM/HIGH/CRITICAL findings are actionable.
       - name: Gate Produkter app MEDIUM/HIGH/CRITICAL findings
         if: ${{ github.repository == 'Avkroken/Produkter' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: avkroken/produkter-app-ci
-          scanners: vuln,secret
-          format: table
-          ignore-unfixed: true
-          severity: MEDIUM,HIGH,CRITICAL
-          exit-code: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy image \
+            --scanners vuln,secret \
+            --ignore-unfixed \
+            --severity MEDIUM,HIGH,CRITICAL \
+            --exit-code 1 \
+            --format table \
+            avkroken/produkter-app-ci
 
       - name: Gate Produkter scraper MEDIUM/HIGH/CRITICAL findings
         if: ${{ github.repository == 'Avkroken/Produkter' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: avkroken/produkter-scraper-ci
-          scanners: vuln,secret
-          format: table
-          ignore-unfixed: true
-          severity: MEDIUM,HIGH,CRITICAL
-          exit-code: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy image \
+            --scanners vuln,secret \
+            --ignore-unfixed \
+            --severity MEDIUM,HIGH,CRITICAL \
+            --exit-code 1 \
+            --format table \
+            avkroken/produkter-scraper-ci
