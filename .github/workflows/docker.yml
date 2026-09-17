@@ -5,6 +5,8 @@ on:
     branches: [main]
   merge_group:
     types: [checks_requested]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -12,6 +14,9 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout repository
@@ -47,3 +52,73 @@ jobs:
               exit 1
               ;;
           esac
+
+      # Keep reporting and blocking aligned. The previous Produkter workflow
+      # uploaded unfixed LOW/MEDIUM findings to Code Scanning while only
+      # blocking fixable HIGH/CRITICAL findings, which produced green CI runs
+      # alongside remediation issues such as Produkter #502.
+      - name: Scan Produkter app for actionable findings
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: avkroken/produkter-app-ci
+          scanners: vuln,secret
+          format: sarif
+          output: trivy-app.sarif
+          ignore-unfixed: true
+          severity: MEDIUM,HIGH,CRITICAL
+          limit-severities-for-sarif: true
+          exit-code: "0"
+
+      - name: Upload Produkter app findings
+        if: ${{ always() && github.repository == 'Avkroken/Produkter' && github.event_name != 'merge_group' && hashFiles('trivy-app.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # releases/v4 2026-09-17
+        with:
+          sarif_file: trivy-app.sarif
+          category: trivy-product-describer
+
+      - name: Scan Produkter scraper for actionable findings
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: avkroken/produkter-scraper-ci
+          scanners: vuln,secret
+          format: sarif
+          output: trivy-scraper.sarif
+          ignore-unfixed: true
+          severity: MEDIUM,HIGH,CRITICAL
+          limit-severities-for-sarif: true
+          exit-code: "0"
+
+      - name: Upload Produkter scraper findings
+        if: ${{ always() && github.repository == 'Avkroken/Produkter' && github.event_name != 'merge_group' && hashFiles('trivy-scraper.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # releases/v4 2026-09-17
+        with:
+          sarif_file: trivy-scraper.sarif
+          category: trivy-scraper
+
+      - name: Gate Produkter app MEDIUM/HIGH/CRITICAL findings
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: avkroken/produkter-app-ci
+          scanners: vuln,secret
+          format: table
+          ignore-unfixed: true
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Gate Produkter scraper MEDIUM/HIGH/CRITICAL findings
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: avkroken/produkter-scraper-ci
+          scanners: vuln,secret
+          format: table
+          ignore-unfixed: true
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: "1"
