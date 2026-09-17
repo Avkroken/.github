@@ -47,3 +47,49 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Install verified Trivy for Produkter
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        shell: bash
+        env:
+          TRIVY_VERSION: 0.74.0
+          TRIVY_SHA256: 2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/trivy.tar.gz"
+          bin_dir="$RUNNER_TEMP/trivy-bin"
+          curl --fail --silent --show-error --location \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' "$TRIVY_SHA256" "$archive" | sha256sum --check --strict
+          mkdir -p "$bin_dir"
+          tar -xzf "$archive" -C "$bin_dir" trivy
+          echo "$bin_dir" >> "$GITHUB_PATH"
+
+      # The PR gate and the main-branch Code Scanning refresh intentionally use
+      # the same policy: only fixable MEDIUM/HIGH/CRITICAL findings are actionable.
+      - name: Gate Produkter app MEDIUM/HIGH/CRITICAL findings
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy image \
+            --scanners vuln,secret \
+            --ignore-unfixed \
+            --severity MEDIUM,HIGH,CRITICAL \
+            --exit-code 1 \
+            --format table \
+            avkroken/produkter-app-ci
+
+      - name: Gate Produkter scraper MEDIUM/HIGH/CRITICAL findings
+        if: ${{ github.repository == 'Avkroken/Produkter' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy image \
+            --scanners vuln,secret \
+            --ignore-unfixed \
+            --severity MEDIUM,HIGH,CRITICAL \
+            --exit-code 1 \
+            --format table \
+            avkroken/produkter-scraper-ci
