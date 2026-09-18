@@ -29,7 +29,8 @@ Uppdatera det här dokumentet när någon av följande saker ändras:
 - gränsen mellan centrala reusable workflows och required-workflow entrypoints,
 - hur repo-specifik CI-konfiguration matas in,
 - hur central issue/PR-triage och auto-assignment är kopplad mellan source-repository och callers,
-- hur publik projektdokumentation byggs och publiceras med GitHub Pages,
+- hur publik projektdokumentation upptäcks, renderas och vid behov publiceras med GitHub Pages,
+- hur portalens dokumentationsnav hämtar endast publika repositorykällor,
 - vilka domäner som räknas som `ci_stack` respektive `platform`.
 
 Ersätt föråldrad current-state-text i stället för att lägga nya motsägelser ovanpå den. Historik finns i Git.
@@ -118,20 +119,25 @@ Cross-repository callers must pin the reusable workflow to a full immutable comm
 
 ## Publik projektdokumentation
 
-Publik, versionsstyrd projektdokumentation kan publiceras med GitHub Pages när ett repository behöver mer än en kort README.
+Publik, versionsstyrd projektdokumentation har två separata presentationsvägar med samma canonical källor i repositoryt.
 
 Konventionen är:
 
 - `README.md` är en kort ingång med syfte, primära länkar och utvecklarstart.
-- `docs/` är canonical source för den utförliga publika projektdokumentationen.
+- `docs/` är canonical source för den utförliga publika projektdokumentationen när ett repository har separat dokumentation.
 - `docs/project-context.md` innehåller repositoryts aktuella tekniska kontext när projektet är tillräckligt komplext för att behöva ett sådant dokument.
+- `avkroken.denied.se` är organisationens gemensamma dokumentationsnav och behöver inte GitHub Pages för att visa ett repository.
+- Portalens `/api/docs` upptäcker automatiskt alla publika, oarkiverade repositories i organisationen. Den inventerar Markdown under `docs/` rekursivt och använder repositoryts README som fallback/översikt när den finns.
+- Portalens `/api/docs/content` får endast hämta en fil som redan annonserats i den publika dokumentationskatalogen. Detta är en säkerhetsgräns så att ett eventuellt GitHub-token i Worker-miljön inte kan användas för att exponera privata repositories eller godtyckliga paths.
+- Dokumentationsnavet renderar Markdown i portalens eget tema med repositoryflikar och dokumentflikar. Nya publika repositories och nya Markdown-filer blir därmed upptäckbara utan en manuell portalregistry.
+- GitHub Pages är en valfri separat publiceringsyta för repositories som också behöver en fristående dokumentations-URL.
 - `.github/workflows/pages-docs.yml` i `Avkroken/.github` är den centrala reusable implementationen för Jekyll-baserad Pages-publicering.
-- Ett repository aktiverar publiceringen med en tunn caller-workflow som anropar den centrala workflowen och begränsar tokenbehörigheter till `contents: read`, `pages: write` och `id-token: write`.
+- Ett repository som använder Pages aktiverar publiceringen med en tunn caller-workflow som anropar den centrala workflowen och begränsar tokenbehörigheter till `contents: read`, `pages: write` och `id-token: write`.
 - Pages ska använda GitHub Actions som publishing source. Ingen `gh-pages`-gren behövs.
-- Projektets standardadress är organisationens GitHub Pages project-site, till exempel `https://avkroken.github.io/<repository>/`. En separat custom domain kan införas senare utan att flytta själva applikationens befintliga produktionsdomän.
-- Pages-innehåll är publikt och får inte innehålla secrets, tokens, privata runbooks eller annan konfidentiell information.
+- Projektets standardadress för Pages är organisationens project-site, till exempel `https://avkroken.github.io/<repository>/`. En separat custom domain får inte ersätta en befintlig produktionsdomän för applikationen av bekvämlighet.
+- Allt innehåll som visas i dokumentationsnavet eller publiceras med Pages ska betraktas som publikt och får inte innehålla secrets, tokens, privata runbooks eller annan konfidentiell information.
 
-Den centrala workflowen bygger endast dokumentation från den caller som uttryckligen använder den. Den är inte en ruleset-policy och aktiverar inte Pages automatiskt för övriga repositories.
+Portalens dokumentationsnav aktiverar inte Pages och ändrar inga repositoryinställningar. Den centrala Pages-workflowen bygger endast dokumentation från en caller som uttryckligen använder den. Pages är inte en ruleset-policy.
 
 ## Stack CI
 
