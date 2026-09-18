@@ -102,7 +102,7 @@ function renderSites() {
 
   grid.innerHTML = sites.map(site => {
     const documentationLink = site.documentation
-      ? `<a class="card-action" href="${escapeHtml(site.documentation)}" target="_blank" rel="noopener noreferrer">Dokumentation</a>`
+      ? `<a class="card-action" href="${escapeHtml(site.documentation)}">Dokumentation</a>`
       : "";
 
     return `
