@@ -45,7 +45,7 @@ permissions:
 
 jobs:
   application:
-    name: ${{ inputs.platform }} application
+    name: Xcode application
     runs-on: ${{ inputs.runner }}
     env:
       PLATFORM: ${{ inputs.platform }}
