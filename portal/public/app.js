@@ -100,25 +100,34 @@ function renderSites() {
     return;
   }
 
-  grid.innerHTML = sites.map(site => `
-    <a class="card"
-       href="${escapeHtml(site.url)}"
-       target="_blank"
-       rel="noopener noreferrer"
-       style="--glow:${accentColor(site.accent)};--accent:${accentSolid(site.accent)}">
-      <div class="card-top">
-        <span class="badge">${escapeHtml(site.category)}</span>
-        <span class="arrow" aria-hidden="true">↗</span>
-      </div>
-      <h3>${escapeHtml(site.name)}</h3>
-      <p>${escapeHtml(site.description || "Avkroken-projekt.")}</p>
-      <div class="host">${escapeHtml(site.host)}</div>
-      <div class="metrics" aria-label="Projektdata">
-        ${metric("STACK", site.language || "—")}
-        ${metric("REPO", formatSize(site.repoSizeKb))}
-        ${metric("UPDATED", formatDate(site.updatedAt))}
-      </div>
-    </a>`).join("");
+  grid.innerHTML = sites.map(site => {
+    const documentationLink = site.documentation
+      ? `<a class="card-action" href="${escapeHtml(site.documentation)}" target="_blank" rel="noopener noreferrer">Dokumentation</a>`
+      : "";
+
+    return `
+      <article class="card"
+         style="--glow:${accentColor(site.accent)};--accent:${accentSolid(site.accent)}">
+        <div class="card-top">
+          <span class="badge">${escapeHtml(site.category)}</span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>${escapeHtml(site.name)}</h3>
+        <p>${escapeHtml(site.description || "Avkroken-projekt.")}</p>
+        <div class="host">${escapeHtml(site.host)}</div>
+        <nav class="card-actions" aria-label="Länkar för ${escapeHtml(site.name)}">
+          <a class="card-action primary" href="${escapeHtml(site.url)}" target="_blank" rel="noopener noreferrer">Öppna</a>
+          ${documentationLink}
+          <a class="card-action" href="${escapeHtml(site.repository)}" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="card-action" href="${escapeHtml(site.issues)}" target="_blank" rel="noopener noreferrer">Issues</a>
+        </nav>
+        <div class="metrics" aria-label="Projektdata">
+          ${metric("STACK", site.language || "—")}
+          ${metric("REPO", formatSize(site.repoSizeKb))}
+          ${metric("UPDATED", formatDate(site.updatedAt))}
+        </div>
+      </article>`;
+  }).join("");
 }
 
 function setFocus(focus, { updateHash = true, scroll = true } = {}) {

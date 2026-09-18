@@ -258,11 +258,10 @@ h1 {
   pointer-events: none;
 }
 
-.card:hover, .card:focus-visible {
+.card:hover {
   transform: translateY(-4px);
   border-color: rgba(95,179,255,.42);
   background: linear-gradient(155deg, rgba(15,29,52,.96), rgba(7,13,24,.9));
-  outline: none;
 }
 
 .card-top {
@@ -311,6 +310,46 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.card-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(137, 167, 207, .18);
+  border-radius: 8px;
+  color: #9fb4ce;
+  background: rgba(255,255,255,.025);
+  text-decoration: none;
+  font: 650 .66rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .04em;
+  transition: border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.card-action.primary {
+  color: #eef7ff;
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.card-action:hover,
+.card-action:focus-visible {
+  color: #f5fbff;
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, rgba(255,255,255,.025));
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .metrics {

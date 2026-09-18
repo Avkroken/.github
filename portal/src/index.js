@@ -49,7 +49,7 @@ function isPublicHttpsUrl(value) {
 
 async function getPortalSites(env, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v5");
+  const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v6");
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
@@ -90,6 +90,10 @@ async function getPortalSites(env, ctx) {
         category: categoryFromTopics(repo.topics),
         accent: accentFromTopics(repo.topics),
         repository: repo.html_url,
+        issues: `${repo.html_url}/issues`,
+        documentation: repo.has_pages === true
+          ? `https://avkroken.github.io/${encodeURIComponent(repo.name)}/`
+          : null,
         language: repo.language || null,
         repoSizeKb: Number.isFinite(repo.size) ? repo.size : null,
         updatedAt: repo.pushed_at || repo.updated_at || null,
