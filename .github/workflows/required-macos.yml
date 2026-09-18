@@ -12,7 +12,7 @@ jobs:
   bastion:
     name: Bastion macOS
     if: ${{ github.repository == 'Avkroken/Bastion' }}
-    uses: ./.github/workflows/xcode.yml
+    uses: Avkroken/.github/.github/workflows/xcode.yml@main
     with:
       platform: macos
       runner: macos-26
