@@ -95,12 +95,12 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
 
       - name: Ensure tvOS runtime
-        id: tvos-runtime
+        id: tvos_runtime
         if: ${{ always() && inputs.tvos_scheme != '' && steps.generate.outcome == 'success' }}
         run: xcrun simctl list runtimes available | grep -q tvOS || xcodebuild -downloadPlatform tvOS
 
       - name: Build tvOS application scheme
-        if: ${{ always() && inputs.tvos_scheme != '' && steps.generate.outcome == 'success' && steps.tvos-runtime.outcome == 'success' }}
+        if: ${{ always() && inputs.tvos_scheme != '' && steps.generate.outcome == 'success' && steps.tvos_runtime.outcome == 'success' }}
         run: >
           xcodebuild build
           -skipPackagePluginValidation
