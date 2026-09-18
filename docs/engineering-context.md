@@ -90,6 +90,8 @@ Required workflows used by organization rulesets live in `.github/workflows/requ
 
 Reusable implementation workflows live separately in `.github/workflows/` and are invoked by required entrypoints.
 
+Required workflows that are executed by an organization ruleset against another repository must call reusable workflows through a fully qualified repository reference such as `Avkroken/.github/.github/workflows/swift.yml@main`. Relative reusable-workflow references such as `./.github/workflows/swift.yml` are not valid for this cross-repository ruleset execution model because they resolve in the target repository context.
+
 A workflow that already contains supported ruleset triggers and repository-profile selection may be referenced directly by an organization ruleset without an additional `required-*.yml` wrapper.
 
 Multiple required entrypoints and reusable workflows may coexist. A workflow becomes relevant to a repository only when an active organization ruleset selects that repository.
