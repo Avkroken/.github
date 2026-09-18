@@ -1,4 +1,52 @@
-# Engineering context
+# Avkroken engineering context
+
+Det här dokumentet är Avkrokens levande, versionsstyrda tekniska kontext för arbetsgrenar, Custom Properties, rulesets och central CI-topologi.
+
+**Senast verifierad:** 2026-09-18
+
+## Auktoritet och läsordning
+
+Vid konflikt gäller följande ordning:
+
+1. GitHubs aktiva organisationsinställningar, Custom Properties och rulesets.
+2. Filer på `main` i berörda repositories.
+3. Det här dokumentet.
+4. Äldre issues, pull requests, chattar och agentminnen.
+
+Om punkt 1 eller 2 ändras ska det här dokumentet uppdateras i samma förändring eller i en direkt efterföljande PR. Dokumentet ska beskriva **nuvarande state**, inte samla gamla motstridiga varianter.
+
+Repository-specifik kontext hör hemma i respektive repository, normalt i `docs/project-context.md`.
+
+## Uppdateringskontrakt
+
+Uppdatera det här dokumentet när någon av följande saker ändras:
+
+- arbetsgrensnamn eller PR-flöde,
+- betydelsen av en Custom Property,
+- tillåtna värden i en Custom Property,
+- hur ett ruleset väljer repositories,
+- vilket workflow ett ruleset kräver,
+- gränsen mellan centrala reusable workflows och required-workflow entrypoints,
+- hur repo-specifik CI-konfiguration matas in,
+- vilka domäner som räknas som `ci_stack` respektive `platform`.
+
+Ersätt föråldrad current-state-text i stället för att lägga nya motsägelser ovanpå den. Historik finns i Git.
+
+Planerade men ännu inte aktiva ändringar ska märkas **Planerad** eller **Pågående**.
+
+Det här publika repositoryt får aldrig användas för hemligheter, tokens, privata nycklar eller andra konfidentiella värden.
+
+## Arbetsgrenar och pull requests
+
+Standard för automatiserade och agentdrivna arbetsgrenar:
+
+```text
+{agent}/{feature}/{YYYY-MM-DD}/{HH-mm}-{id}
+```
+
+Utgå från repositoryts aktuella default branch, normalt `main`. Gör implementation i en separat arbetsgren och öppna PR mot `main`.
+
+Force-push och history rewrite används inte.
 
 ## Central GitHub architecture
 
