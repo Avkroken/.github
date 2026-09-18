@@ -451,6 +451,293 @@ footer .shell {
 }
 .button:hover { border-color: rgba(75,231,232,.68); }
 
+
+.view-panel[hidden] {
+  display: none !important;
+}
+
+.portal-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 6px 0 20px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(6, 12, 22, .62);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.portal-tab {
+  appearance: none;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #8fa6c3;
+  background: transparent;
+  font: 700 .72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.portal-tab:hover,
+.portal-tab:focus-visible {
+  color: #e6f1ff;
+  border-color: rgba(91, 170, 255, .32);
+  outline: none;
+}
+
+.portal-tab.active {
+  color: #f5fbff;
+  border-color: rgba(36, 231, 232, .34);
+  background: linear-gradient(135deg, rgba(36,231,232,.12), rgba(119,87,255,.12));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.docs-view {
+  padding-bottom: 86px;
+}
+
+.docs-shell {
+  margin-top: 26px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(155deg, rgba(13,23,41,.86), rgba(6,11,20,.76));
+  box-shadow: var(--shadow);
+}
+
+.docs-repo-tabs,
+.docs-page-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(123,157,202,.28) transparent;
+}
+
+.docs-repo-tabs {
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(3, 8, 16, .44);
+}
+
+.docs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7, 14, 25, .58);
+}
+
+.docs-page-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.docs-links {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.docs-tab,
+.docs-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(137, 167, 207, .18);
+  border-radius: 8px;
+  white-space: nowrap;
+  color: #91a8c6;
+  background: rgba(255,255,255,.025);
+  text-decoration: none;
+  font: 650 .66rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .035em;
+}
+
+button.docs-tab {
+  appearance: none;
+  cursor: pointer;
+}
+
+.docs-tab:hover,
+.docs-tab:focus-visible,
+.docs-link:hover,
+.docs-link:focus-visible {
+  color: #f4f9ff;
+  border-color: rgba(45, 155, 255, .44);
+  background: rgba(45, 155, 255, .08);
+  outline: none;
+}
+
+.docs-tab.active {
+  color: #f8fdff;
+  border-color: rgba(36, 231, 232, .48);
+  background: linear-gradient(135deg, rgba(36,231,232,.12), rgba(119,87,255,.10));
+  box-shadow: 0 0 18px rgba(45,155,255,.08);
+}
+
+.docs-repo-tab.active {
+  border-color: rgba(255, 67, 139, .42);
+  background: linear-gradient(135deg, rgba(45,155,255,.11), rgba(255,67,139,.10));
+}
+
+.docs-content {
+  min-height: 420px;
+  padding: clamp(22px, 4vw, 48px);
+  color: #dce7f6;
+  overflow-wrap: anywhere;
+}
+
+.docs-content > :first-child {
+  margin-top: 0;
+}
+
+.docs-content > :last-child {
+  margin-bottom: 0;
+}
+
+.docs-content h1,
+.docs-content h2,
+.docs-content h3,
+.docs-content h4,
+.docs-content h5,
+.docs-content h6 {
+  color: #f5f8fc;
+  letter-spacing: -.015em;
+  line-height: 1.22;
+}
+
+.docs-content h1 {
+  margin: 0 0 24px;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.docs-content h2 {
+  margin: 38px 0 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(137, 167, 207, .14);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.docs-content h3 {
+  margin: 28px 0 10px;
+  font-size: 1.15rem;
+}
+
+.docs-content p,
+.docs-content li {
+  color: #a9bad0;
+  line-height: 1.72;
+}
+
+.docs-content p {
+  margin: 0 0 16px;
+}
+
+.docs-content ul,
+.docs-content ol {
+  margin: 0 0 20px;
+  padding-left: 1.45rem;
+}
+
+.docs-content li + li {
+  margin-top: 7px;
+}
+
+.docs-content a {
+  color: #69c5ff;
+  text-underline-offset: 3px;
+}
+
+.docs-content a:hover {
+  color: #7df4f0;
+}
+
+.docs-content code {
+  padding: .15em .35em;
+  border: 1px solid rgba(137, 167, 207, .16);
+  border-radius: 5px;
+  color: #d9f7ff;
+  background: rgba(3, 8, 15, .68);
+  font: .9em/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.docs-content pre {
+  margin: 20px 0;
+  padding: 18px;
+  overflow-x: auto;
+  border: 1px solid rgba(137, 167, 207, .16);
+  border-radius: 12px;
+  background: rgba(2, 7, 14, .78);
+}
+
+.docs-content pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d7e8fb;
+}
+
+.docs-content blockquote {
+  margin: 20px 0;
+  padding: 4px 0 4px 18px;
+  border-left: 3px solid rgba(36, 231, 232, .48);
+}
+
+.docs-content blockquote p {
+  margin: 0;
+  color: #a9c3da;
+}
+
+.docs-content table {
+  width: 100%;
+  margin: 20px 0 28px;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.docs-content th,
+.docs-content td {
+  padding: 10px 12px;
+  border: 1px solid rgba(137, 167, 207, .15);
+  text-align: left;
+  vertical-align: top;
+  min-width: 130px;
+}
+
+.docs-content th {
+  color: #dbeafe;
+  background: rgba(45, 155, 255, .07);
+  font: 700 .7rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.docs-content td {
+  color: #9fb3ca;
+}
+
+.docs-content hr {
+  margin: 32px 0;
+  border: 0;
+  border-top: 1px solid rgba(137, 167, 207, .16);
+}
+
+.docs-content .empty {
+  margin: 0;
+}
+
 @media (max-width: 860px) {
   .hero { grid-template-columns: 1fr; }
   .logo-wrap { width: min(330px, 82vw); margin-inline: auto; }
@@ -467,4 +754,29 @@ footer .shell {
   .grid { grid-template-columns: 1fr; }
   .section-head { align-items: start; flex-direction: column; }
   h1 { letter-spacing: .045em; }
+}
+
+
+@media (max-width: 720px) {
+  .portal-tabs {
+    width: 100%;
+  }
+
+  .portal-tab {
+    flex: 1 1 0;
+  }
+
+  .docs-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .docs-links {
+    justify-content: flex-start;
+  }
+
+  .docs-content {
+    min-height: 340px;
+    padding: 20px 16px 28px;
+  }
 }
