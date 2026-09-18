@@ -1,0 +1,38 @@
+name: Swift reusable
+
+on:
+  workflow_call:
+    inputs:
+      package_path:
+        description: Swift package directory relative to the repository root.
+        required: false
+        type: string
+        default: .
+      os_matrix:
+        description: JSON array of GitHub-hosted runners used for SwiftPM validation.
+        required: false
+        type: string
+        default: '["ubuntu-latest","macos-latest"]'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Swift package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os_matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build
+        working-directory: ${{ inputs.package_path }}
+        run: swift build -v
+      - name: Run tests
+        working-directory: ${{ inputs.package_path }}
+        run: swift test -v
