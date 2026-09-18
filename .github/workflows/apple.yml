@@ -74,10 +74,6 @@ jobs:
         id: generate
         run: xcodegen generate --spec "${{ inputs.xcodegen_spec }}"
 
-      - name: Ensure tvOS runtime
-        if: ${{ inputs.tvos_scheme != '' && steps.generate.outcome == 'success' }}
-        run: xcrun simctl list runtimes available | grep -q tvOS || xcodebuild -downloadPlatform tvOS
-
       - name: Build iOS application scheme
         if: ${{ inputs.ios_scheme != '' && steps.generate.outcome == 'success' }}
         run: >
@@ -98,8 +94,13 @@ jobs:
           -destination "${{ inputs.macos_destination }}"
           CODE_SIGNING_ALLOWED=NO
 
-      - name: Build tvOS application scheme
+      - name: Ensure tvOS runtime
+        id: tvos-runtime
         if: ${{ always() && inputs.tvos_scheme != '' && steps.generate.outcome == 'success' }}
+        run: xcrun simctl list runtimes available | grep -q tvOS || xcodebuild -downloadPlatform tvOS
+
+      - name: Build tvOS application scheme
+        if: ${{ always() && inputs.tvos_scheme != '' && steps.generate.outcome == 'success' && steps.tvos-runtime.outcome == 'success' }}
         run: >
           xcodebuild build
           -skipPackagePluginValidation
