@@ -2,6 +2,10 @@
 
 Centralt organisationsrepository för Avkroken. Här finns gemensamma GitHub-standarder, organisationsprofilen och koden för `avkroken.denied.se`.
 
+## Levande teknik- och styrningskontext
+
+[`docs/engineering-context.md`](docs/engineering-context.md) är den versionsstyrda current-state-bilden för arbetsgrenar, Custom Properties, rulesets och central CI-arkitektur. Uppdatera den när motsvarande GitHub-konfiguration eller workflow-topologi ändras.
+
 ## Ärvda organisationsstandarder
 
 Följande filer fungerar som standard för organisationens publika repositories när ett repository inte har en egen motsvarighet:
@@ -29,7 +33,7 @@ Följande gäller detta repository och är inte automatiskt organisationsgemensa
 
 ## Arbetsflöde
 
-Utgå från den aktuella `main`-grenen och gör ändringar i en separat arbetsgren. Automatiserade arbetsgrenar använder normalt namnformen `codex/{feature}/{date}/{time}`.
+Utgå från den aktuella `main`-grenen och gör ändringar i en separat arbetsgren. Automatiserade och agentdrivna arbetsgrenar använder namnformen `{agent}/{feature}/{YYYY-MM-DD}/{HH-mm}-{id}`.
 
 Pull requests öppnas mot `main`. Låt repositoryts automatiska kontroller och regler bli gröna före merge. Arbetsgrenar raderas efter merge.
 
