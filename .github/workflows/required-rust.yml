@@ -12,7 +12,7 @@ jobs:
   bastion:
     name: Bastion Rust
     if: ${{ github.repository == 'Avkroken/Bastion' }}
-    uses: ./.github/workflows/rust.yml
+    uses: Avkroken/.github/.github/workflows/rust.yml@main
     with:
       working_directory: LinuxApp
       system_packages: libgtk-4-dev libadwaita-1-dev libvte-2.91-gtk4-dev libgtksourceview-5-dev pkg-config
