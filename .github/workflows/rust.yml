@@ -22,6 +22,8 @@ jobs:
   build:
     name: Rust build and test
     runs-on: ubuntu-latest
+    env:
+      SYSTEM_PACKAGES: ${{ inputs.system_packages }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,8 +32,9 @@ jobs:
       - name: Install system dependencies
         if: ${{ inputs.system_packages != '' }}
         run: |
+          read -r -a packages <<< "$SYSTEM_PACKAGES"
           sudo apt-get update
-          sudo apt-get install --yes ${{ inputs.system_packages }}
+          sudo apt-get install --yes "${packages[@]}"
       - name: Set up Rust toolchain
         run: rustup override set stable
       - name: Build
