@@ -28,6 +28,7 @@ Uppdatera det här dokumentet när någon av följande saker ändras:
 - vilket workflow ett ruleset kräver,
 - gränsen mellan centrala reusable workflows och required-workflow entrypoints,
 - hur repo-specifik CI-konfiguration matas in,
+- hur central issue/PR-triage och auto-assignment är kopplad mellan source-repository och callers,
 - vilka domäner som räknas som `ci_stack` respektive `platform`.
 
 Ersätt föråldrad current-state-text i stället för att lägga nya motsägelser ovanpå den. Historik finns i Git.
@@ -91,6 +92,24 @@ Reusable implementation workflows live separately in `.github/workflows/` and ar
 A workflow that already contains supported ruleset triggers and repository-profile selection may be referenced directly by an organization ruleset without an additional `required-*.yml` wrapper.
 
 Multiple required entrypoints and reusable workflows may coexist. A workflow becomes relevant to a repository only when an active organization ruleset selects that repository.
+
+## Repository triage automation
+
+Review routing and assignee routing are separate concerns.
+
+`CODEOWNERS` remains the native ownership and reviewer-routing map. In `Avkroken/.github`, the current catch-all owner is `@blixten85`; this auto-assignment change does not modify `CODEOWNERS`.
+
+`.github/workflows/reusable-auto-assign.yml` is the central assignee implementation. It receives an issue or pull request number, uses the caller repository's `GITHUB_TOKEN`, and calls GitHub's issue-assignee API with only `issues: write`. It does not use a PAT, GitHub App installation token, or third-party Action.
+
+`.github/workflows/auto-assign.yml` is the repository-local caller for `Avkroken/.github`. It triggers when issues or pull requests are opened or reopened and calls the reusable implementation. Pull requests use `pull_request_target`; the workflow does not check out or execute pull-request code.
+
+The special `.github` repository does not automatically propagate executable workflow files to every organization repository. To enable the same policy in another repository, that repository needs a thin caller workflow with `issues: write` that calls:
+
+```yaml
+uses: Avkroken/.github/.github/workflows/reusable-auto-assign.yml@main
+```
+
+This central change activates auto-assignment only for `Avkroken/.github`. Organization-wide rollout is a separate repository-by-repository change unless a different event-driven integration is intentionally adopted.
 
 ## Stack CI
 
