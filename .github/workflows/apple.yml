@@ -57,6 +57,16 @@ jobs:
   applications:
     name: Apple applications
     runs-on: ${{ inputs.runner }}
+    env:
+      PACKAGE_PATH: ${{ inputs.package_path }}
+      XCODEGEN_SPEC: ${{ inputs.xcodegen_spec }}
+      PROJECT_PATH: ${{ inputs.project_path }}
+      IOS_SCHEME: ${{ inputs.ios_scheme }}
+      MACOS_SCHEME: ${{ inputs.macos_scheme }}
+      TVOS_SCHEME: ${{ inputs.tvos_scheme }}
+      IOS_DESTINATION: ${{ inputs.ios_destination }}
+      MACOS_DESTINATION: ${{ inputs.macos_destination }}
+      TVOS_DESTINATION: ${{ inputs.tvos_destination }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,23 +75,23 @@ jobs:
 
       - name: Validate Apple app SwiftPM manifest
         if: ${{ inputs.package_path != '' }}
-        run: swift package dump-package --package-path "${{ inputs.package_path }}" > /dev/null
+        run: swift package dump-package --package-path "$PACKAGE_PATH" > /dev/null
 
       - name: Install XcodeGen
         run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
 
       - name: Generate Xcode project
         id: generate
-        run: xcodegen generate --spec "${{ inputs.xcodegen_spec }}"
+        run: xcodegen generate --spec "$XCODEGEN_SPEC"
 
       - name: Build iOS application scheme
         if: ${{ inputs.ios_scheme != '' && steps.generate.outcome == 'success' }}
         run: >
           xcodebuild build
           -skipPackagePluginValidation
-          -project "${{ inputs.project_path }}"
-          -scheme "${{ inputs.ios_scheme }}"
-          -destination "${{ inputs.ios_destination }}"
+          -project "$PROJECT_PATH"
+          -scheme "$IOS_SCHEME"
+          -destination "$IOS_DESTINATION"
           CODE_SIGNING_ALLOWED=NO
 
       - name: Build macOS application scheme
@@ -89,9 +99,9 @@ jobs:
         run: >
           xcodebuild build
           -skipPackagePluginValidation
-          -project "${{ inputs.project_path }}"
-          -scheme "${{ inputs.macos_scheme }}"
-          -destination "${{ inputs.macos_destination }}"
+          -project "$PROJECT_PATH"
+          -scheme "$MACOS_SCHEME"
+          -destination "$MACOS_DESTINATION"
           CODE_SIGNING_ALLOWED=NO
 
       - name: Ensure tvOS runtime
@@ -104,7 +114,7 @@ jobs:
         run: >
           xcodebuild build
           -skipPackagePluginValidation
-          -project "${{ inputs.project_path }}"
-          -scheme "${{ inputs.tvos_scheme }}"
-          -destination "${{ inputs.tvos_destination }}"
+          -project "$PROJECT_PATH"
+          -scheme "$TVOS_SCHEME"
+          -destination "$TVOS_DESTINATION"
           CODE_SIGNING_ALLOWED=NO
