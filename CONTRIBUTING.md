@@ -18,7 +18,7 @@ Tack för att du vill bidra till Avkrokens projekt. Den här guiden gäller som 
 5. Öppna en pull request mot `main` och beskriv vad som ändras och varför.
 6. Låt automatiska kontroller och repository-regler bli gröna innan merge.
 
-När automatiserade verktyg används för att skapa arbetsgrenar används normalt namnformen `codex/{feature}/{date}/{time}`.
+När automatiserade verktyg eller kodagenter skapar arbetsgrenar används namnformen `{agent}/{feature}/{YYYY-MM-DD}/{HH-mm}-{id}`.
 
 ## Pull requests
 
@@ -48,5 +48,7 @@ Om känslig information råkar publiceras ska den behandlas som komprometterad o
 Genom att bidra intygar du att du har rätt att skicka in ändringen. Bidrag omfattas av repositoryts licens och övriga tillämpliga villkor.
 
 ## Repository-specifika regler
+
+Läs även [`docs/engineering-context.md`](docs/engineering-context.md) för organisationens levande tekniska kontext kring arbetsgrenar, Custom Properties, rulesets och central CI.
 
 Om ett repository innehåller en lokal `CONTRIBUTING.md` gäller den före den här organisationsgemensamma standarden.
