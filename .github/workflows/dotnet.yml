@@ -56,6 +56,8 @@ jobs:
     name: Windows application
     if: ${{ inputs.application_project != '' }}
     runs-on: windows-2025
+    env:
+      APPLICATION_PROJECT: ${{ inputs.application_project }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,4 +68,4 @@ jobs:
         with:
           dotnet-version: ${{ inputs.dotnet_version }}
       - name: Build Windows application
-        run: dotnet build "${{ inputs.application_project }}" -c Release -p:Platform=x64
+        run: dotnet build "$env:APPLICATION_PROJECT" -c Release -p:Platform=x64
