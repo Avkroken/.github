@@ -12,7 +12,7 @@ jobs:
   bastion:
     name: Bastion Gradle
     if: ${{ github.repository == 'Avkroken/Bastion' }}
-    uses: ./.github/workflows/gradle.yml
+    uses: Avkroken/.github/.github/workflows/gradle.yml@main
     with:
       working_directory: Android
       java_version: '17'
