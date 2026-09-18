@@ -29,6 +29,7 @@ Uppdatera det här dokumentet när någon av följande saker ändras:
 - gränsen mellan centrala reusable workflows och required-workflow entrypoints,
 - hur repo-specifik CI-konfiguration matas in,
 - hur central issue/PR-triage och auto-assignment är kopplad mellan source-repository och callers,
+- hur publik projektdokumentation byggs och publiceras med GitHub Pages,
 - vilka domäner som räknas som `ci_stack` respektive `platform`.
 
 Ersätt föråldrad current-state-text i stället för att lägga nya motsägelser ovanpå den. Historik finns i Git.
@@ -112,6 +113,23 @@ uses: Avkroken/.github/.github/workflows/reusable-auto-assign.yml@960eec40fe1d6e
 Cross-repository callers must pin the reusable workflow to a full immutable commit SHA. Mutable refs such as `@main` are not permitted because CodeQL flags them as an unpinned reusable workflow. When the central implementation changes, validate the new central commit first and then update caller SHAs through normal repository PRs.
 
 `Avkroken/.github` uses its local reusable workflow path. Other repositories activate auto-assignment through their repo-local caller workflow.
+
+## Publik projektdokumentation
+
+Publik, versionsstyrd projektdokumentation kan publiceras med GitHub Pages när ett repository behöver mer än en kort README.
+
+Konventionen är:
+
+- `README.md` är en kort ingång med syfte, primära länkar och utvecklarstart.
+- `docs/` är canonical source för den utförliga publika projektdokumentationen.
+- `docs/project-context.md` innehåller repositoryts aktuella tekniska kontext när projektet är tillräckligt komplext för att behöva ett sådant dokument.
+- `.github/workflows/pages-docs.yml` i `Avkroken/.github` är den centrala reusable implementationen för Jekyll-baserad Pages-publicering.
+- Ett repository aktiverar publiceringen med en tunn caller-workflow som anropar den centrala workflowen och begränsar tokenbehörigheter till `contents: read`, `pages: write` och `id-token: write`.
+- Pages ska använda GitHub Actions som publishing source. Ingen `gh-pages`-gren behövs.
+- Projektets standardadress är organisationens GitHub Pages project-site, till exempel `https://avkroken.github.io/<repository>/`. En separat custom domain kan införas senare utan att flytta själva applikationens befintliga produktionsdomän.
+- Pages-innehåll är publikt och får inte innehålla secrets, tokens, privata runbooks eller annan konfidentiell information.
+
+Den centrala workflowen bygger endast dokumentation från den caller som uttryckligen använder den. Den är inte en ruleset-policy och aktiverar inte Pages automatiskt för övriga repositories.
 
 ## Stack CI
 
