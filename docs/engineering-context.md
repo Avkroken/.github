@@ -106,10 +106,12 @@ Review routing and assignee routing are separate concerns.
 The special `.github` repository does not automatically propagate executable workflow files to every organization repository. To enable the same policy in another repository, that repository needs a thin caller workflow with `issues: write` that calls:
 
 ```yaml
-uses: Avkroken/.github/.github/workflows/reusable-auto-assign.yml@main
+uses: Avkroken/.github/.github/workflows/reusable-auto-assign.yml@960eec40fe1d6e5be88da27f7b6b75adff64f4fb
 ```
 
-This central change activates auto-assignment only for `Avkroken/.github`. Organization-wide rollout is a separate repository-by-repository change unless a different event-driven integration is intentionally adopted.
+Cross-repository callers must pin the reusable workflow to a full immutable commit SHA. Mutable refs such as `@main` are not permitted because CodeQL flags them as an unpinned reusable workflow. When the central implementation changes, validate the new central commit first and then update caller SHAs through normal repository PRs.
+
+`Avkroken/.github` uses its local reusable workflow path. Other repositories activate auto-assignment through their repo-local caller workflow.
 
 ## Stack CI
 
