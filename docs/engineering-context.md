@@ -1,6 +1,6 @@
 # Avkroken engineering context
 
-Det här dokumentet är Avkrokens levande, versionsstyrda tekniska kontext för sådant som annars lätt blir gammalt i chattar eller agentminne: arbetsgrenar, Custom Properties, rulesets och CI-topologi.
+Det här dokumentet är Avkrokens levande, versionsstyrda tekniska kontext för arbetsgrenar, Custom Properties, rulesets och central CI-topologi.
 
 **Senast verifierad:** 2026-09-18
 
@@ -44,195 +44,133 @@ Standard för automatiserade och agentdrivna arbetsgrenar:
 {agent}/{feature}/{YYYY-MM-DD}/{HH-mm}-{id}
 ```
 
-Exempel:
-
-```text
-chatgpt/project-memory/2026-09-18/13-34-org
-```
-
 Utgå från repositoryts aktuella default branch, normalt `main`. Gör implementation i en separat arbetsgren och öppna PR mot `main`.
 
-Force-push används inte om det inte uttryckligen behövs och har godkänts för den aktuella uppgiften.
+Force-push och history rewrite används inte.
 
-## Custom Properties
+## Central GitHub architecture
 
-Custom Properties beskriver repositories och används bland annat som selectors för organisations-rulesets. Skapa inte en ny property per CI-workflow när ett befintligt klassificeringsfält redan uttrycker rätt semantik.
+`Avkroken/.github` is the organization-level source of truth for reusable CI implementation and ruleset-required workflow entrypoints.
 
-### `ci_stack`
+Repositories are selected into organization rulesets through GitHub Custom Properties. The current conventions are:
 
-**Betydelse:** build/runtime stacks som används av repositoryts CI.
+- `ci_stack` selects build/runtime stacks such as `swift`, `rust`, `dotnet`, `gradle`, `node`, and `python`.
+- `platform` selects build/deployment platforms such as `windows`, `linux`, `android`, `apple`, `ios`, `macos`, `tvos`, `docker`, and `cloudflare`.
 
-Kända och använda värden i nuvarande organisation:
+Rulesets target the default branch and must not use bypass actors.
 
-- `swift`
-- `rust`
-- `dotnet`
-- `gradle`
-- `node`
+## Policy activation model
 
-Ett repository kan behöva flera stackvärden när det innehåller flera byggkedjor.
+Workflow files in `Avkroken/.github` are passive configuration. Their presence does not apply CI policy to any repository.
 
-`ci_stack` ska beskriva språk/build-ekosystem, inte distributions- eller målplattformar.
+Organization-level rulesets are the policy binding layer. A ruleset selects repositories through Custom Properties and requires the corresponding workflow from `Avkroken/.github`.
 
-Exempel på aktiv selector:
+Custom Properties are the repository assignment layer. Adding or removing a property value from a repository adds or removes the matching organization ruleset without changing repository files.
 
-```text
-main-swift
-  default branch
-  repository property: ci_stack = swift
-```
+The standard rollout order for a new CI policy is:
 
-### `platform`
+1. Add the central workflow file.
+2. Verify the workflow independently.
+3. Create the organization ruleset that requires that workflow and selects repositories by Custom Property.
+4. Assign the matching Custom Property value to each repository that needs the policy.
 
-**Betydelse:** plattformar som används av repositoryts builds och deployments.
+Existing workflows do not need to be renamed, deleted, wrapped, or compatibility-migrated when a new policy is added. Old and new central workflows may coexist safely because only active organization rulesets select and enforce them.
 
-GitHub-konfiguration verifierad 2026-09-18:
+When retiring a policy, reverse the binding before deleting implementation:
 
-- typ: Multi select
-- required: disabled
-- repository actors may set property: disabled
-- tillåtna värden:
-  - `docs`
-  - `windows`
-  - `linux`
-  - `android`
-  - `apple`
-  - `docker`
-  - `cloudflare`
+1. Remove the matching Custom Property value from affected repositories.
+2. Remove or disable the organization ruleset when no repositories need it.
+3. Delete the central workflow only when it is no longer referenced.
 
-**Apple hör till `platform`, inte `ci_stack`.**
+## Workflow layers
 
-Samma princip gäller övriga plattformsbegrepp: klassificera efter vad värdet faktiskt betyder i stället för vilket workflow som råkar köra.
+Required workflows used by organization rulesets live in `.github/workflows/required-*.yml` when a thin policy entrypoint is needed. They contain supported ruleset triggers and select the repository profile.
 
-## Ruleset-modell
+Reusable implementation workflows live separately in `.github/workflows/` and are invoked by required entrypoints.
 
-### Gemensamt `main`
+A workflow that already contains supported ruleset triggers and repository-profile selection may be referenced directly by an organization ruleset without an additional `required-*.yml` wrapper.
 
-Det generella `main`-rulesetet innehåller organisationsgemensamma skydd och kvalitetskrav för default branch.
+Multiple required entrypoints and reusable workflows may coexist. A workflow becomes relevant to a repository only when an active organization ruleset selects that repository.
 
-Domänspecifika CI-krav hålls i separata rulesets så att de kan väljas via Custom Properties.
+## Stack CI
 
-### Aktiva CI-rulesets
+The reusable stack implementations are:
 
-Verifierat mot Bastion 2026-09-18:
+- `swift.yml` — SwiftPM build and test.
+- `rust.yml` — Rust workspace build and test.
+- `dotnet.yml` — .NET tests and optional Windows application build.
+- `gradle.yml` — Gradle build and optional dependency submission.
 
-- `main-swift`
-- `main-rust`
-- `main-dotnet`
-- `main-gradle`
+The matching ruleset entrypoints are:
 
-De riktar sig mot default branch och kräver respektive workflow när repositoryt matchar selector-villkoret.
+- `required-swift.yml`
+- `required-rust.yml`
+- `required-dotnet.yml`
+- `required-gradle.yml`
 
-Exporten av `main-swift` visar den etablerade modellen:
+Each entrypoint contains the current repository-specific profile and fails closed when a selected repository has no configured profile.
 
-```text
-default branch
-+ ci_stack = swift
-+ required workflow .github/workflows/swift.yml
-```
+The Gradle reusable workflow declares a dependency-submission job with `contents: write`. Therefore `required-gradle.yml` must expose that permission ceiling to the reusable workflow even though ruleset PR/merge-group execution passes `dependency_submission: false`. The actual Gradle build job remains explicitly scoped to `contents: read`.
 
-### Apple
+Node and Python are already direct ruleset workflows rather than reusable-only implementations:
 
-**Planerad:** `main-apple`
+- `node.yml` is selected by `main-node` through `ci_stack = node`.
+- `python.yml` is selected by `main-python` through `ci_stack = python`.
 
-Selector:
+## Platform CI
 
-```text
-platform = apple
-```
+For Xcode-based application builds:
 
-Skapa inte en separat boolean som `ci_apple=true` när `platform=apple` redan uttrycker samma sak i den etablerade modellen.
+- `required-apple.yml` provides the generic Apple-family policy entrypoint.
+- `apple.yml` contains the generic combined Apple reusable workflow.
+- `required-ios.yml` provides the iOS-specific policy entrypoint.
+- `required-macos.yml` provides the macOS-specific policy entrypoint.
+- `required-tvos.yml` provides the tvOS-specific policy entrypoint.
+- `xcode.yml` contains the shared platform-specific Xcode/XcodeGen build implementation.
 
-## Central CI-arkitektur
+Docker and Cloudflare are already direct ruleset workflows:
 
-`Avkroken/.github` innehåller centrala reusable workflows på `main`, bland annat:
+- `docker.yml` is selected by `main-docker` through `platform = docker`.
+- `cloudflare.yml` is selected by `main-cloudflare` through `platform = cloudflare`.
 
-- `.github/workflows/swift.yml`
-- `.github/workflows/apple.yml`
-- `.github/workflows/dotnet.yml`
-- `.github/workflows/gradle.yml`
-- `.github/workflows/rust.yml`
-- `.github/workflows/node.yml`
-- `.github/workflows/python.yml`
-- `.github/workflows/docker.yml`
-- `.github/workflows/cloudflare.yml`
+The required platform workflows fail closed when a selected repository has no configured CI profile.
 
-De centrala Swift/Apple/.NET/Gradle/Rust-workflowsen är implementationslager som kan anropas via `workflow_call`.
+## Bastion profiles
 
-### Reusable workflow är inte samma sak som required-workflow entrypoint
+Bastion currently uses these stack profiles:
 
-Ett workflow som endast definierar `workflow_call` ska behandlas som återanvändbar implementation.
+- Swift: package path `.`, runners `ubuntu-latest` and `macos-latest`.
+- Rust: working directory `LinuxApp` with GTK/libadwaita/VTE/GtkSourceView system packages.
+- .NET: tests in `WindowsApp/Bastion.Core.Tests`, Windows application `WindowsApp/WindowsApp.csproj`, .NET 10, and OpenSSH test dependencies.
+- Gradle: working directory `Android`, Java 17, project `:app`, and runtime-classpath dependency configuration.
 
-När ett organisations-ruleset ska kräva central CI ska det finnas ett tydligt required-workflow entrypoint som:
+Bastion uses these Xcode schemes:
 
-1. triggas på de events som rulesetet ska validera, normalt PR/merge queue,
-2. kör i det valda repositoryts kontext,
-3. anropar den centrala reusable implementationen,
-4. matar in repo-specifika paths/schemes/flags utan att duplicera implementationslogiken.
+- iOS: `Bastion`, destination `generic/platform=iOS Simulator`
+- macOS: `Bastion-macOS`, destination `platform=macOS`
+- tvOS: `Bastion-tvOS`, destination `generic/platform=tvOS Simulator`
 
-Håll entrypoint tunt. Den centrala reusable workflowen ska innehålla själva bygg- och testlogiken.
+Bastion generates its Xcode project through `App/generate-project.sh`. That script is part of the dependency-version path used by the Apple application build and must remain the generation entrypoint unless the dependency architecture is intentionally changed.
 
-### Repo-specifik CI-konfiguration
+Bastion currently has `ci_stack = gradle, dotnet, rust, swift` and `platform = windows, linux, android, apple`. Platform-specific iOS/macOS/tvOS rulesets apply only after the corresponding values are assigned to its `platform` Custom Property.
 
-Föredra explicita reusable-workflow inputs och repository Actions variables för repo-specifika värden som:
+## Ruleset mapping
 
-- working directory,
-- Xcode project path,
-- Xcode schemes,
-- Gradle root,
-- .NET test project,
-- Rust working directory,
-- systempaket.
+The target organization-level stack mappings are:
 
-Kopiera inte hela centrala workflows till varje repository enbart för att ändra paths.
+- `main-swift` -> repository property `ci_stack = swift` -> `.github/workflows/required-swift.yml`
+- `main-rust` -> repository property `ci_stack = rust` -> `.github/workflows/required-rust.yml`
+- `main-dotnet` -> repository property `ci_stack = dotnet` -> `.github/workflows/required-dotnet.yml`
+- `main-gradle` -> repository property `ci_stack = gradle` -> `.github/workflows/required-gradle.yml`
+- `main-node` -> repository property `ci_stack = node` -> `.github/workflows/node.yml`
+- `main-python` -> repository property `ci_stack = python` -> `.github/workflows/python.yml`
 
-### Permissions
+The organization-level platform mappings are:
 
-En caller måste ge minst den permission-ceiling som en kallad reusable workflow behöver. GitHub validerar permissions-kedjan redan vid workflow-start.
+- `main-ios` -> repository property `platform = ios` -> `.github/workflows/required-ios.yml`
+- `main-macos` -> repository property `platform = macos` -> `.github/workflows/required-macos.yml`
+- `main-tvos` -> repository property `platform = tvos` -> `.github/workflows/required-tvos.yml`
+- `main-docker` -> repository property `platform = docker` -> `.github/workflows/docker.yml`
+- `main-cloudflare` -> repository property `platform = cloudflare` -> `.github/workflows/cloudflare.yml`
 
-Exempel: om ett centralt Gradle-jobb kan deklarera `contents: write` för dependency submission måste caller/required-entrypoint tillåta den nivån.
-
-### Shell-säkerhet
-
-Interpolera inte externa eller konfigurerbara Actions-uttryck direkt i `run:` när värdet kan innehålla shell-data.
-
-Undvik:
-
-```yaml
-run: tool "${{ inputs.value }}"
-```
-
-Föredra:
-
-```yaml
-env:
-  VALUE: ${{ inputs.value }}
-run: tool "$VALUE"
-```
-
-Den här regeln infördes efter att CodeQL korrekt flaggade workflow-input injection i centrala Apple/.NET/Rust-workflows.
-
-## Repository-specifik projektkontext
-
-Ett repository med komplex CI eller flera plattformar bör ha:
-
-```text
-docs/project-context.md
-```
-
-Den filen ska beskriva endast repositoryts egen state och länka tillbaka hit för organisationsregler.
-
-Agentinstruktioner, README eller motsvarande bör hänvisa till projektkontexten så att den läses före större ändringar.
-
-## Checklista vid CI-/ruleset-ändring
-
-Innan en ändring betraktas som klar:
-
-- verifiera rätt Custom Property och rätt semantiskt värde,
-- verifiera att selector träffar avsedda repositories och inget annat,
-- verifiera default-branch-target,
-- verifiera workflow source/path/ref,
-- verifiera permission ceiling,
-- verifiera att shell-inputs inte introducerar CodeQL injection,
-- kör workflowet mot ett riktigt repository innan gamla vägen tas bort,
-- uppdatera det här dokumentet och berörda `docs/project-context.md`.
+A generic `main-apple` ruleset may independently target `platform = apple` and `.github/workflows/required-apple.yml` if an aggregated Apple-family policy is wanted. Its existence is independent of the platform-specific rulesets.

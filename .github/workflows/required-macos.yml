@@ -1,0 +1,35 @@
+name: macOS required
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  bastion:
+    name: Bastion macOS
+    if: ${{ github.repository == 'Avkroken/Bastion' }}
+    uses: ./.github/workflows/xcode.yml
+    with:
+      platform: macos
+      runner: macos-26
+      package_path: App
+      xcodegen_spec: App/project.yml
+      generation_script: App/generate-project.sh
+      project_path: App/Bastion.xcodeproj
+      scheme: Bastion-macOS
+      destination: platform=macOS
+
+  unsupported:
+    name: Unsupported macOS repository
+    if: ${{ github.repository != 'Avkroken/Bastion' && github.repository != 'Avkroken/.github' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject missing macOS CI profile
+        shell: bash
+        run: |
+          echo "::error::No macOS CI profile is configured for $GITHUB_REPOSITORY"
+          exit 1

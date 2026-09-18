@@ -1,0 +1,36 @@
+name: Rust required
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  bastion:
+    name: Bastion Rust
+    if: ${{ github.repository == 'Avkroken/Bastion' }}
+    uses: ./.github/workflows/rust.yml
+    with:
+      working_directory: LinuxApp
+      system_packages: libgtk-4-dev libadwaita-1-dev libvte-2.91-gtk4-dev libgtksourceview-5-dev pkg-config
+
+  source:
+    name: Source repository
+    if: ${{ github.repository == 'Avkroken/.github' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Source workflow repository; no Rust CI profile required."
+
+  unsupported:
+    name: Unsupported Rust repository
+    if: ${{ github.repository != 'Avkroken/Bastion' && github.repository != 'Avkroken/.github' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject missing Rust CI profile
+        shell: bash
+        run: |
+          echo "::error::No Rust CI profile is configured for $GITHUB_REPOSITORY"
+          exit 1

@@ -50,6 +50,12 @@ jobs:
               npm run typecheck
               ;;
 
+            Avkroken/Krosa-Maja)
+              npm ci
+              npm test
+              npm run typecheck
+              ;;
+
             Avkroken/Politiker)
               (
                 cd app

@@ -64,6 +64,11 @@ jobs:
               validate_locked .
               ;;
 
+            Avkroken/Krosa-Maja)
+              npm ci --ignore-scripts --no-audit --no-fund
+              npm run validate:worker
+              ;;
+
             Avkroken/Politiker)
               validate_locked app
               validate_unlocked log-archive

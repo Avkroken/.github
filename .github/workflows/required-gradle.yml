@@ -1,0 +1,43 @@
+name: Gradle required
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: write
+
+jobs:
+  bastion:
+    name: Bastion Gradle
+    if: ${{ github.repository == 'Avkroken/Bastion' }}
+    uses: ./.github/workflows/gradle.yml
+    with:
+      working_directory: Android
+      java_version: '17'
+      dependency_submission: false
+      dependency_projects: ':app'
+      dependency_configurations: '.*[Rr]untimeClasspath'
+
+  source:
+    name: Source repository
+    if: ${{ github.repository == 'Avkroken/.github' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Source workflow repository; no Gradle CI profile required."
+
+  unsupported:
+    name: Unsupported Gradle repository
+    if: ${{ github.repository != 'Avkroken/Bastion' && github.repository != 'Avkroken/.github' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject missing Gradle CI profile
+        shell: bash
+        run: |
+          echo "::error::No Gradle CI profile is configured for $GITHUB_REPOSITORY"
+          exit 1
