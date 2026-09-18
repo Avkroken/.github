@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: App/project.yml
+      generation_script:
+        description: Optional project-generation script path. When set, it is used instead of invoking XcodeGen directly.
+        required: false
+        type: string
+        default: ''
       project_path:
         description: Generated Xcode project path relative to the repository root.
         required: true
@@ -60,6 +65,7 @@ jobs:
     env:
       PACKAGE_PATH: ${{ inputs.package_path }}
       XCODEGEN_SPEC: ${{ inputs.xcodegen_spec }}
+      GENERATION_SCRIPT: ${{ inputs.generation_script }}
       PROJECT_PATH: ${{ inputs.project_path }}
       IOS_SCHEME: ${{ inputs.ios_scheme }}
       MACOS_SCHEME: ${{ inputs.macos_scheme }}
@@ -82,7 +88,14 @@ jobs:
 
       - name: Generate Xcode project
         id: generate
-        run: xcodegen generate --spec "$XCODEGEN_SPEC"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "$GENERATION_SCRIPT" ]]; then
+            sh "$GENERATION_SCRIPT"
+          else
+            xcodegen generate --spec "$XCODEGEN_SPEC"
+          fi
 
       - name: Build iOS application scheme
         if: ${{ inputs.ios_scheme != '' && steps.generate.outcome == 'success' }}
