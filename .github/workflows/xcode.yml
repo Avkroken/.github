@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       platform:
-        description: Platform identifier: ios, macos, or tvos.
+        description: "Platform identifier: ios, macos, or tvos."
         required: true
         type: string
       runner:
