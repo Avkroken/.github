@@ -64,6 +64,10 @@ jobs:
               validate_locked .
               ;;
 
+            Avkroken/Krosa-Maja)
+              validate_locked .
+              ;;
+
             Avkroken/Politiker)
               validate_locked app
               validate_unlocked log-archive
