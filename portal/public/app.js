@@ -2,9 +2,20 @@ const grid = document.querySelector("#site-grid");
 const count = document.querySelector("#site-count");
 const portalState = document.querySelector("#portal-state");
 const focusLinks = [...document.querySelectorAll(".manifesto [data-focus]")];
+const viewTabs = [...document.querySelectorAll(".portal-tab[data-view]")];
+const viewPanels = [...document.querySelectorAll("[data-view-panel]")];
+const docsCount = document.querySelector("#docs-count");
+const docsRepoTabs = document.querySelector("#docs-repo-tabs");
+const docsPageTabs = document.querySelector("#docs-page-tabs");
+const docsLinks = document.querySelector("#docs-links");
+const docsContent = document.querySelector("#docs-content");
 
 let allSites = [];
 let activeFocus = null;
+let docsCatalog = null;
+let activeDocsRepo = null;
+let activeDocPath = null;
+let docRequestSerial = 0;
 
 const escapeHtml = (value = "") =>
   String(value).replace(/[&<>"']/g, c => ({
@@ -102,7 +113,7 @@ function renderSites() {
 
   grid.innerHTML = sites.map(site => {
     const documentationLink = site.documentation
-      ? `<a class="card-action" href="${escapeHtml(site.documentation)}" target="_blank" rel="noopener noreferrer">Dokumentation</a>`
+      ? `<a class="card-action" href="${escapeHtml(site.documentation)}">Dokumentation</a>`
       : "";
 
     return `
