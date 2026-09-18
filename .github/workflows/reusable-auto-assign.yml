@@ -40,5 +40,9 @@ jobs:
             exit 1
           fi
 
-          jq -cn --arg assignee "$ASSIGNEE" '{assignees: [$assignee]}' |
-            gh api               --method POST               --header "Accept: application/vnd.github+json"               "repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/assignees"               --input -               >/dev/null
+          payload="$(jq -cn --arg assignee "$ASSIGNEE" '{assignees: [$assignee]}')"
+          gh api --method POST \
+            --header "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/assignees" \
+            --input - <<<"$payload" \
+            >/dev/null
