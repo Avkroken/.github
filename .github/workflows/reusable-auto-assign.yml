@@ -6,7 +6,7 @@ on:
       number:
         description: Issue or pull request number in the caller repository.
         required: true
-        type: number
+        type: string
       assignee:
         description: GitHub username to assign.
         required: false
