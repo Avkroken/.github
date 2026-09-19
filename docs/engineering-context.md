@@ -121,6 +121,8 @@ Cross-repository callers must pin the reusable workflow to a full immutable comm
 
 `Avkroken/.github` uses its local reusable workflow path. Other repositories activate auto-assignment through their repo-local caller workflow.
 
+The organization currently overrides the `pull_request_target` action rule for this automation in preparation for an announced GitHub platform change expected in October or November 2026. A `pull_request_target` startup failure caused by that override is therefore an intentional policy/platform condition, not evidence that the auto-assignment workflow definition is malformed. Do not work around the override by weakening permissions or changing repository trust boundaries; revisit the caller when the GitHub platform change is available.
+
 ## Publik projektdokumentation
 
 Publik, versionsstyrd projektdokumentation har två separata presentationsvägar med samma canonical källor i repositoryt.
@@ -190,13 +192,11 @@ The required platform workflows fail closed when a selected repository has no co
 
 ## Dependency review policy
 
-`.github/workflows/dependency-review.yml` in `Avkroken/.github` is the target organization-level Dependency Review workflow. It supports both `pull_request` and `merge_group`, uses only `contents: read`, and pins the official Dependency Review Action to an immutable commit.
+`.github/workflows/dependency-review.yml` in `Avkroken/.github` is the active organization-level Dependency Review workflow. It supports both `pull_request` and `merge_group`, uses only `contents: read`, and pins the official Dependency Review Action to an immutable commit.
 
-**Pågående:** the active organization `main` ruleset still references `.github/workflows/dependency-review.yml` from `Avkroken/Produkter`. The target state is to change only that required-workflow source to `Avkroken/.github/.github/workflows/dependency-review.yml@main`; all other `main` ruleset protections remain unchanged.
+The active organization `main` ruleset references `Avkroken/.github/.github/workflows/dependency-review.yml@main`. Dependency Review is therefore a baseline organization policy and is not selected through a Custom Property.
 
-Until that organization ruleset source is updated, `Produkter/.github/workflows/dependency-review.yml` must remain present because deleting it would break the active required workflow for every repository selected by `main`.
-
-Repository-local Dependency Review workflows in other repositories are redundant with the organization `main` ruleset and may be removed independently once verified. They are not policy sources.
+Repository-local Dependency Review workflows are not policy sources and may be removed once they are confirmed redundant.
 
 ## Jobb CI profile
 
