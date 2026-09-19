@@ -65,10 +65,13 @@ function encodedPath(path) {
 }
 
 function docsRepoTag(repoName) {
-  const safe = String(repoName || "")
+  let safe = String(repoName || "")
     .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9._-]+/g, "-");
+
+  while (safe.startsWith("-")) safe = safe.slice(1);
+  while (safe.endsWith("-")) safe = safe.slice(0, -1);
+
   return "docs-repo-" + (safe || "unknown");
 }
 
@@ -325,7 +328,8 @@ async function getDocsCatalog(env) {
     return new Response(JSON.stringify(entries), {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "public, max-age=" + DOCS_CACHE_SECONDS,
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Cloudflare-CDN-Cache-Control": "public, max-age=" + DOCS_CACHE_SECONDS,
         "Cache-Tag": "docs-catalog"
       }
     });
@@ -406,7 +410,8 @@ async function getDocContent(requestUrl, env) {
   }), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "public, max-age=" + DOC_CONTENT_CACHE_SECONDS,
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Cloudflare-CDN-Cache-Control": "public, max-age=" + DOC_CONTENT_CACHE_SECONDS,
       "Cache-Tag": "docs-catalog," + docsRepoTag(repo.name)
     }
   });
