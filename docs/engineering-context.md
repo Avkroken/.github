@@ -29,6 +29,7 @@ Uppdatera det här dokumentet när någon av följande saker ändras:
 - gränsen mellan centrala reusable workflows och required-workflow entrypoints,
 - hur repo-specifik CI-konfiguration matas in,
 - hur central issue/PR-triage och auto-assignment är kopplad mellan source-repository och callers,
+- hur GitHub Actions workflow execution protections styr event som `pull_request_target`,
 - hur publik projektdokumentation upptäcks, renderas och vid behov publiceras med GitHub Pages,
 - hur portalens dokumentationsnav hämtar endast publika repositorykällor,
 - vilka domäner som räknas som `ci_stack` respektive `platform`.
@@ -121,7 +122,26 @@ Cross-repository callers must pin the reusable workflow to a full immutable comm
 
 `Avkroken/.github` uses its local reusable workflow path. Other repositories activate auto-assignment through their repo-local caller workflow.
 
-The organization currently overrides the `pull_request_target` action rule for this automation in preparation for an announced GitHub platform change expected in October or November 2026. A `pull_request_target` startup failure caused by that override is therefore an intentional policy/platform condition, not evidence that the auto-assignment workflow definition is malformed. Do not work around the override by weakening permissions or changing repository trust boundaries; revisit the caller when the GitHub platform change is available.
+### Workflow execution protection for `pull_request_target`
+
+GitHub's default event policy for `pull_request_target` in public repositories is in evaluate mode and is scheduled to become enforced on **2026-11-02** for affected repositories that do not already have an applicable Actions event policy.
+
+The verified Avkroken inventory on 2026-09-19 uses `pull_request_target` only for repository metadata automation:
+
+- `.github/workflows/auto-assign.yml` — issue and pull-request assignment; required events are `issues` and `pull_request_target`.
+- `.github/workflows/labeler.yml` — pull-request labeling; required event is `pull_request_target`.
+
+These workflows do not check out, build, or execute pull-request head code. The organization search found no `allow-unsafe-pr-checkout`, pull-request-head checkout, `git fetch`, `gh pr checkout`, or artifact-download path in these workflows.
+
+The required effective Actions policy is least-privilege and workflow-path scoped:
+
+- allow `pull_request_target` for `.github/workflows/auto-assign.yml`;
+- allow `issues` for `.github/workflows/auto-assign.yml`;
+- allow `pull_request_target` for `.github/workflows/labeler.yml`;
+- do not add a general organization-wide `pull_request_target` allow for other workflow paths;
+- do not enable `allow-unsafe-pr-checkout` or write-capable cache access for these workflows.
+
+**Pågående:** the connected GitHub integration does not expose the organization Actions-policy administration endpoint required to read or write the live Workflow Execution Protection rules. Until that live setting is verified and updated through an authorized organization-administration surface, this section defines the intended effective policy but must not be treated as proof that the organization setting is active.
 
 ## Publik projektdokumentation
 
