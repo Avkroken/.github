@@ -342,9 +342,24 @@ async function getDocsCatalog(env) {
 
 async function getDocContent(requestUrl, env) {
   const repoName = requestUrl.searchParams.get("repo") || "";
-  const path = requestUrl.searchParams.get("path") || "";
+  const requestedPath = requestUrl.searchParams.get("path") || "";
 
-  if (!/^[A-Za-z0-9._-]+$/.test(repoName) || !isPublicMarkdownPath(path)) {
+  let catalog;
+  try {
+    catalog = await loadDocsCatalog(env);
+  } catch {
+    return new Response(JSON.stringify({ error: "github_unavailable" }), {
+      status: 502,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
+    });
+  }
+
+  const repo = catalog.find(entry => entry.name === repoName);
+  const page = repo?.pages.find(entry => entry.path === requestedPath);
+  if (!repo || !page) {
     return new Response(JSON.stringify({ error: "document_not_found" }), {
       status: 404,
       headers: {
@@ -354,28 +369,8 @@ async function getDocContent(requestUrl, env) {
     });
   }
 
-  const repoEndpoint = "https://api.github.com/repos/Avkroken/" + encodeURIComponent(repoName);
-  const repoResult = await fetchGitHubJson(repoEndpoint, env);
-  const repo = repoResult.data;
-
-  if (
-    !repoResult.ok ||
-    !repo ||
-    repo.visibility !== "public" ||
-    repo.archived === true ||
-    String(repo.owner?.login || "").toLowerCase() !== "avkroken"
-  ) {
-    return new Response(JSON.stringify({ error: "document_not_found" }), {
-      status: 404,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "no-store"
-      }
-    });
-  }
-
-  const endpoint = "https://api.github.com/repos/Avkroken/" + encodeURIComponent(repoName) +
-    "/contents/" + encodedPath(path) + "?ref=" + encodeURIComponent(repo.default_branch);
+  const endpoint = "https://api.github.com/repos/Avkroken/" + encodeURIComponent(repo.name) +
+    "/contents/" + encodedPath(page.path) + "?ref=" + encodeURIComponent(repo.defaultBranch);
   const github = await fetch(endpoint, {
     headers: githubHeaders(env, "application/vnd.github.raw+json")
   });
@@ -403,11 +398,11 @@ async function getDocContent(requestUrl, env) {
 
   return new Response(JSON.stringify({
     repo: repo.name,
-    path,
-    label: pageLabel(path),
+    path: page.path,
+    label: page.label,
     markdown,
-    sourceUrl: repo.html_url + "/blob/" + encodeURIComponent(repo.default_branch) + "/" +
-      path.split("/").map(encodeURIComponent).join("/")
+    sourceUrl: repo.repository + "/blob/" + encodeURIComponent(repo.defaultBranch) + "/" +
+      page.path.split("/").map(encodeURIComponent).join("/")
   }), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
