@@ -53,7 +53,7 @@ jobs:
               ;;
 
             Avkroken/Klarsprak)
-              validate_locked .
+              validate_unlocked .
               ;;
 
             Avkroken/Dumpen)
