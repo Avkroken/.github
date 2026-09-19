@@ -180,6 +180,8 @@ Docker and Cloudflare are direct ruleset workflows:
 - `docker.yml` is selected by `main-docker` through `platform = docker`.
 - `cloudflare.yml` is selected by `main-cloudflare` through `platform = cloudflare`. Jobb uses its pnpm workspace and validates the same root Wrangler configuration used by its deployment command with `wrangler deploy --dry-run`.
 
+Klarsprak has no `package-lock.json`; its Cloudflare profile therefore uses the unlocked validation path (`npm install --ignore-scripts --no-audit --no-fund` followed by `wrangler deploy --dry-run`) instead of `npm ci`.
+
 The required platform workflows fail closed when a selected repository has no configured CI profile.
 
 ## Dependency review policy
