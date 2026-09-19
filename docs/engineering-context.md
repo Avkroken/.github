@@ -128,8 +128,13 @@ Konventionen är:
 - `docs/project-context.md` innehåller repositoryts aktuella tekniska kontext när projektet är tillräckligt komplext för att behöva ett sådant dokument.
 - `avkroken.denied.se` är organisationens gemensamma dokumentationsnav och behöver inte GitHub Pages för att visa ett repository.
 - Portalens `/api/docs` upptäcker automatiskt alla publika, oarkiverade repositories i organisationen. Den inventerar Markdown under `docs/` rekursivt och använder repositoryts README som fallback/översikt när den finns.
-- Portalens `/api/docs/content` får endast hämta en fil som redan annonserats i den publika dokumentationskatalogen. Detta är en säkerhetsgräns så att ett eventuellt GitHub-token i Worker-miljön inte kan användas för att exponera privata repositories eller godtyckliga paths.
+- Portalens `/api/docs/content` accepterar endast Avkroken-repositories som GitHub verifierar som publika och oarkiverade, och endast Markdown under `docs/` eller en Markdown-README. Ett eventuellt GitHub-token i Worker-miljön får därmed inte användas via den publika endpointen för privata repositories eller godtyckliga repositorypaths.
 - Dokumentationsnavet renderar Markdown i portalens eget tema med repositoryflikar och dokumentflikar. Nya publika repositories och nya Markdown-filer blir därmed upptäckbara utan en manuell portalregistry.
+- Dokumentationscache använder Cloudflare Workers Cache med `Cache-Tag`-värdena `docs-catalog` och `docs-repo-<repository>`. Normal fallback-TTL är sex timmar.
+- Organisationens GitHub-webhook skickar `push` och `repository` till `POST /webhooks/github`. Workern verifierar `X-Hub-Signature-256` med Worker-secreten `AVKROKEN_DOCS_WEBHOOK_SECRET`, kräver `X-GitHub-Delivery` och invaliderar berörda cache-tags med `ctx.cache.purge()`.
+- För `push` invalideras dokumentationscache endast på repositoryts default branch och när Markdown under `docs/` eller Markdown-README ändras. Om GitHubs push-payload är trunkerad invalideras konservativt berört repository och katalogen. `repository`-events invaliderar katalogen och berörd repositorytagg.
+- Webhookdriven invalidation är normal uppdateringsväg. TTL är endast reconciliation/fallback om en webhook uteblir; ingen schemalagd polling krävs.
+- Webhook-hemligheten får aldrig lagras i Git, dokumentation, issue eller PR och ska konfigureras med samma värde i GitHub-organisationshooken och Cloudflare Worker-secreten.
 - GitHub Pages är en valfri separat publiceringsyta för repositories som också behöver en fristående dokumentations-URL.
 - `.github/workflows/pages-docs.yml` i `Avkroken/.github` är den centrala reusable implementationen för Jekyll-baserad Pages-publicering.
 - Ett repository som använder Pages aktiverar publiceringen med en tunn caller-workflow som anropar den centrala workflowen och begränsar tokenbehörigheter till `contents: read`, `pages: write` och `id-token: write`.
@@ -138,6 +143,15 @@ Konventionen är:
 - Allt innehåll som visas i dokumentationsnavet eller publiceras med Pages ska betraktas som publikt och får inte innehålla secrets, tokens, privata runbooks eller annan konfidentiell information.
 
 Portalens dokumentationsnav aktiverar inte Pages och ändrar inga repositoryinställningar. Den centrala Pages-workflowen bygger endast dokumentation från en caller som uttryckligen använder den. Pages är inte en ruleset-policy.
+
+GitHub-organisationshooken är extern live-konfiguration och kan inte härledas från repositoryfiler. Canonical webhookkonfiguration är:
+- Payload URL: `https://avkroken.denied.se/webhooks/github`
+- Content type: `application/json`
+- SSL verification: enabled
+- Events: `push` och `repository`
+- Secret: samma hemliga värde som Cloudflare Worker-secreten `AVKROKEN_DOCS_WEBHOOK_SECRET`
+
+Repositoryimplementationen ska returnera `503` om webhook-secreten saknas, `401` vid felaktig signatur och 2xx för signerade leveranser som ignoreras eller purgeas.
 
 ## Stack CI
 
