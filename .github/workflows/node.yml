@@ -84,6 +84,14 @@ jobs:
               )
               ;;
 
+            Avkroken/Jobb)
+              corepack enable
+              corepack prepare pnpm@10.17.1 --activate
+              pnpm install --frozen-lockfile
+              pnpm typecheck
+              pnpm test
+              ;;
+
             *)
               echo "::error::No Node CI profile configured for $GITHUB_REPOSITORY"
               exit 1
