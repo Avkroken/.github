@@ -71,6 +71,7 @@ jobs:
                 npm ci
                 npm test
                 npm run typecheck
+                node --check public/access-routing.js
               )
               (
                 cd cloudflare/engine
