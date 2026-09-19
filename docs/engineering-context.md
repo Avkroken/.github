@@ -2,7 +2,7 @@
 
 Det här dokumentet är Avkrokens levande, versionsstyrda tekniska kontext för arbetsgrenar, Custom Properties, rulesets och central CI-topologi.
 
-**Senast verifierad:** 2026-09-18
+**Senast verifierad:** 2026-09-19
 
 ## Auktoritet och läsordning
 
@@ -159,10 +159,10 @@ Each entrypoint contains the current repository-specific profile and fails close
 
 The Gradle reusable workflow declares a dependency-submission job with `contents: write`. Therefore `required-gradle.yml` must expose that permission ceiling to the reusable workflow even though ruleset PR/merge-group execution passes `dependency_submission: false`. The actual Gradle build job remains explicitly scoped to `contents: read`.
 
-Node and Python are already direct ruleset workflows rather than reusable-only implementations:
+Node and Python are direct ruleset workflows rather than reusable-only implementations:
 
-- `node.yml` is selected by `main-node` through `ci_stack = node`.
-- `python.yml` is selected by `main-python` through `ci_stack = python`.
+- `node.yml` is selected by `main-node` through `ci_stack = node`. Its repository profiles include Jobb, which uses pnpm 10.17.1 and runs the repository-level typecheck and test scripts.
+- `python.yml` is selected by `main-python` through `ci_stack = python`. Pastebinit is validated on Python 3.10 and 3.14 so the central policy preserves its declared support boundary instead of collapsing it to the default Python version.
 
 ## Platform CI
 
@@ -175,12 +175,40 @@ For Xcode-based application builds:
 - `required-tvos.yml` provides the tvOS-specific policy entrypoint.
 - `xcode.yml` contains the shared platform-specific Xcode/XcodeGen build implementation.
 
-Docker and Cloudflare are already direct ruleset workflows:
+Docker and Cloudflare are direct ruleset workflows:
 
 - `docker.yml` is selected by `main-docker` through `platform = docker`.
-- `cloudflare.yml` is selected by `main-cloudflare` through `platform = cloudflare`.
+- `cloudflare.yml` is selected by `main-cloudflare` through `platform = cloudflare`. Jobb uses its pnpm workspace and validates the same root Wrangler configuration used by its deployment command with `wrangler deploy --dry-run`.
 
 The required platform workflows fail closed when a selected repository has no configured CI profile.
+
+## Dependency review policy
+
+`.github/workflows/dependency-review.yml` in `Avkroken/.github` is the target organization-level Dependency Review workflow. It supports both `pull_request` and `merge_group`, uses only `contents: read`, and pins the official Dependency Review Action to an immutable commit.
+
+**Pågående:** the active organization `main` ruleset still references `.github/workflows/dependency-review.yml` from `Avkroken/Produkter`. The target state is to change only that required-workflow source to `Avkroken/.github/.github/workflows/dependency-review.yml@main`; all other `main` ruleset protections remain unchanged.
+
+Until that organization ruleset source is updated, `Produkter/.github/workflows/dependency-review.yml` must remain present because deleting it would break the active required workflow for every repository selected by `main`.
+
+Repository-local Dependency Review workflows in other repositories are redundant with the organization `main` ruleset and may be removed independently once verified. They are not policy sources.
+
+## Jobb CI profile
+
+Jobb is selected by both `main-node` and `main-cloudflare`.
+
+The central Node profile:
+
+- enables Corepack,
+- activates pnpm 10.17.1,
+- installs with `pnpm install --frozen-lockfile`,
+- runs `pnpm typecheck`,
+- runs `pnpm test`.
+
+The central Cloudflare profile installs the same pnpm workspace and runs the repository's deployment configuration as a dry run:
+
+`pnpm --filter @avkroken/web exec wrangler deploy --dry-run --config ../../wrangler.jsonc`
+
+Jobb's local `.github/workflows/ci.yml` becomes redundant for pull-request gating after these central profiles are active and verified.
 
 ## Bastion profiles
 
