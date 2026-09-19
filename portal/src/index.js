@@ -2,8 +2,8 @@ const GITHUB_API =
   "https://api.github.com/orgs/Avkroken/repos?type=public&per_page=100&sort=full_name&direction=asc";
 
 const CACHE_SECONDS = 300;
-const DOCS_CACHE_SECONDS = 3600;
-const DOC_CONTENT_CACHE_SECONDS = 900;
+const DOCS_CACHE_SECONDS = 21600;
+const DOC_CONTENT_CACHE_SECONDS = 21600;
 const MAX_DOC_DEPTH = 2;
 
 const CATEGORY_TOPICS = {
@@ -64,6 +64,179 @@ function encodedPath(path) {
   return String(path || "").split("/").map(segment => encodeURIComponent(segment)).join("/");
 }
 
+function docsRepoTag(repoName) {
+  let safe = String(repoName || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-");
+
+  while (safe.startsWith("-")) safe = safe.slice(1);
+  while (safe.endsWith("-")) safe = safe.slice(0, -1);
+
+  return "docs-repo-" + (safe || "unknown");
+}
+
+function isPublicMarkdownPath(path) {
+  const value = String(path || "");
+  return /^docs\/.*\.(md|markdown)$/i.test(value) ||
+    /^readme\.(md|markdown)$/i.test(value);
+}
+
+function changedDocumentationPath(path) {
+  return isPublicMarkdownPath(path);
+}
+
+function pushTouchesDocumentation(payload) {
+  if (!payload || !Array.isArray(payload.commits)) return true;
+  if (Number.isFinite(payload.size) && payload.size > payload.commits.length) return true;
+
+  return payload.commits.some(commit =>
+    ["added", "modified", "removed"].some(field =>
+      Array.isArray(commit?.[field]) &&
+      commit[field].some(changedDocumentationPath)
+    )
+  );
+}
+
+async function verifyGitHubSignature(rawBody, signatureHeader, secret) {
+  if (!secret || typeof signatureHeader !== "string" || !signatureHeader.startsWith("sha256=")) {
+    return false;
+  }
+
+  const hex = signatureHeader.slice("sha256=".length);
+  if (!/^[0-9a-f]{64}$/i.test(hex)) return false;
+
+  const signature = new Uint8Array(hex.match(/.{2}/g).map(byte => Number.parseInt(byte, 16)));
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+
+  return crypto.subtle.verify(
+    "HMAC",
+    key,
+    signature,
+    new TextEncoder().encode(rawBody)
+  );
+}
+
+async function purgeDocumentationCache(ctx, tags) {
+  const uniqueTags = [...new Set(tags.filter(Boolean))];
+  if (!uniqueTags.length) return { success: true, errors: [] };
+
+  const delaysMs = [0, 100, 300];
+  let lastErrors = [];
+
+  for (const delayMs of delaysMs) {
+    if (delayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    try {
+      const result = await ctx.cache.purge({ tags: uniqueTags });
+      if (result.success) return result;
+      lastErrors = Array.isArray(result.errors) ? result.errors : [];
+    } catch (error) {
+      lastErrors = [String(error instanceof Error ? error.message : error)];
+    }
+  }
+
+  return { success: false, errors: lastErrors };
+}
+
+async function handleGitHubWebhook(request, env, ctx) {
+  if (!env.AVKROKEN_DOCS_WEBHOOK_SECRET) {
+    return new Response("Webhook not configured", { status: 503 });
+  }
+
+  const delivery = request.headers.get("X-GitHub-Delivery");
+  const event = request.headers.get("X-GitHub-Event");
+  const signature = request.headers.get("X-Hub-Signature-256");
+
+  if (!delivery || !event || !signature) {
+    return new Response("Missing webhook headers", { status: 400 });
+  }
+
+  const rawBody = await request.text();
+  const verified = await verifyGitHubSignature(
+    rawBody,
+    signature,
+    env.AVKROKEN_DOCS_WEBHOOK_SECRET
+  );
+
+  if (!verified) {
+    return new Response("Invalid webhook signature", { status: 401 });
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
+
+  if (event === "ping") {
+    return new Response(JSON.stringify({ ok: true, delivery }), {
+      headers: { "Content-Type": "application/json; charset=utf-8" }
+    });
+  }
+
+  const repository = payload?.repository;
+  const owner = repository?.owner?.login || repository?.organization?.login;
+  if (!repository || String(owner || "").toLowerCase() !== "avkroken") {
+    return new Response("Ignored", { status: 202 });
+  }
+
+  const repoTag = docsRepoTag(repository.name);
+  let tags = [];
+
+  if (event === "push") {
+    const expectedRef = "refs/heads/" + repository.default_branch;
+    const isPublic = repository.private === false || repository.visibility === "public";
+
+    if (payload.ref !== expectedRef || !isPublic) {
+      return new Response("Ignored", { status: 202 });
+    }
+
+    if (!pushTouchesDocumentation(payload)) {
+      return new Response("No documentation changes", { status: 202 });
+    }
+
+    tags = ["docs-catalog", repoTag];
+  } else if (event === "repository") {
+    tags = ["docs-catalog", repoTag];
+    const previousName = payload?.changes?.repository?.name?.from;
+    if (previousName) tags.push(docsRepoTag(previousName));
+  } else {
+    return new Response("Ignored", { status: 202 });
+  }
+
+  const purge = await purgeDocumentationCache(ctx, tags);
+  if (!purge.success) {
+    console.error("Documentation cache purge failed", {
+      delivery,
+      event,
+      repository: repository.full_name,
+      tags,
+      errors: purge.errors
+    });
+    return new Response("Cache purge failed", { status: 503 });
+  }
+
+  return new Response(JSON.stringify({
+    ok: true,
+    delivery,
+    event,
+    repository: repository.full_name,
+    purged: [...new Set(tags)]
+  }), {
+    headers: { "Content-Type": "application/json; charset=utf-8" }
+  });
+}
+
+
 function pageLabel(path) {
   const name = path.split("/").pop() || path;
   const stem = name.replace(/\.(md|markdown)$/i, "");
@@ -118,6 +291,7 @@ async function readmePage(repo, env) {
     "/readme?ref=" + encodeURIComponent(repo.default_branch);
   const result = await fetchGitHubJson(endpoint, env);
   if (!result.ok || !result.data || typeof result.data.path !== "string") return null;
+  if (!isPublicMarkdownPath(result.data.path)) return null;
   return { path: result.data.path, label: "Översikt" };
 }
 
@@ -154,12 +328,7 @@ async function buildDocsEntry(repo, env) {
   };
 }
 
-async function loadDocsCatalog(env, ctx) {
-  const cache = caches.default;
-  const cacheKey = new Request("https://avkroken-cache.invalid/docs-catalog-v1");
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached.json();
-
+async function loadDocsCatalog(env) {
   const github = await fetch(GITHUB_API, { headers: githubHeaders(env) });
   if (!github.ok) throw new Error("github_unavailable:" + github.status);
 
@@ -168,74 +337,73 @@ async function loadDocsCatalog(env, ctx) {
   );
   const entries = await Promise.all(repos.map(repo => buildDocsEntry(repo, env)));
   entries.sort((a, b) => a.name.localeCompare(b.name, "sv"));
-
-  const response = new Response(JSON.stringify(entries), {
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "public, max-age=" + DOCS_CACHE_SECONDS
-    }
-  });
-  ctx.waitUntil(cache.put(cacheKey, response.clone()));
   return entries;
 }
 
-async function getDocsCatalog(env, ctx) {
+async function getDocsCatalog(env) {
   try {
-    const entries = await loadDocsCatalog(env, ctx);
+    const entries = await loadDocsCatalog(env);
     return new Response(JSON.stringify(entries), {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "public, max-age=" + DOCS_CACHE_SECONDS
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Cloudflare-CDN-Cache-Control": "public, max-age=" + DOCS_CACHE_SECONDS,
+        "Cache-Tag": "docs-catalog"
       }
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: "github_unavailable" }), {
       status: 502,
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
     });
   }
 }
 
-async function getDocContent(requestUrl, env, ctx) {
+async function getDocContent(requestUrl, env) {
   const repoName = requestUrl.searchParams.get("repo") || "";
-  const path = requestUrl.searchParams.get("path") || "";
+  const requestedPath = requestUrl.searchParams.get("path") || "";
 
   let catalog;
   try {
-    catalog = await loadDocsCatalog(env, ctx);
+    catalog = await loadDocsCatalog(env);
   } catch {
     return new Response(JSON.stringify({ error: "github_unavailable" }), {
       status: 502,
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
     });
   }
 
   const repo = catalog.find(entry => entry.name === repoName);
-  const page = repo?.pages.find(entry => entry.path === path);
+  const page = repo?.pages.find(entry => entry.path === requestedPath);
   if (!repo || !page) {
     return new Response(JSON.stringify({ error: "document_not_found" }), {
       status: 404,
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
     });
   }
 
-  const cache = caches.default;
-  const cacheKey = new Request(
-    "https://avkroken-cache.invalid/docs-content-v1/" + encodeURIComponent(repoName) +
-    "/" + encodeURIComponent(path)
-  );
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached;
-
-  const endpoint = "https://api.github.com/repos/Avkroken/" + encodeURIComponent(repoName) +
-    "/contents/" + encodedPath(path) + "?ref=" + encodeURIComponent(repo.defaultBranch);
+  const endpoint = "https://api.github.com/repos/Avkroken/" + encodeURIComponent(repo.name) +
+    "/contents/" + encodedPath(page.path) + "?ref=" + encodeURIComponent(repo.defaultBranch);
   const github = await fetch(endpoint, {
     headers: githubHeaders(env, "application/vnd.github.raw+json")
   });
+
   if (!github.ok) {
     return new Response(JSON.stringify({ error: "document_unavailable", status: github.status }), {
       status: github.status === 404 ? 404 : 502,
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
     });
   }
 
@@ -243,26 +411,29 @@ async function getDocContent(requestUrl, env, ctx) {
   if (markdown.length > 250000) {
     return new Response(JSON.stringify({ error: "document_too_large" }), {
       status: 413,
-      headers: { "Content-Type": "application/json; charset=utf-8" }
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
     });
   }
 
-  const response = new Response(JSON.stringify({
+  return new Response(JSON.stringify({
     repo: repo.name,
-    path,
+    path: page.path,
     label: page.label,
     markdown,
-    sourceUrl: repo.repository + "/blob/" + encodeURIComponent(repo.defaultBranch) + "/" + path.split("/").map(encodeURIComponent).join("/")
+    sourceUrl: repo.repository + "/blob/" + encodeURIComponent(repo.defaultBranch) + "/" +
+      page.path.split("/").map(encodeURIComponent).join("/")
   }), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "public, max-age=" + DOC_CONTENT_CACHE_SECONDS
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Cloudflare-CDN-Cache-Control": "public, max-age=" + DOC_CONTENT_CACHE_SECONDS,
+      "Cache-Tag": "docs-catalog," + docsRepoTag(repo.name)
     }
   });
-  ctx.waitUntil(cache.put(cacheKey, response.clone()));
-  return response;
 }
-
 async function getPortalSites(env, ctx) {
   const cache = caches.default;
   const cacheKey = new Request("https://avkroken-cache.invalid/github-sites-v6");
@@ -344,14 +515,21 @@ export default {
       if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
       }
-      return getDocsCatalog(env, ctx);
+      return getDocsCatalog(env);
     }
 
     if (url.pathname === "/api/docs/content") {
       if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method Not Allowed", { status: 405 });
       }
-      return getDocContent(url, env, ctx);
+      return getDocContent(url, env);
+    }
+
+    if (url.pathname === "/webhooks/github") {
+      if (request.method !== "POST") {
+        return new Response("Method Not Allowed", { status: 405 });
+      }
+      return handleGitHubWebhook(request, env, ctx);
     }
 
     return env.ASSETS.fetch(request);
