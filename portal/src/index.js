@@ -99,18 +99,10 @@ function pushTouchesDocumentation(payload) {
 
 async function resolveWebhookSecret(env) {
   const binding = env.AVKROKEN_DOCS_WEBHOOK_SECRET;
-  if (!binding) return null;
+  if (!binding || typeof binding.get !== "function") return null;
 
-  if (typeof binding === "string") {
-    return binding.length > 0 ? binding : null;
-  }
-
-  if (typeof binding.get === "function") {
-    const value = await binding.get();
-    return typeof value === "string" && value.length > 0 ? value : null;
-  }
-
-  return null;
+  const value = await binding.get();
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 async function verifyGitHubSignature(rawBody, signatureHeader, secret) {
