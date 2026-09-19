@@ -156,8 +156,8 @@ Konventionen är:
 - Portalens `/api/docs` upptäcker automatiskt alla publika, oarkiverade repositories i organisationen. Den inventerar Markdown under `docs/` rekursivt och använder repositoryts README som fallback/översikt när den finns.
 - Portalens `/api/docs/content` får endast hämta repository/path-par som först har upptäckts av den publika dokumentationskatalogen. Katalogen består endast av publika, oarkiverade Avkroken-repositories och Markdown under `docs/` eller Markdown-README. Ett eventuellt GitHub-token i Worker-miljön får därmed inte användas via den publika endpointen för privata repositories eller godtyckliga repositorypaths.
 - Dokumentationsnavet renderar Markdown i portalens eget tema med repositoryflikar och dokumentflikar. Nya publika repositories och nya Markdown-filer blir därmed upptäckbara utan en manuell portalregistry.
-- Dokumentationscache använder Cloudflare Workers Cache med `Cache-Tag`-värdena `docs-catalog` och `docs-repo-<repository>`. Normal fallback-TTL är sex timmar.
-- Organisationens GitHub-webhook skickar `push` och `repository` till `POST /webhooks/github`. Workern verifierar `X-Hub-Signature-256` med Worker-secreten `AVKROKEN_DOCS_WEBHOOK_SECRET`, kräver `X-GitHub-Delivery` och invaliderar berörda cache-tags med `ctx.cache.purge()`.
+- Dokumentationscache använder Cloudflare Workers Cache med `Cache-Tag`-värdena `docs-catalog` och `docs-repo-<repository>`. Edge-cache har sex timmars fallback-TTL via `Cloudflare-CDN-Cache-Control`; klienter får `Cache-Control: public, max-age=0, must-revalidate` så en lyckad purge inte lämnar sex timmars browser-stale data.
+- Organisationens GitHub-webhook skickar `push` och `repository` till `POST /webhooks/github`. Workern verifierar `X-Hub-Signature-256` med Worker-secreten `AVKROKEN_DOCS_WEBHOOK_SECRET`, kräver `X-GitHub-Delivery` och invaliderar berörda cache-tags med `ctx.cache.purge()`. Purge gör högst tre försök med kort backoff innan 503 returneras och TTL-fallbacken tar över.
 - För `push` invalideras dokumentationscache endast på repositoryts default branch och när Markdown under `docs/` eller Markdown-README ändras. Om GitHubs push-payload är trunkerad invalideras konservativt berört repository och katalogen. `repository`-events invaliderar katalogen och berörd repositorytagg.
 - Webhookdriven invalidation är normal uppdateringsväg. TTL är endast reconciliation/fallback om en webhook uteblir; ingen schemalagd polling krävs.
 - Webhook-hemligheten får aldrig lagras i Git, dokumentation, issue eller PR och ska konfigureras med samma värde i GitHub-organisationshooken och Cloudflare Worker-secreten.
@@ -177,7 +177,7 @@ GitHub-organisationshooken är extern live-konfiguration och kan inte härledas 
 - Events: `push` och `repository`
 - Secret: samma hemliga värde som Cloudflare Worker-secreten `AVKROKEN_DOCS_WEBHOOK_SECRET`
 
-Repositoryimplementationen ska returnera `503` om webhook-secreten saknas, `401` vid felaktig signatur och 2xx för signerade leveranser som ignoreras eller purgeas.
+Repositoryimplementationen ska returnera `503` om webhook-secreten saknas, `401` vid felaktig signatur och 2xx för signerade leveranser som ignoreras eller purgeas. GitHub redelivererar inte automatiskt misslyckade webhookleveranser; den lokala bounded retry:n och edge-TTL:n är därför avsiktliga fallbackmekanismer.
 
 ## Stack CI
 
