@@ -1,3 +1,5 @@
+import { WorkerEntrypoint } from "cloudflare:workers";
+
 const GITHUB_API =
   "https://api.github.com/orgs/Avkroken/repos?type=public&per_page=100&sort=full_name&direction=asc";
 
@@ -507,6 +509,33 @@ async function getPortalSites(env, ctx) {
 
   ctx.waitUntil(cache.put(cacheKey, response.clone()));
   return response;
+}
+
+export class DocsInvalidationService extends WorkerEntrypoint {
+  async invalidateDocs(repositoryName, previousRepositoryName = null) {
+    const names = [repositoryName, previousRepositoryName]
+      .filter(name => typeof name === "string" && name.length > 0);
+
+    if (names.length === 0 || names.some(name => !/^[A-Za-z0-9._-]+$/.test(name))) {
+      throw new Error("invalid repository name");
+    }
+
+    const tags = ["docs-catalog", ...names.map(docsRepoTag)];
+    const purge = await purgeDocumentationCache(this.ctx, tags);
+    if (!purge.success) {
+      console.error("Internal docs cache purge failed", {
+        repositories: names,
+        tags,
+        errors: purge.errors
+      });
+      throw new Error("docs cache purge failed");
+    }
+
+    return {
+      ok: true,
+      purged: [...new Set(tags)]
+    };
+  }
 }
 
 export default {
