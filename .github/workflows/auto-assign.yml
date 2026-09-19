@@ -12,6 +12,7 @@ jobs:
   assign:
     permissions:
       issues: write
+      pull-requests: write
     uses: ./.github/workflows/reusable-auto-assign.yml
     with:
       number: ${{ format('{0}', github.event.issue.number || github.event.pull_request.number) }}
