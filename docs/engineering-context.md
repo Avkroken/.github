@@ -97,13 +97,17 @@ A workflow that already contains supported ruleset triggers and repository-profi
 
 Multiple required entrypoints and reusable workflows may coexist. A workflow becomes relevant to a repository only when an active organization ruleset selects that repository.
 
+Central ruleset workflows own pull-request and merge-queue gating. Repository-local workflows that trigger only on `push`, `schedule`, `workflow_dispatch`, releases, or deployment events are a separate post-merge/operational layer and must not be deleted merely because a central PR gate covers similar commands. Remove a local workflow only after verifying that every unique trigger and side effect is intentionally replaced.
+
 ## Repository triage automation
 
 Review routing and assignee routing are separate concerns.
 
 `CODEOWNERS` remains the native ownership and reviewer-routing map. In `Avkroken/.github`, the current catch-all owner is `@blixten85`; this auto-assignment change does not modify `CODEOWNERS`.
 
-`.github/workflows/reusable-auto-assign.yml` is the central assignee implementation. It receives an issue or pull request number, uses the caller repository's `GITHUB_TOKEN`, and calls GitHub's issue-assignee API with only `issues: write`. It does not use a PAT, GitHub App installation token, or third-party Action.
+`.github/workflows/reusable-auto-assign.yml` is the central assignee implementation. It receives the issue or pull request number as a string, validates that it is a positive integer, uses the caller repository's `GITHUB_TOKEN`, and calls GitHub's issue-assignee API. The reusable workflow requires `issues: write` and `pull-requests: write`: issue assignment needs the former, while assigning a pull request through the Issues API also requires pull-request write access for the integration token. It does not use a PAT, GitHub App installation token, or third-party Action.
+
+Caller workflows format the triggering issue/PR number explicitly as a string before crossing the reusable-workflow boundary. This avoids GitHub Actions template-validation failures seen when expression-derived numeric values are forwarded to a `workflow_call` input typed as `number`.
 
 `.github/workflows/auto-assign.yml` is the repository-local caller for `Avkroken/.github`. It triggers when issues or pull requests are opened or reopened and calls the reusable implementation. Pull requests use `pull_request_target`; the workflow does not check out or execute pull-request code.
 
@@ -210,7 +214,17 @@ The central Cloudflare profile installs the same pnpm workspace and runs the rep
 
 `pnpm --filter @avkroken/web exec wrangler deploy --dry-run --config ../../wrangler.jsonc`
 
-Jobb's local `.github/workflows/ci.yml` becomes redundant for pull-request gating after these central profiles are active and verified.
+Jobb's local `.github/workflows/ci.yml` triggers only on pushes to `main`. It remains as post-merge validation; the central Node and Cloudflare rulesets own the pull-request gate.
+
+## Produkter CI profile
+
+Produkter uses central Node, Cloudflare, Python, and Docker ruleset workflows for pull-request gating.
+
+The central Node profile preserves the app-specific JavaScript syntax check `node --check cloudflare/app/public/access-routing.js` in addition to tests and typechecking. The central Cloudflare profile performs Wrangler dry-runs for the app, engine, and processor. The central Docker profile builds both application images and gates fixable MEDIUM/HIGH/CRITICAL Trivy findings.
+
+The former repository-local `.github/workflows/cloudflare-app-validate.yml` was removed after those checks were verified centrally. `.github/workflows/container-security.yml` intentionally remains for pushes to `main`, scheduled scans, and manual runs so post-merge/scheduled Trivy scanning and SARIF upload continue without duplicating PR gating.
+
+`.github/workflows/dependency-review.yml` in Produkter must remain until the organization `main` ruleset is switched to the central `Avkroken/.github` Dependency Review workflow.
 
 ## Bastion profiles
 
