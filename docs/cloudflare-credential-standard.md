@@ -128,22 +128,19 @@ Kanonisk permissionmängd:
 - D1 Write
 - Queues Write
 - Browser Run Write
+- Secrets Store Write
 
 ### Domain scope
 
 - Workers Routes Write
 
-Cloudflare kräver dessutom Secrets Store Write på API-tokenet som deployar en Worker med Secrets Store-bindings. Den permissionen ligger tills vidare i O1 och ska inte flyttas eller dupliceras till W1 utan ett uttryckligt arkitekturbeslut.
+Secrets Store Write ingår i W1 eftersom samma Wrangler-deploy som publicerar Workern också deklarerar och uppdaterar dess Secrets Store-bindings.
 
 ## O1 — Infrastructure / Security Administration
 
 O1 är högre klassad än W1 och används för infrastruktur-, edge-, security- och Secrets Store-administration.
 
 Kanonisk permissionmängd:
-
-### Entire Account
-
-- Secrets Store Write
 
 ### Domain scope
 
