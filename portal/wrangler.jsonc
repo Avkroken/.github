@@ -8,6 +8,13 @@
   "cache": {
     "enabled": true
   },
+  "secrets_store_secrets": [
+    {
+      "binding": "AVKROKEN_DOCS_WEBHOOK_SECRET",
+      "store_id": "293e79006fa649b8b182ef105a6b46d1",
+      "secret_name": "AVKROKEN_DOCS_WEBHOOK_SECRET"
+    }
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
