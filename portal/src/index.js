@@ -125,7 +125,25 @@ async function verifyGitHubSignature(rawBody, signatureHeader, secret) {
 async function purgeDocumentationCache(ctx, tags) {
   const uniqueTags = [...new Set(tags.filter(Boolean))];
   if (!uniqueTags.length) return { success: true, errors: [] };
-  return ctx.cache.purge({ tags: uniqueTags });
+
+  const delaysMs = [0, 100, 300];
+  let lastErrors = [];
+
+  for (const delayMs of delaysMs) {
+    if (delayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    try {
+      const result = await ctx.cache.purge({ tags: uniqueTags });
+      if (result.success) return result;
+      lastErrors = Array.isArray(result.errors) ? result.errors : [];
+    } catch (error) {
+      lastErrors = [String(error instanceof Error ? error.message : error)];
+    }
+  }
+
+  return { success: false, errors: lastErrors };
 }
 
 async function handleGitHubWebhook(request, env, ctx) {
