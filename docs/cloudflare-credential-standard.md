@@ -62,101 +62,94 @@ Resource scope och permissionklass är separata axlar. Samma permission group ka
 
 R1 är normal teknisk läsning av Cloudflares Developer Platform och grundläggande resursinventering.
 
-R1 skapas som **Custom Account API Token**. Nuvarande Cloudflare-template **Read all resources** är avsiktligt för bred för R1 eftersom den skulle kollapsa separationen mellan R1, R2 och R3.
+Kanonisk permissionmängd:
 
-Kanonisk R1-bas:
+### Entire Account
 
-- Zone Read
-- Workers Scripts Read
 - D1 Read
 - Workers KV Storage Read
 - Workers R2 Storage Read
+- Workers Metadata Read-Only
 
-Nya read-permissions läggs i R1 när de huvudsakligen beskriver normal plattform/resource state och inte exponerar tydligt känsligare observability-, operations-, security- eller identity-data.
+### Domain scope
+
+- Zone Read
+
+Workers Metadata Read-Only används i stället för legacy-permissionen Workers Scripts Read.
 
 ## R2 — Analytics / Observability / Operations Read
 
-R2 är högre klassad än R1 och omfattar analytics, telemetry, audit-/operationsobservation och liknande driftinsyn.
+R2 är högre klassad än R1 och omfattar analytics, innehåll som uttryckligen placerats i denna klass samt operativ account-insyn.
 
-Förstahandsbas är Cloudflares live-template **Read analytics**. Live-templateinnehållet ska granskas i Token Summary vid skapandet; det som saknas från nedanstående capability-bas läggs till explicit.
+Kanonisk permissionmängd:
 
-Kanonisk R2-capability-bas:
+### Entire Account
 
 - Account Analytics Read
-- Workers Observability Read
-- Workers Observability Telemetry Write
+- Workers Content Read-Only
 - Notifications Read
 - Account Settings Read
 
-`Workers Observability Telemetry Write` ligger funktionellt i R2 trots Cloudflares Write-etikett när den används för telemetry query/observation. Den ska inte användas som prejudikat för att lägga vanliga muterande write-permissions i read-klasser.
-
-Permissions som följer med Cloudflares **Read analytics**-template accepteras som template-bundled permissions även när alla inte används av varje konsument.
+Workers Content Read-Only ersätter legacy Workers Scripts Read när Worker-innehåll behöver läsas.
 
 ## R3 — Security / Identity Read
 
-R3 är högst rankad read-klass och omfattar säkerhets-, access-, Zero Trust- och identitetsobservation.
+R3 är högst rankad read-klass och omfattar säkerhets-, Access-, Zero Trust- och cloudflared-observation.
 
-Förstahandsbaser är Cloudflares live-templates **Security** och **Zero Trust**. Live-templateinnehållet ska granskas vid skapandet. Saknade verifierade capabilities läggs till explicit.
+Kanonisk permissionmängd:
 
-Kanonisk R3-capability-bas:
+### Entire Account
 
 - Access: Apps and Policies Read
-- Cloudflare Tunnel Read
+- Cloudflare One Connector: cloudflared Read
 - Zero Trust Read
-- Bot Management Read
-- Zone WAF Read
 
-R3 ska inte automatiskt innehålla samtliga Access-, Zero Trust-, WAF- eller security-permissions. Nya permissions placeras här först när en faktisk konsument behöver den informationsytan eller när de följer med en vald Cloudflare-standardtemplate.
+### Domain scope
+
+- Bot Management Read
+- Zone WAF Rules Read
+
+Cloudflare One Connector: cloudflared Read används för moderna `/cfd_tunnel`-anrop. Argo Tunnel (Legacy) används inte.
 
 ## W1 — Developer Platform Write
 
-W1 är den normala delade skrivcredentialen för Cloudflares Developer Platform.
+W1 är den normala delade skrivcredentialen för Cloudflares Developer Platform och CI/CD-deploy.
 
-Förstahandsbas är Cloudflares live-template **Edit Cloudflare Workers**.
+Kanonisk permissionmängd:
 
-Den live-template som verifierades 2026-09-19 innehöll:
+### Entire Account
 
-### Zone
-
-- Workers Routes Write
-
-### Account
-
+- Workers Editor
 - Workers KV Storage Write
-- Workers Scripts Write
-- Account Settings Read
-- Workers Tail Read
 - Workers R2 Storage Write
 - Pages Write
-- Workers CI Write
 - CF Agents Write
-- Workers Observability Write
 - Workers Containers Write
-
-Avkrokens verifierade tillägg utöver denna template är:
-
 - D1 Write
 - Queues Write
 - Browser Run Write
 
-Template-bundled read-permissions behålls. W1 ska inte kompletteras med edge-/security-administration enbart för bekvämlighet.
+### Domain scope
+
+- Workers Routes Write
+
+Cloudflare kräver dessutom Secrets Store Write på API-tokenet som deployar en Worker med Secrets Store-bindings. Den permissionen ligger tills vidare i O1 och ska inte flyttas eller dupliceras till W1 utan ett uttryckligt arkitekturbeslut.
 
 ## O1 — Infrastructure / Security Administration
 
-O1 är högre klassad än W1 och används för Cloudflare-konfiguration utanför normal Developer Platform-write.
+O1 är högre klassad än W1 och används för infrastruktur-, edge-, security- och Secrets Store-administration.
 
-Verifierad standardtemplate-komponent:
+Kanonisk permissionmängd:
 
-- **Edit Zone DNS**
-  - DNS Write
+### Entire Account
 
-Kanonisk O1-capability-bas utöver template-komponenten:
-
-- Bot Management Write
-- Zone WAF Write
 - Secrets Store Write
 
-Cloudflares live-template **Zone Administration** är en kandidat för framtida användning i O1, men ska inte göras till kanonisk bas förrän dess aktuella Token Summary har verifierats mot O1-gränsen.
+### Domain scope
+
+- DNS Write
+- Bot Management Write
+- Zone WAF Rules Write
 
 Account API Tokens Write får aldrig läggas i O1.
 
@@ -164,7 +157,7 @@ Account API Tokens Write får aldrig läggas i O1.
 
 Tokenadministration är ett separat control plane och får inte delas med applikationsruntime, normal Developer Platform-write eller O1.
 
-Cloudflares live-template **Create Account Tokens** är den avsedda template-basen när programmatisk tokenadministration faktiskt behövs.
+Cloudflares live-template **Create Account Tokens** är den avsedda template-basen. Den kanoniska permissionen är **Account API Tokens Write**.
 
 Denna credential:
 
@@ -177,7 +170,7 @@ Denna credential:
 
 GitHub Organization Secrets är den centrala credentialkällan för GitHub-hostade workflows som behöver en viss klass. Repositoryåtkomst till ett org-secret ska begränsas till de repositories som faktiskt behöver klassen.
 
-Cloudflare Secrets Store är den föredragna centrala credentialkällan för Worker-runtime när en Worker behöver konsumera en delad secret. Secrets Store-bindings är separata från vanliga Worker **Variables and Secrets** och konsumeras genom respektive binding-API.
+Cloudflare Secrets Store är den centrala credentialkällan för Worker-runtime när en Worker behöver konsumera en delad credentialklass. Secrets Store-bindings är separata från vanliga Worker **Variables and Secrets** och värdet hämtas asynkront via bindingens `get()`.
 
 Exakta secret-namn, repositorytilldelningar, tokenvärden och operativ migreringsordning dokumenteras inte i detta publika repository.
 
