@@ -80,6 +80,13 @@ jobs:
               validate_locked cloudflare/processor
               ;;
 
+            Avkroken/Jobb)
+              corepack enable
+              corepack prepare pnpm@10.17.1 --activate
+              pnpm install --frozen-lockfile
+              pnpm --filter @avkroken/web exec wrangler deploy --dry-run --config ../../wrangler.jsonc
+              ;;
+
             *)
               echo "::error::No Cloudflare CI profile configured for $GITHUB_REPOSITORY"
               exit 1
