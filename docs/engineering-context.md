@@ -111,10 +111,10 @@ Caller workflows format the triggering issue/PR number explicitly as a string be
 
 `.github/workflows/auto-assign.yml` is the repository-local caller for `Avkroken/.github`. It triggers when issues or pull requests are opened or reopened and calls the reusable implementation. Pull requests use `pull_request_target`; the workflow does not check out or execute pull-request code.
 
-The special `.github` repository does not automatically propagate executable workflow files to every organization repository. To enable the same policy in another repository, that repository needs a thin caller workflow with `issues: write` that calls:
+The special `.github` repository does not automatically propagate executable workflow files to every organization repository. To enable the same policy in another repository, that repository needs a thin caller workflow with `issues: write` and `pull-requests: write` that calls:
 
 ```yaml
-uses: Avkroken/.github/.github/workflows/reusable-auto-assign.yml@960eec40fe1d6e5be88da27f7b6b75adff64f4fb
+uses: Avkroken/.github/.github/workflows/reusable-auto-assign.yml@fdae2c7859b95cedd8df84ce1583ac420b66b7b7
 ```
 
 Cross-repository callers must pin the reusable workflow to a full immutable commit SHA. Mutable refs such as `@main` are not permitted because CodeQL flags them as an unpinned reusable workflow. When the central implementation changes, validate the new central commit first and then update caller SHAs through normal repository PRs.
