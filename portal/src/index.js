@@ -97,6 +97,22 @@ function pushTouchesDocumentation(payload) {
   );
 }
 
+async function resolveWebhookSecret(env) {
+  const binding = env.AVKROKEN_DOCS_WEBHOOK_SECRET;
+  if (!binding) return null;
+
+  if (typeof binding === "string") {
+    return binding.length > 0 ? binding : null;
+  }
+
+  if (typeof binding.get === "function") {
+    const value = await binding.get();
+    return typeof value === "string" && value.length > 0 ? value : null;
+  }
+
+  return null;
+}
+
 async function verifyGitHubSignature(rawBody, signatureHeader, secret) {
   if (!secret || typeof signatureHeader !== "string" || !signatureHeader.startsWith("sha256=")) {
     return false;
@@ -147,7 +163,8 @@ async function purgeDocumentationCache(ctx, tags) {
 }
 
 async function handleGitHubWebhook(request, env, ctx) {
-  if (!env.AVKROKEN_DOCS_WEBHOOK_SECRET) {
+  const webhookSecret = await resolveWebhookSecret(env);
+  if (!webhookSecret) {
     return new Response("Webhook not configured", { status: 503 });
   }
 
@@ -163,7 +180,7 @@ async function handleGitHubWebhook(request, env, ctx) {
   const verified = await verifyGitHubSignature(
     rawBody,
     signature,
-    env.AVKROKEN_DOCS_WEBHOOK_SECRET
+    webhookSecret
   );
 
   if (!verified) {
