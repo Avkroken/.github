@@ -1,6 +1,6 @@
 # Cloudflare credential standard
 
-**Status:** Planerad  
+**Status:** Aktiv migrering  
 **Senast verifierad:** 2026-09-19
 
 Det här dokumentet definierar Avkrokens organisationsgemensamma modell för Cloudflare Account API Tokens. Modellen är en styrningsstandard för behörighetsklasser och resource scope. Den innehåller inga tokenvärden, account-ID:n, privata appnamn, exakta GitHub secret-namn eller andra operativa hemligheter.
@@ -75,11 +75,11 @@ Kanonisk permissionmängd:
 
 - Zone Read
 
-Workers Metadata Read-Only används i stället för legacy-permissionen Workers Scripts Read.
+Workers Metadata Read-Only är R1:s avsiktliga Workers-nivå: metadata, settings och observability utan Worker script content. Legacy-permissionen Workers Scripts Read motsvarar i den nya modellen Workers Content Read-Only och hör därför inte till R1.
 
-## R2 — Analytics / Observability / Operations Read
+## R2 — Analytics / Content / Operations Read
 
-R2 är högre klassad än R1 och omfattar analytics, innehåll som uttryckligen placerats i denna klass samt operativ account-insyn.
+R2 är högre klassad än R1 och omfattar analytics, Worker-innehåll och operativ account-insyn. Separata legacy-permissions för Workers Observability används inte i den kanoniska modellen; observability-metadata täcks av Workers Metadata Read-Only och Worker-innehåll av Workers Content Read-Only.
 
 Kanonisk permissionmängd:
 
@@ -134,27 +134,23 @@ Kanonisk permissionmängd:
 
 - Workers Routes Write
 
-Secrets Store Write ingår i W1 eftersom samma Wrangler-deploy som publicerar Workern också deklarerar och uppdaterar dess Secrets Store-bindings.
+Secrets Store Write ingår i W1 eftersom samma Wrangler-deploy som publicerar Workern också deklarerar och uppdaterar dess Secrets Store-bindings. Varje Secrets Store-secret som ska bindas till en Worker måste dessutom ha `workers` i secretens scope-lista; detta är en egenskap på secretet och ersätts inte av deploytokenets permission.
+
+Workers Editor täcker uppdatering/deploy av befintliga Workers men inte bootstrap-skapande eller borttagning. Om en ny Worker måste skapas hanteras det som en separat bootstrap-/administrationsåtgärd i stället för att permanent bredda W1.
 
 ## O1 — Infrastructure / Security Administration
 
-O1 är högre klassad än W1 och används för infrastruktur-, edge-, security- och Secrets Store-administration.
+O1 är den reserverade klassen för infrastruktur-, edge- och säkerhetsadministration som ligger utanför normal Developer Platform-write.
 
-Kanonisk permissionmängd:
+Det finns ingen aktiv kanonisk O1-credential så länge ingen verifierad konsument behöver den. När O1 aktiveras väljs minsta faktiska permissionmängd från Cloudflares live-dashboard och Token Summary för den konkreta DNS-/Bot-/WAF-operationen. Därmed låses inte standarden till äldre `Write`-/`Edit`-etiketter innan ett sådant behov finns.
 
-### Domain scope
-
-- DNS Write
-- Bot Management Write
-- Zone WAF Rules Write
-
-Account API Tokens Write får aldrig läggas i O1.
+Secrets Store Write ligger i W1 för Wrangler-deploy av Secrets Store-bundna Workers och ska inte dupliceras i O1. Account API Tokens Write får aldrig läggas i O1.
 
 ## Token administration
 
 Tokenadministration är ett separat control plane och får inte delas med applikationsruntime, normal Developer Platform-write eller O1.
 
-Cloudflares live-template **Create Account Tokens** är den avsedda template-basen. Den kanoniska permissionen är **Account API Tokens Write**.
+Account-owned tokens hanteras under **Manage Account > Account API Tokens**. Den kanoniska API-permissionen för separat tokenadministration är **Account API Tokens Write**; user-scopade token-templates ska inte användas som ersättning för detta account-owned-flöde.
 
 Denna credential:
 
@@ -167,7 +163,7 @@ Denna credential:
 
 GitHub Organization Secrets är den centrala credentialkällan för GitHub-hostade workflows som behöver en viss klass. Repositoryåtkomst till ett org-secret ska begränsas till de repositories som faktiskt behöver klassen.
 
-Cloudflare Secrets Store är den centrala credentialkällan för Worker-runtime när en Worker behöver konsumera en delad credentialklass. Secrets Store-bindings är separata från vanliga Worker **Variables and Secrets** och värdet hämtas asynkront via bindingens `get()`.
+Cloudflare Secrets Store är den centrala credentialkällan för Worker-runtime när en Worker behöver konsumera en delad credentialklass. Secrets Store-bindings är separata från vanliga Worker **Variables and Secrets** och värdet hämtas asynkront via bindingens `get()`. Varje secret som binds till en Worker ska ha `workers` i sin scope-lista.
 
 Exakta secret-namn, repositorytilldelningar, tokenvärden och operativ migreringsordning dokumenteras inte i detta publika repository.
 
