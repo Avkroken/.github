@@ -1,4 +1,4 @@
-import { WorkerEntrypoint } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 
 const GITHUB_API =
   "https://api.github.com/orgs/Avkroken/repos?type=public&per_page=100&sort=full_name&direction=asc";
@@ -7,6 +7,10 @@ const CACHE_SECONDS = 300;
 const DOCS_CACHE_SECONDS = 21600;
 const DOC_CONTENT_CACHE_SECONDS = 21600;
 const MAX_DOC_DEPTH = 2;
+
+const WATCHED_SERVICES = ["skvallerbyttan"];
+const HEARTBEAT_EXPECTED_INTERVAL_SECONDS = 15 * 60;
+const HEARTBEAT_STALE_AFTER_SECONDS = 35 * 60;
 
 const CATEGORY_TOPICS = {
   tool: "Verktyg",
@@ -511,6 +515,262 @@ async function getPortalSites(env, ctx) {
   return response;
 }
 
+
+function operationalWatchdogStub(env, service) {
+  if (!env.OPS_WATCHDOG) throw new Error("operational watchdog binding is not configured");
+  const id = env.OPS_WATCHDOG.idFromName(service);
+  return env.OPS_WATCHDOG.get(id);
+}
+
+function sanitizeHeartbeatChecks(value) {
+  const allowed = [
+    "config",
+    "d1",
+    "secrets",
+    "github",
+    "cloudflareR1",
+    "cloudflareR2",
+    "cloudflareR3"
+  ];
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(allowed.map(key => [key, source[key] === true]));
+}
+
+async function sendOperationalEmail(env, subject, text) {
+  const to = String(env.OPS_NOTIFY_TO || "").trim();
+  const from = String(env.OPS_NOTIFY_FROM || "").trim();
+  if (!env.OPS_EMAIL || !to || !from) {
+    console.error("operational notification email is not configured", {
+      hasBinding: Boolean(env.OPS_EMAIL),
+      hasTo: Boolean(to),
+      hasFrom: Boolean(from)
+    });
+    return false;
+  }
+
+  try {
+    await env.OPS_EMAIL.send({
+      to,
+      from,
+      subject,
+      text
+    });
+    return true;
+  } catch (error) {
+    console.error("operational notification email failed", {
+      subject,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return false;
+  }
+}
+
+function heartbeatAgeSeconds(state, nowMs) {
+  const reference = state.lastReceivedAt || state.monitorStartedAt;
+  const referenceMs = Date.parse(reference || "");
+  if (!Number.isFinite(referenceMs)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.floor((nowMs - referenceMs) / 1000));
+}
+
+function heartbeatStateSummary(state) {
+  const checks = state?.checks && typeof state.checks === "object" ? state.checks : {};
+  const failed = Object.entries(checks)
+    .filter(([, ok]) => ok !== true)
+    .map(([name]) => name);
+  return failed.length ? failed.join(", ") : "none";
+}
+
+export class OperationalWatchdog extends DurableObject {
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/heartbeat" && request.method === "POST") {
+      let report;
+      try {
+        report = await request.json();
+      } catch {
+        return new Response("Invalid JSON", { status: 400 });
+      }
+
+      if (!report || report.service !== "skvallerbyttan") {
+        return new Response("Unknown service", { status: 400 });
+      }
+
+      const emittedAt = typeof report.emittedAt === "string" && Number.isFinite(Date.parse(report.emittedAt))
+        ? report.emittedAt
+        : null;
+      const ready = report.ready === true;
+      const checks = sanitizeHeartbeatChecks(report.checks);
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const previous = await this.ctx.storage.get("state");
+
+      let recoveryNotificationPending =
+        previous?.state === "stale" || previous?.recoveryNotificationPending === true;
+
+      if (recoveryNotificationPending) {
+        const recoverySent = await sendOperationalEmail(
+          this.env,
+          ready
+            ? "Avkroken drift: Skvallerbyttan heartbeat återställd"
+            : "Avkroken drift: Skvallerbyttan heartbeat åter, men readiness är false",
+          [
+            "Den förväntade heartbeat-leveransen från Skvallerbyttan har återupptagits.",
+            `Mottagen: ${nowIso}`,
+            `Ready: ${ready ? "ja" : "nej"}`,
+            `Misslyckade readiness-kontroller: ${heartbeatStateSummary({ checks })}`
+          ].join("\n")
+        );
+        recoveryNotificationPending = !recoverySent;
+      }
+
+      const state = {
+        service: report.service,
+        expectedIntervalSeconds: HEARTBEAT_EXPECTED_INTERVAL_SECONDS,
+        staleAfterSeconds: HEARTBEAT_STALE_AFTER_SECONDS,
+        monitorStartedAt: previous?.monitorStartedAt || nowIso,
+        lastReceivedAt: nowIso,
+        lastEmittedAt: emittedAt,
+        lastReady: ready,
+        checks,
+        state: ready ? "healthy" : "unready",
+        lastAlertAt: previous?.lastAlertAt || null,
+        lastRecoveryAt:
+          previous?.state === "stale" && !recoveryNotificationPending
+            ? nowIso
+            : previous?.lastRecoveryAt || null,
+        recoveryNotificationPending,
+        updatedAt: nowIso
+      };
+
+      await this.ctx.storage.put("state", state);
+
+      return Response.json({
+        ok: true,
+        service: state.service,
+        receivedAt: nowIso,
+        ready: state.lastReady
+      });
+    }
+
+    if (url.pathname === "/check" && request.method === "POST") {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      let state = await this.ctx.storage.get("state");
+
+      if (!state) {
+        state = {
+          service: "skvallerbyttan",
+          expectedIntervalSeconds: HEARTBEAT_EXPECTED_INTERVAL_SECONDS,
+          staleAfterSeconds: HEARTBEAT_STALE_AFTER_SECONDS,
+          monitorStartedAt: nowIso,
+          lastReceivedAt: null,
+          lastEmittedAt: null,
+          lastReady: null,
+          checks: {},
+          state: "pending",
+          lastAlertAt: null,
+          lastRecoveryAt: null,
+          recoveryNotificationPending: false,
+          updatedAt: nowIso
+        };
+        await this.ctx.storage.put("state", state);
+        return Response.json({ ok: true, service: state.service, state: state.state });
+      }
+
+      const ageSeconds = heartbeatAgeSeconds(state, now.getTime());
+      const stale = ageSeconds > Number(state.staleAfterSeconds || HEARTBEAT_STALE_AFTER_SECONDS);
+
+      if (stale && state.state !== "stale") {
+        const sent = await sendOperationalEmail(
+          this.env,
+          "Avkroken drift: heartbeat från Skvallerbyttan saknas",
+          [
+            "Skvallerbyttans förväntade heartbeat har uteblivit.",
+            `Förväntad leverans: var ${Math.floor(HEARTBEAT_EXPECTED_INTERVAL_SECONDS / 60)} minut.`,
+            `Larmgräns: ${Math.floor(HEARTBEAT_STALE_AFTER_SECONDS / 60)} minuter.`,
+            `Senast mottagen: ${state.lastReceivedAt || "ingen heartbeat mottagen"}`,
+            `Senast rapporterad ready: ${state.lastReady === true ? "ja" : state.lastReady === false ? "nej" : "okänd"}`,
+            `Misslyckade readiness-kontroller vid senaste leverans: ${heartbeatStateSummary(state)}`
+          ].join("\n")
+        );
+
+        if (sent) {
+          state = {
+            ...state,
+            state: "stale",
+            lastAlertAt: nowIso,
+            recoveryNotificationPending: false,
+            updatedAt: nowIso
+          };
+          await this.ctx.storage.put("state", state);
+        }
+      }
+
+      return Response.json({
+        ok: true,
+        service: state.service,
+        state: stale ? "stale" : state.state,
+        ageSeconds,
+        lastReceivedAt: state.lastReceivedAt,
+        ready: state.lastReady
+      });
+    }
+
+    return new Response("Not Found", { status: 404 });
+  }
+}
+
+export class OperationalHeartbeatService extends WorkerEntrypoint {
+  async postHeartbeat(report) {
+    if (!report || report.service !== "skvallerbyttan") {
+      throw new Error("unknown operational heartbeat service");
+    }
+
+    const response = await operationalWatchdogStub(this.env, report.service).fetch(
+      "https://ops-watchdog.internal/heartbeat",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          service: report.service,
+          emittedAt: report.emittedAt,
+          ready: report.ready === true,
+          checks: sanitizeHeartbeatChecks(report.checks)
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`operational heartbeat receiver returned ${response.status}`);
+    }
+
+    return response.json();
+  }
+}
+
+async function checkOperationalWatchdogs(env) {
+  await Promise.all(WATCHED_SERVICES.map(async service => {
+    try {
+      const response = await operationalWatchdogStub(env, service).fetch(
+        "https://ops-watchdog.internal/check",
+        { method: "POST" }
+      );
+      if (!response.ok) {
+        console.error("operational watchdog check failed", {
+          service,
+          status: response.status
+        });
+      }
+    } catch (error) {
+      console.error("operational watchdog check threw", {
+        service,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }));
+}
+
 export class DocsInvalidationService extends WorkerEntrypoint {
   async invalidateDocs(repositoryName, previousRepositoryName = null) {
     const names = [repositoryName, previousRepositoryName]
@@ -539,6 +799,10 @@ export class DocsInvalidationService extends WorkerEntrypoint {
 }
 
 export default {
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(checkOperationalWatchdogs(env));
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
