@@ -143,6 +143,22 @@ The required effective Actions policy is least-privilege and workflow-path scope
 
 **Pågående:** the connected GitHub integration does not expose the organization Actions-policy administration endpoint required to read or write the live Workflow Execution Protection rules. Until that live setting is verified and updated through an authorized organization-administration surface, this section defines the intended effective policy but must not be treated as proof that the organization setting is active.
 
+## Operativ heartbeat och watchdog
+
+Skvallerbyttans liveness/readiness övervakas med push i stället för externa pull-anrop mot `/health` eller `/ready`.
+
+- Skvallerbyttan skickar en intern heartbeat var 15:e minut via Cloudflare Service Binding till live Worker-tjänsten `avkroken`, entrypoint `OperationalHeartbeatService`.
+- Leveransen går account-internt och passerar inte `*.denied.se`, WAF, Bot Fight Mode eller Turnstile.
+- Avkroken-portalen lagrar heartbeat-state i Durable Object-klassen `OperationalWatchdog`; övervakningen är därför oberoende av Skvallerbyttans egen D1/runtime.
+- Heartbeat innehåller endast tjänstenamn, tidsstämpel, ett ready-värde och booleska resultat för namngivna readiness-kontroller. Credentials, providerpayloads och hemligheter skickas aldrig.
+- Portalens watchdog-cron kör var 10:e minut. Heartbeat förväntas var 15:e minut och betraktas som utebliven efter 35 minuter.
+- Vid första övergången till stale skickas e-post från `noreply@denied.se` till den operativa notifieringsadressen. Upprepade watchdog-körningar skickar inte dubbletter när larmet redan är levererat.
+- När heartbeat återkommer efter stale skickas en återställningsnotis. Om återkommen heartbeat rapporterar `ready=false` framgår det i återställningsnotisen.
+- `ready=false` lagras som operativ state men ger inte i sig ett separat e-postlarm; den uttryckliga larmgränsen i denna mekanism är utebliven förväntad leverans.
+- Watchdogen verifierar frånvaro genom mottagarsidans mottagningstid, inte avsändarens klocka.
+
+Cloudflare Email Service-bindingen heter `OPS_EMAIL`. Mottagare och avsändare är icke-hemliga Worker-vars `OPS_NOTIFY_TO` och `OPS_NOTIFY_FROM`.
+
 ## Publik projektdokumentation
 
 Publik, versionsstyrd projektdokumentation har två separata presentationsvägar med samma canonical källor i repositoryt.

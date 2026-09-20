@@ -20,5 +20,38 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash"
+  },
+  "triggers": {
+    "crons": [
+      "*/10 * * * *"
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "OPS_WATCHDOG",
+        "class_name": "OperationalWatchdog"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-ops-watchdog",
+      "new_sqlite_classes": [
+        "OperationalWatchdog"
+      ]
+    }
+  ],
+  "send_email": [
+    {
+      "name": "OPS_EMAIL",
+      "allowed_sender_addresses": [
+        "noreply@denied.se"
+      ]
+    }
+  ],
+  "vars": {
+    "OPS_NOTIFY_TO": "anders.eriksson@denied.se",
+    "OPS_NOTIFY_FROM": "noreply@denied.se"
   }
 }
