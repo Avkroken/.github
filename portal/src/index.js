@@ -686,16 +686,6 @@ export default {
       return getDocContent(url, env);
     }
 
-    if (url.pathname === "/webhooks/github") {
-      return new Response("GitHub provider webhook moved to Skvallerbyttan", {
-        status: 410,
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-store"
-        }
-      });
-    }
-
     return env.ASSETS.fetch(request);
   }
 };
