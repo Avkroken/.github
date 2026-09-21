@@ -87,55 +87,6 @@ function isPublicMarkdownPath(path) {
     /^readme\.(md|markdown)$/i.test(value);
 }
 
-function changedDocumentationPath(path) {
-  return isPublicMarkdownPath(path);
-}
-
-function pushTouchesDocumentation(payload) {
-  if (!payload || !Array.isArray(payload.commits)) return true;
-  if (Number.isFinite(payload.size) && payload.size > payload.commits.length) return true;
-
-  return payload.commits.some(commit =>
-    ["added", "modified", "removed"].some(field =>
-      Array.isArray(commit?.[field]) &&
-      commit[field].some(changedDocumentationPath)
-    )
-  );
-}
-
-async function resolveWebhookSecret(env) {
-  const binding = env.AVKROKEN_DOCS_WEBHOOK_SECRET;
-  if (!binding || typeof binding.get !== "function") return null;
-
-  const value = await binding.get();
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-async function verifyGitHubSignature(rawBody, signatureHeader, secret) {
-  if (!secret || typeof signatureHeader !== "string" || !signatureHeader.startsWith("sha256=")) {
-    return false;
-  }
-
-  const hex = signatureHeader.slice("sha256=".length);
-  if (!/^[0-9a-f]{64}$/i.test(hex)) return false;
-
-  const signature = new Uint8Array(hex.match(/.{2}/g).map(byte => Number.parseInt(byte, 16)));
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify"]
-  );
-
-  return crypto.subtle.verify(
-    "HMAC",
-    key,
-    signature,
-    new TextEncoder().encode(rawBody)
-  );
-}
-
 async function purgeDocumentationCache(ctx, tags) {
   const uniqueTags = [...new Set(tags.filter(Boolean))];
   if (!uniqueTags.length) return { success: true, errors: [] };
@@ -159,98 +110,6 @@ async function purgeDocumentationCache(ctx, tags) {
 
   return { success: false, errors: lastErrors };
 }
-
-async function handleGitHubWebhook(request, env, ctx) {
-  const webhookSecret = await resolveWebhookSecret(env);
-  if (!webhookSecret) {
-    return new Response("Webhook not configured", { status: 503 });
-  }
-
-  const delivery = request.headers.get("X-GitHub-Delivery");
-  const event = request.headers.get("X-GitHub-Event");
-  const signature = request.headers.get("X-Hub-Signature-256");
-
-  if (!delivery || !event || !signature) {
-    return new Response("Missing webhook headers", { status: 400 });
-  }
-
-  const rawBody = await request.text();
-  const verified = await verifyGitHubSignature(
-    rawBody,
-    signature,
-    webhookSecret
-  );
-
-  if (!verified) {
-    return new Response("Invalid webhook signature", { status: 401 });
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(rawBody);
-  } catch {
-    return new Response("Invalid JSON", { status: 400 });
-  }
-
-  if (event === "ping") {
-    return new Response(JSON.stringify({ ok: true, delivery }), {
-      headers: { "Content-Type": "application/json; charset=utf-8" }
-    });
-  }
-
-  const repository = payload?.repository;
-  const owner = repository?.owner?.login || repository?.organization?.login;
-  if (!repository || String(owner || "").toLowerCase() !== "avkroken") {
-    return new Response("Ignored", { status: 202 });
-  }
-
-  const repoTag = docsRepoTag(repository.name);
-  let tags = [];
-
-  if (event === "push") {
-    const expectedRef = "refs/heads/" + repository.default_branch;
-    const isPublic = repository.private === false || repository.visibility === "public";
-
-    if (payload.ref !== expectedRef || !isPublic) {
-      return new Response("Ignored", { status: 202 });
-    }
-
-    if (!pushTouchesDocumentation(payload)) {
-      return new Response("No documentation changes", { status: 202 });
-    }
-
-    tags = ["docs-catalog", repoTag];
-  } else if (event === "repository") {
-    tags = ["docs-catalog", repoTag];
-    const previousName = payload?.changes?.repository?.name?.from;
-    if (previousName) tags.push(docsRepoTag(previousName));
-  } else {
-    return new Response("Ignored", { status: 202 });
-  }
-
-  const purge = await purgeDocumentationCache(ctx, tags);
-  if (!purge.success) {
-    console.error("Documentation cache purge failed", {
-      delivery,
-      event,
-      repository: repository.full_name,
-      tags,
-      errors: purge.errors
-    });
-    return new Response("Cache purge failed", { status: 503 });
-  }
-
-  return new Response(JSON.stringify({
-    ok: true,
-    delivery,
-    event,
-    repository: repository.full_name,
-    purged: [...new Set(tags)]
-  }), {
-    headers: { "Content-Type": "application/json; charset=utf-8" }
-  });
-}
-
 
 function pageLabel(path) {
   const name = path.split("/").pop() || path;
@@ -828,10 +687,13 @@ export default {
     }
 
     if (url.pathname === "/webhooks/github") {
-      if (request.method !== "POST") {
-        return new Response("Method Not Allowed", { status: 405 });
-      }
-      return handleGitHubWebhook(request, env, ctx);
+      return new Response("GitHub provider webhook moved to Skvallerbyttan", {
+        status: 410,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
+      });
     }
 
     return env.ASSETS.fetch(request);
