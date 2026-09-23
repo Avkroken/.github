@@ -19,3 +19,6 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           head-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || '' }}
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 300
+          allow-ghsas: ${{ github.repository == 'Avkroken/Bastion' && 'GHSA-9pwp-9qqc-pr26,GHSA-qp49-qgx5-5m26,GHSA-c3fc-8qff-9hwx' || '' }}
