@@ -6,6 +6,10 @@ Centralt organisationsrepository för Avkroken. Här finns gemensamma GitHub-sta
 
 [`docs/engineering-context.md`](docs/engineering-context.md) är den versionsstyrda current-state-bilden för arbetsgrenar, Custom Properties, rulesets och central CI-arkitektur. Uppdatera den när motsvarande GitHub-konfiguration eller workflow-topologi ändras.
 
+## Dokumentationsstandard
+
+[`docs/documentation-standard.md`](docs/documentation-standard.md) definierar Avkrokens canonical modell för README, `docs/`, `project-context`, `AGENTS.md`, Wiki, portal och GitHub Pages.
+
 ## Ärvda organisationsstandarder
 
 Följande filer fungerar som standard för organisationens publika repositories när ett repository inte har en egen motsvarighet:
