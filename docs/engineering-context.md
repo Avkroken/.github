@@ -252,6 +252,10 @@ The active organization `main` ruleset references `Avkroken/.github/.github/work
 
 Repository-local Dependency Review workflows are not policy sources and may be removed once they are confirmed redundant.
 
+Snapshotbaserad dependency submission och Dependency Review kan köras i separata workflows. Den centrala Dependency Review-workflowen använder därför `retry-on-snapshot-warnings: true` med 300 sekunders timeout, i linje med GitHubs rekommendation för separata submission/review-flöden.
+
+Bastion har en verifierad specialomständighet i Android-byggverktygen: Android Gradle Plugin 9.4.1 begär Bouncy Castle 1.80.2 transitivt på buildscript-classpathen, medan `Android/build.gradle.kts` tvingar `bcprov-jdk18on`, `bcpkix-jdk18on` och `bcutil-jdk18on` till 1.86. GitHubs snapshot-diff kan vid olika antal base/head-snapshots ändå presentera de ursprungligt begärda 1.80.2-noderna som nytillagda. Dependency Review tillåter därför endast advisories `GHSA-9pwp-9qqc-pr26`, `GHSA-qp49-qgx5-5m26` och `GHSA-c3fc-8qff-9hwx` när `github.repository == 'Avkroken/Bastion'`. Detta är inte en generell Bouncy Castle-, package- eller severity-exception: andra advisories och andra repositories fortsätter blockera. Undantaget ska tas bort när AGP/dependency-snapshoten inte längre rapporterar den begärda 1.80.2-grafen.
+
 ## Jobb CI profile
 
 Jobb is selected by both `main-node` and `main-cloudflare`.
