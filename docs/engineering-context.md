@@ -236,7 +236,7 @@ Docker and Cloudflare are direct ruleset workflows:
 
 - `docker.yml` is selected by `main-docker` through `platform = docker`.
 - `cloudflare.yml` is selected by `main-cloudflare` through `platform = cloudflare`. Jobb uses its pnpm workspace and validates the same root Wrangler configuration used by its deployment command with `wrangler deploy --dry-run`.
-- The Cloudflare policy is free-first: tracked Wrangler configs must keep persistent logs at or below 10% sampling, persistent traces at or below 1%, redact query strings, and must not declare `tail_consumers` or external observability `destinations`. Paid-only telemetry paths require an explicit reviewed central policy change rather than a repository-local exception.
+- The Cloudflare observability policy validates the repository configuration: persistent logs are capped at 10% sampling, persistent traces at 1%, query strings are redacted, and `tail_consumers` plus external observability `destinations` are rejected.
 - Politiker uses Cloudflare-native Workers Logs/Traces only. The previous `politiker-log-archive` Tail Worker and its per-event R2 log writes are retired from the repository and are no longer part of the validated deployment topology.
 
 Klarsprak has no `package-lock.json`; its Cloudflare profile therefore uses the unlocked validation path (`npm install --ignore-scripts --no-audit --no-fund` followed by `wrangler deploy --dry-run`) instead of `npm ci`.
