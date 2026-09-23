@@ -254,7 +254,9 @@ Repository-local Dependency Review workflows are not policy sources and may be r
 
 Snapshotbaserad dependency submission och Dependency Review kan köras i separata workflows. Den centrala Dependency Review-workflowen använder därför `retry-on-snapshot-warnings: true` med 300 sekunders timeout, i linje med GitHubs rekommendation för separata submission/review-flöden.
 
-Bastion har en verifierad specialomständighet i Android-byggverktygen: Android Gradle Plugin 9.4.1 begär Bouncy Castle 1.80.2 transitivt på buildscript-classpathen, medan `Android/build.gradle.kts` tvingar `bcprov-jdk18on`, `bcpkix-jdk18on` och `bcutil-jdk18on` till 1.86. GitHubs snapshot-diff kan vid olika antal base/head-snapshots ändå presentera de ursprungligt begärda 1.80.2-noderna som nytillagda. Dependency Review tillåter därför endast advisories `GHSA-9pwp-9qqc-pr26`, `GHSA-qp49-qgx5-5m26` och `GHSA-c3fc-8qff-9hwx` när `github.repository == 'Avkroken/Bastion'`. Detta är inte en generell Bouncy Castle-, package- eller severity-exception: andra advisories och andra repositories fortsätter blockera. Undantaget ska tas bort när AGP/dependency-snapshoten inte längre rapporterar den begärda 1.80.2-grafen.
+Bastion har en verifierad specialomständighet i Android-byggverktygen: Android Gradle Plugin 9.4.1 begär äldre build-tool-beroenden transitivt. `Android/build.gradle.kts` tvingar Bouncy Castle-modulerna till 1.86 och jose4j till 0.9.6. GitHubs snapshot-diff kan vid olika antal base/head-snapshots ändå presentera de ursprungligt begärda noderna som nytillagda.
+
+**Tillfällig bootstrap:** medan Bastion #517 installerar read-only dependency-graph generation på PR/merge queue och separat trusted `workflow_run`-submission tillåter Dependency Review exakt `GHSA-9pwp-9qqc-pr26`, `GHSA-qp49-qgx5-5m26`, `GHSA-c3fc-8qff-9hwx` och `GHSA-3677-xxcr-wjqv` endast när `github.repository == 'Avkroken/Bastion'`. Detta är inte en package-, severity- eller repository-wide exception. Alla fyra Bastion-exceptions ska tas bort så snart #517 är mergad och den nya head-snapshot-pipelinen har verifierats.
 
 ## Jobb CI profile
 
