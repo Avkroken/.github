@@ -7,7 +7,7 @@ Det här repositoryt är Avkrokens centrala nod för organisationsgemensam GitHu
 1. `docs/engineering-context.md` — current-state för CI, Custom Properties, rulesets och central teknisk styrning.
 2. `docs/documentation-standard.md` — canonical dokumentationsmodell för Avkroken-repositories.
 3. Repositoryts aktuella `README.md`, workflows och berörda källfiler.
-4. GitHubs live-state när arbetet gäller settings, rulesets, Custom Properties eller andra organisationsinställningar.
+4. För settings, rulesets, Custom Properties och annan extern GitHub-state: verifiera i GitHub vid driftarbete och kopiera inte icke-publik current-state till repositorydokumentation.
 
 ## Arbetsregler
 
