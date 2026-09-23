@@ -109,6 +109,11 @@ jobs:
               if obs.get("enabled") is not True:
                   errors.append(f"{prefix}: observability.enabled must be true")
 
+              if config.get("tail_consumers"):
+                  errors.append(
+                      f"{path}: tail_consumers are not allowed in the free-first Cloudflare profile"
+                  )
+
               if obs.get("redact_query_string") is not True:
                   errors.append(f"{prefix}: redact_query_string must be true")
 
@@ -131,6 +136,10 @@ jobs:
                       errors.append(
                           f"{prefix}: logs.head_sampling_rate={log_rate} exceeds {MAX_LOG_SAMPLE}"
                       )
+                  if logs.get("destinations"):
+                      errors.append(
+                          f"{prefix}: external log destinations are not allowed in the free-first profile"
+                      )
 
               traces = obs.get("traces")
               if not isinstance(traces, dict) or traces.get("enabled") is not True:
@@ -142,6 +151,10 @@ jobs:
                   if not 0 <= trace_rate <= MAX_TRACE_SAMPLE:
                       errors.append(
                           f"{prefix}: traces.head_sampling_rate={trace_rate} exceeds {MAX_TRACE_SAMPLE}"
+                      )
+                  if traces.get("destinations"):
+                      errors.append(
+                          f"{prefix}: external trace destinations are not allowed in the free-first profile"
                       )
 
               return errors
@@ -241,7 +254,6 @@ jobs:
 
             Avkroken/Politiker)
               validate_locked app
-              validate_unlocked log-archive
               ;;
 
             Avkroken/Produkter)
