@@ -6,14 +6,9 @@ Det här dokumentet är Avkrokens levande, versionsstyrda tekniska kontext för 
 
 ## Auktoritet och läsordning
 
-Vid konflikt gäller följande ordning:
+Det här dokumentet beskriver repository-deklarerad engineeringmodell. Filer på `main` i berörda publika repositories är primär källa för det som kan verifieras publikt.
 
-1. GitHubs aktiva organisationsinställningar, Custom Properties och rulesets.
-2. Filer på `main` i berörda repositories.
-3. Det här dokumentet.
-4. Äldre issues, pull requests, chattar och agentminnen.
-
-Om punkt 1 eller 2 ändras ska det här dokumentet uppdateras i samma förändring eller i en direkt efterföljande PR. Dokumentet ska beskriva **nuvarande state**, inte samla gamla motstridiga varianter.
+GitHub-organisationsinställningar, Custom Property-tilldelningar, ruleset-aktivering och annan providerstate ligger utanför repositoryt. De får beskrivas som avsedd modell eller krav, men inte som verifierad current state utan en publik providerkälla.
 
 Repository-specifik kontext hör hemma i respektive repository, normalt i `docs/project-context.md`.
 
@@ -56,12 +51,12 @@ Force-push och history rewrite används inte.
 
 `Avkroken/.github` is the organization-level source of truth for reusable CI implementation and ruleset-required workflow entrypoints.
 
-Repositories are selected into organization rulesets through GitHub Custom Properties. The current conventions are:
+The repository-declared policy model uses GitHub Custom Properties to select repositories into organization rulesets. The intended conventions are:
 
 - `ci_stack` selects build/runtime stacks such as `swift`, `rust`, `dotnet`, `gradle`, `node`, and `python`.
 - `platform` selects build/deployment platforms such as `windows`, `linux`, `android`, `apple`, `ios`, `macos`, `tvos`, `docker`, and `cloudflare`.
 
-Rulesets target the default branch and must not use bypass actors.
+Intended rulesets target the default branch and should not use bypass actors.
 
 ## Policy activation model
 
@@ -78,7 +73,7 @@ The standard rollout order for a new CI policy is:
 3. Create the organization ruleset that requires that workflow and selects repositories by Custom Property.
 4. Assign the matching Custom Property value to each repository that needs the policy.
 
-Existing workflows do not need to be renamed, deleted, wrapped, or compatibility-migrated when a new policy is added. Old and new central workflows may coexist safely because only active organization rulesets select and enforce them.
+Existing workflows do not need to be renamed, deleted, wrapped, or compatibility-migrated when a new policy is added. Old and new central workflows may coexist safely because only organization rulesets that are actually enabled in GitHub can select and enforce them.
 
 When retiring a policy, reverse the binding before deleting implementation:
 
@@ -141,18 +136,18 @@ The required effective Actions policy is least-privilege and workflow-path scope
 - do not add a general organization-wide `pull_request_target` allow for other workflow paths;
 - do not enable `allow-unsafe-pr-checkout` or write-capable cache access for these workflows.
 
-**Pågående:** the connected GitHub integration does not expose the organization Actions-policy administration endpoint required to read or write the live Workflow Execution Protection rules. Until that live setting is verified and updated through an authorized organization-administration surface, this section defines the intended effective policy but must not be treated as proof that the organization setting is active.
+Live Workflow Execution Protection state is external GitHub configuration and is not proven by this repository. Verify it in GitHub when operational state matters.
 
 ## Operativ heartbeat och watchdog
 
 Skvallerbyttans liveness/readiness övervakas med push i stället för externa pull-anrop mot `/health` eller `/ready`.
 
-- Skvallerbyttan skickar en intern heartbeat var 15:e minut via Cloudflare Service Binding till live Worker-tjänsten `avkroken`, entrypoint `OperationalHeartbeatService`.
+- Skvallerbyttan skickar en intern heartbeat var 15:e minut via Cloudflare Service Binding till service target `avkroken` declared by the repository configuration, entrypoint `OperationalHeartbeatService`.
 - Leveransen går account-internt och passerar inte `*.denied.se`, WAF, Bot Fight Mode eller Turnstile.
 - Avkroken-portalen lagrar heartbeat-state i Durable Object-klassen `OperationalWatchdog`; övervakningen är därför oberoende av Skvallerbyttans egen D1/runtime.
 - Heartbeat innehåller endast tjänstenamn, tidsstämpel, ett ready-värde och booleska resultat för namngivna readiness-kontroller. Credentials, providerpayloads och hemligheter skickas aldrig.
 - Portalens watchdog-cron kör var 10:e minut. Heartbeat förväntas var 15:e minut och betraktas som utebliven efter 35 minuter.
-- Vid första övergången till stale skickas e-post från `noreply@denied.se` till den operativa notifieringsadressen. Upprepade watchdog-körningar skickar inte dubbletter när larmet redan är levererat.
+- Vid första övergången till stale kan watchdogkoden skicka notifiering via den konfigurerade Email Service-bindingen. Mottagar-/avsändarvärden är runtimekonfiguration och dokumenteras inte här som live-state.
 - När heartbeat återkommer efter stale skickas en återställningsnotis. Om återkommen heartbeat rapporterar `ready=false` framgår det i återställningsnotisen.
 - `ready=false` lagras som operativ state men ger inte i sig ett separat e-postlarm; den uttryckliga larmgränsen i denna mekanism är utebliven förväntad leverans.
 - Watchdogen verifierar frånvaro genom mottagarsidans mottagningstid, inte avsändarens klocka.
@@ -174,10 +169,10 @@ Konventionen är:
 - Dokumentationsnavet renderar Markdown i portalens eget tema med repositoryflikar och dokumentflikar. Nya publika repositories och nya Markdown-filer blir därmed upptäckbara utan en manuell portalregistry.
 - Dokumentationscache använder Cloudflare Workers Cache med `Cache-Tag`-värdena `docs-catalog` och `docs-repo-<repository>`. Edge-cache har sex timmars fallback-TTL via `Cloudflare-CDN-Cache-Control`; klienter får `Cache-Control: public, max-age=0, must-revalidate` så en lyckad purge inte lämnar sex timmars browser-stale data.
 - Skvallerbyttan är canonical ingress för GitHub- och Cloudflare-provider-events. `avkroken.denied.se` ska inte ha en parallell provider-webhook enbart för freshness/cache-signaler.
-- GitHub `push`/`repository` verifieras och normaliseras i Skvallerbyttan. När ett publikt repositories default branch ändrar Markdown-README eller `docs/**`, anropar Skvallerbyttan portalens interna Cloudflare Service Binding `AVKROKEN_PORTAL_DOCS`, entrypoint `DocsInvalidationService` i live Worker-tjänsten `avkroken`.
+- GitHub `push`/`repository` verifieras och normaliseras i Skvallerbyttan. När ett publikt repositories default branch ändrar Markdown-README eller `docs/**`, anropar Skvallerbyttan portalens interna Cloudflare Service Binding `AVKROKEN_PORTAL_DOCS`, entrypoint `DocsInvalidationService` i service target `avkroken` declared by the repository configuration.
 - `DocsInvalidationService` invaliderar endast `docs-catalog` och berörda `docs-repo-<repository>`-tags med `ctx.cache.purge()`. Den interna signalen använder Cloudflare RPC och kräver ingen separat webhook-secret eller publik intern endpoint.
 - GitHub-redelivery kan återköra docs-signalen utan att skapa dubbla Activity-event eftersom Skvallerbyttan skickar downstream-signalen före sin webhook-deduplicering. Edge-TTL är fortfarande reconciliation/fallback om en signal uteblir.
-- Den tidigare publika portalendpointen `/webhooks/github` är borttagen. Canonical GitHub organization webhook pekar på Skvallerbyttan; portalen har ingen provider-webhook för dokumentationsfreshness.
+- Den tidigare publika portalendpointen `/webhooks/github` är borttagen. Skvallerbyttan implementerar endpointen för GitHub-ingress; vilken webhook som faktiskt är konfigurerad i GitHub är extern providerstate.
 - GitHub Pages är en valfri separat publiceringsyta för repositories som också behöver en fristående dokumentations-URL.
 - `.github/workflows/pages-docs.yml` i `Avkroken/.github` är den centrala reusable implementationen för Jekyll-baserad Pages-publicering.
 - Ett repository som använder Pages aktiverar publiceringen med en tunn caller-workflow som anropar den centrala workflowen och begränsar tokenbehörigheter till `contents: read`, `pages: write` och `id-token: write`.
@@ -187,11 +182,7 @@ Konventionen är:
 
 Portalens dokumentationsnav aktiverar inte Pages och ändrar inga repositoryinställningar. Den centrala Pages-workflowen bygger endast dokumentation från en caller som uttryckligen använder den. Pages är inte en ruleset-policy.
 
-Provider-webhooks är extern live-konfiguration och kan inte härledas enbart från repositoryfiler. Organisationsprincipen är:
-
-- GitHub organization webhook → `https://skvallerbyttan.denied.se/webhooks/github`.
-- Cloudflare Notifications → `https://skvallerbyttan.denied.se/webhooks/cloudflare/notifications`.
-- Cloudflare CASB → `https://skvallerbyttan.denied.se/webhooks/cloudflare/casb`.
+Provider-webhooks är extern konfiguration och kan inte härledas som aktiv state från repositoryfiler. Skvallerbyttan-koden exponerar publikt dokumenterade ingressvägar för GitHub- och Cloudflare-event; faktisk provider-konfiguration måste verifieras hos respektive provider.
 - Avkroken-portalen tar emot följdsignaler från Skvallerbyttan genom account-interna Cloudflare Service Bindings, inte genom egna provider-webhooks.
 
 Skvallerbyttans repositorykontext är canonical för event-ingress, normalisering, Activity, deduplicering och provider-specifik webhookautentisering. Portalens engineering-kontext är canonical för rendering, dokumentationscache och interna mottagar-entrypoints.
@@ -236,7 +227,7 @@ Docker and Cloudflare are direct ruleset workflows:
 
 - `docker.yml` is selected by `main-docker` through `platform = docker`.
 - `cloudflare.yml` is selected by `main-cloudflare` through `platform = cloudflare`. Jobb uses its pnpm workspace and validates the same root Wrangler configuration used by its deployment command with `wrangler deploy --dry-run`.
-- The Cloudflare policy is free-first: tracked Wrangler configs must keep persistent logs at or below 10% sampling, persistent traces at or below 1%, redact query strings, and must not declare `tail_consumers` or external observability `destinations`. Paid-only telemetry paths require an explicit reviewed central policy change rather than a repository-local exception.
+- The Cloudflare observability workflow validates repository configuration: persistent logs are capped at 10% sampling, persistent traces at 1%, query strings are redacted, and `tail_consumers` plus external observability `destinations` are rejected.
 - Politiker uses Cloudflare-native Workers Logs/Traces only. The previous `politiker-log-archive` Tail Worker and its per-event R2 log writes are retired from the repository and are no longer part of the validated deployment topology.
 
 Klarsprak has no `package-lock.json`; its Cloudflare profile therefore uses the unlocked validation path (`npm install --ignore-scripts --no-audit --no-fund` followed by `wrangler deploy --dry-run`) instead of `npm ci`.
@@ -247,7 +238,7 @@ The required platform workflows fail closed when a selected repository has no co
 
 `.github/workflows/dependency-review.yml` in `Avkroken/.github` is the active organization-level Dependency Review workflow. It supports both `pull_request` and `merge_group`, uses only `contents: read`, and pins the official Dependency Review Action to an immutable commit.
 
-The active organization `main` ruleset references `Avkroken/.github/.github/workflows/dependency-review.yml@main`. Dependency Review is therefore a baseline organization policy and is not selected through a Custom Property.
+The repository provides `.github/workflows/dependency-review.yml` as the central Dependency Review workflow. Whether an organization ruleset currently requires it is external GitHub state and must be verified separately.
 
 Repository-local Dependency Review workflows are not policy sources and may be removed once they are confirmed redundant.
 
@@ -302,7 +293,7 @@ Bastion uses these Xcode schemes:
 
 Bastion generates its Xcode project through `App/generate-project.sh`. That script is part of the dependency-version path used by the Apple application build and must remain the generation entrypoint unless the dependency architecture is intentionally changed.
 
-Bastion currently has `ci_stack = gradle, dotnet, rust, swift` and `platform = windows, linux, android, apple`. Platform-specific iOS/macOS/tvOS rulesets apply only after the corresponding values are assigned to its `platform` Custom Property.
+Bastion has repository profiles for Swift, Rust, .NET, Gradle and Apple-family builds. Actual Custom Property assignments are external GitHub state and are not asserted here.
 
 ## Ruleset mapping
 
