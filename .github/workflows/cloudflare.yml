@@ -111,7 +111,7 @@ jobs:
 
               if config.get("tail_consumers"):
                   errors.append(
-                      f"{path}: tail_consumers are not allowed in the free-first Cloudflare profile"
+                      f"{path}: tail_consumers are not allowed in the Cloudflare observability policy"
                   )
 
               if obs.get("redact_query_string") is not True:
@@ -138,7 +138,7 @@ jobs:
                       )
                   if logs.get("destinations"):
                       errors.append(
-                          f"{prefix}: external log destinations are not allowed in the free-first profile"
+                          f"{prefix}: external log destinations are not allowed in the Cloudflare observability policy"
                       )
 
               traces = obs.get("traces")
@@ -154,7 +154,7 @@ jobs:
                       )
                   if traces.get("destinations"):
                       errors.append(
-                          f"{prefix}: external trace destinations are not allowed in the free-first profile"
+                          f"{prefix}: external trace destinations are not allowed in the Cloudflare observability policy"
                       )
 
               return errors
