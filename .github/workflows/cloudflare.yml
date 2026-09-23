@@ -25,6 +25,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json
+          import os
           import pathlib
           import re
           import subprocess
@@ -112,6 +113,11 @@ jobs:
               if config.get("tail_consumers"):
                   errors.append(
                       f"{path}: tail_consumers are not allowed in the free-first Cloudflare profile"
+                  )
+
+              if config.get("browser") and os.environ.get("GITHUB_REPOSITORY") != "Avkroken/Jobb":
+                  errors.append(
+                      f"{path}: Cloudflare Browser Run is reserved for Avkroken/Jobb in the free-first profile"
                   )
 
               if obs.get("redact_query_string") is not True:
