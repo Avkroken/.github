@@ -3,6 +3,22 @@
   "name": "avkroken-portal",
   "main": "src/index.js",
   "compatibility_date": "2026-09-19",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 0.1,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01,
+      "persist": true
+    }
+  },
   "workers_dev": false,
   "preview_urls": false,
   "cache": {
