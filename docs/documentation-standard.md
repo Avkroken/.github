@@ -15,7 +15,7 @@ Dokumentationen ska göra det möjligt att snabbt förstå:
 - var aktuell teknisk current-state finns,
 - vilka delar som är organisationsgemensamma respektive repo-specifika.
 
-Dokumentation ska beskriva verifierad current-state. Historik finns i Git och ska inte samlas som konkurrerande varianter i samma dokument.
+Publik repositorydokumentation ska beskriva state som kan verifieras från publika repositoryfiler eller publika externa källor. Extern konto-/providerstate ska inte kopieras in som current-state om den inte själv är publik. Historik finns i Git.
 
 ## Canonical källor
 
@@ -45,7 +45,7 @@ README ska använda relativa länkar till filer i samma repository.
 
 Komplexa repositories ska normalt ha:
 
-- `docs/project-context.md` — levande teknisk current-state, viktiga invariants och externa kopplingar,
+- `docs/project-context.md` — repository-verifierbar teknisk state, viktiga invariants och externa kontrakt,
 - `docs/architecture.md` — komponenter, dataflöden, trust boundaries och ansvar,
 - `docs/operations.md` — verifiering, deploymentmodell, observability, migrations-/statehantering och felsökningsgränser.
 
