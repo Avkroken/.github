@@ -2,7 +2,7 @@
 
 Det här dokumentet är Avkrokens levande, versionsstyrda tekniska kontext för arbetsgrenar, Custom Properties, rulesets och central CI-topologi.
 
-**Senast verifierad:** 2026-09-23
+**Senast verifierad:** 2026-09-24
 
 ## Auktoritet och läsordning
 
@@ -253,9 +253,9 @@ Repository-local Dependency Review workflows are not policy sources and may be r
 
 Snapshotbaserad dependency submission och Dependency Review kan köras i separata workflows. Den centrala Dependency Review-workflowen använder därför `retry-on-snapshot-warnings: true` med 300 sekunders timeout, i linje med GitHubs rekommendation för separata submission/review-flöden.
 
-Bastion har en verifierad specialomständighet i Android-byggverktygen: Android Gradle Plugin 9.4.1 begär äldre build-tool-beroenden transitivt. `Android/build.gradle.kts` tvingar Bouncy Castle-modulerna till 1.86 och jose4j till 0.9.6. GitHubs snapshot-diff kan vid olika antal base/head-snapshots ändå presentera de ursprungligt begärda noderna som nytillagda.
+Bastions dependency-snapshot-migration är slutförd. Pull requests och merge queue genererar Gradle dependency graph med `contents: read`; grafen omfattar både root-projektets buildscript-`classpath` och `:app`-projektets runtimeClasspath. Submission sker via separat trusted `workflow_run`-flöde utan att PR-kod får write-permission.
 
-**Tillfällig bootstrap:** medan Bastion #517 installerar read-only dependency-graph generation på PR/merge queue och separat trusted `workflow_run`-submission tillåter Dependency Review exakt `GHSA-9pwp-9qqc-pr26`, `GHSA-qp49-qgx5-5m26`, `GHSA-c3fc-8qff-9hwx`, `GHSA-3677-xxcr-wjqv` och `GHSA-2363-cqg2-863c` endast när `github.repository == 'Avkroken/Bastion'`. Detta är inte en package-, severity- eller repository-wide exception. Alla fem Bastion-exceptions ska tas bort så snart #517 är mergad och den nya head-snapshot-pipelinen har verifierats.
+Bastions Android-build tvingar patchade build-tool-versioner för de transitiva beroenden som identifierades under migrationen: Bouncy Castle 1.86, jose4j 0.9.6 och JDOM 2.0.6.1. Den centrala Dependency Review-policyn har inga Bastion-specifika GHSA-undantag; advisories fortsätter blockera enligt den generella policyn.
 
 ## Jobb CI profile
 
