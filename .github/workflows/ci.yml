@@ -32,12 +32,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate public organization repository boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f profile/README.md
-          test -f SECURITY.md
-          test -f CONTRIBUTING.md
-          test ! -e portal
-          test ! -e docs
-          test ! -e assets
+        run: node scripts/repository-boundary.js
