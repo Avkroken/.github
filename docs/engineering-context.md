@@ -255,7 +255,7 @@ Snapshotbaserad dependency submission och Dependency Review kan köras i separat
 
 Bastion har en verifierad specialomständighet i Android-byggverktygen: Android Gradle Plugin 9.4.1 begär äldre build-tool-beroenden transitivt. `Android/build.gradle.kts` tvingar Bouncy Castle-modulerna till 1.86 och jose4j till 0.9.6. GitHubs snapshot-diff kan vid olika antal base/head-snapshots ändå presentera de ursprungligt begärda noderna som nytillagda.
 
-**Tillfällig bootstrap:** medan Bastion #517 installerar read-only dependency-graph generation på PR/merge queue och separat trusted `workflow_run`-submission tillåter Dependency Review exakt `GHSA-9pwp-9qqc-pr26`, `GHSA-qp49-qgx5-5m26`, `GHSA-c3fc-8qff-9hwx` och `GHSA-3677-xxcr-wjqv` endast när `github.repository == 'Avkroken/Bastion'`. Detta är inte en package-, severity- eller repository-wide exception. Alla fyra Bastion-exceptions ska tas bort så snart #517 är mergad och den nya head-snapshot-pipelinen har verifierats.
+**Tillfällig bootstrap:** medan Bastion #517 installerar read-only dependency-graph generation på PR/merge queue och separat trusted `workflow_run`-submission tillåter Dependency Review exakt `GHSA-9pwp-9qqc-pr26`, `GHSA-qp49-qgx5-5m26`, `GHSA-c3fc-8qff-9hwx`, `GHSA-3677-xxcr-wjqv` och `GHSA-2363-cqg2-863c` endast när `github.repository == 'Avkroken/Bastion'`. Detta är inte en package-, severity- eller repository-wide exception. Alla fem Bastion-exceptions ska tas bort så snart #517 är mergad och den nya head-snapshot-pipelinen har verifierats.
 
 ## Jobb CI profile
 
