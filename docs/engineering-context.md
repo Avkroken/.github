@@ -41,7 +41,7 @@ Cross-repository `workflow_call` till `Avkroken/.github` används inte.
 - Produkter: `Dependency review`, `Node and Cloudflare`, `Python`, `Container security / app`, `Container security / scraper`.
 - Pastebinit: `Dependency review`, `Python 3.10`, `Python 3.14`.
 - Politiker: `Dependency review`, `Node and Cloudflare`, `Python`, `Docker`.
-- Bastion: `Dependency review`, `Swift package (ubuntu-latest)`, `Swift package (macos-latest)`, `Apple applications`, `Rust`, `.NET tests`, `Windows application`, `Android Gradle`, `Generate dependency graph`.
+- Bastion: `Swift package (ubuntu-latest)`, `Swift package (macos-latest)`, `Apple applications`, `Rust`, `.NET tests`, `Windows application`, `Android Gradle`, `Generate dependency graph`.
 - Klarsprak: `Dependency review`, `Node and Cloudflare`.
 - Dumpen: `Dependency review`, `Node and Cloudflare`.
 - Skvallerbyttan: `Dependency review`, `Node and Cloudflare`.
@@ -53,7 +53,7 @@ Cross-repository `workflow_call` till `Avkroken/.github` används inte.
 
 Betald GitHub Code Security/Secret Protection ska inte antas finnas.
 
-Dependency Review är tillgängligt för publika repositories på GitHub.com och används som lokal PR-check.
+Dependency Review är tillgängligt för publika repositories på GitHub.com och används som lokal PR-check där repositoryts dependency snapshots är kompletta och stabila. Bastion undantas tills dess blandade snapshot-topologi ger en komplett och jämförbar head-snapshot.
 
 Code scanning/CodeQL och secret scanning kan användas där de är tillgängliga för publika repositories, men de är inte separata required ruleset-regler i den här baslinjen.
 
