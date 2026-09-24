@@ -1,7 +1,3 @@
-# Central ownership map.
-# With one maintainer this is mainly documentation today, but it is ready
-# for branch-protection/review rules if the organization grows.
-
 * @blixten85
-/portal/ @blixten85
 /profile/ @blixten85
+/.github/ @blixten85
