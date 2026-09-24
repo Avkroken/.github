@@ -1,79 +1,66 @@
 # Avkroken/.github
 
-Centralt organisationsrepository för Avkroken. Här finns gemensamma GitHub-standarder, organisationsprofilen och koden för `avkroken.denied.se`.
+`Avkroken/.github` är Avkrokens centrala publika repository för organisationsgemensam GitHub-struktur, engineering-standarder, community health-filer, återanvändbara workflows och dokumentationsnavigering.
 
-## Levande teknik- och styrningskontext
+Det ska **inte** ersätta projektrepositorynas egen dokumentation. Varje repo äger sin README och sin tekniska `docs/`-state; den centrala noden anger gemensam modell och hjälper läsaren hitta rätt.
 
-[`docs/engineering-context.md`](docs/engineering-context.md) är den versionsstyrda current-state-bilden för arbetsgrenar, Custom Properties, rulesets och central CI-arkitektur. Uppdatera den när motsvarande GitHub-konfiguration eller workflow-topologi ändras.
+## Börja här
 
-## Dokumentationsstandard
+- **[Dokumentationsnav](docs/index.md)** — central karta över standarder och projektdokumentation
+- **[Dokumentationsmodell](docs/documentation-standard.md)** — README, `docs/`, Wiki och uppdateringskontrakt
+- **[Engineering context](docs/engineering-context.md)** — organisationsgemensam teknisk kontext
+- **[Repository-integration](docs/repository-documentation.md)** — hur varje repo kopplas till README, docs och Wiki
 
-[`docs/documentation-standard.md`](docs/documentation-standard.md) definierar Avkrokens canonical modell för README, `docs/`, `project-context`, `AGENTS.md`, Wiki, portal och GitHub Pages.
+## Vad hör hemma här?
+
+### Centralt
+
+- gemensamma GitHub Actions/workflows
+- organisationsprofil
+- community health-filer
+- gemensamma dokumentations- och engineering-standarder
+- portalens kod
+- navigation mellan publika repositories.
+
+### Inte centralt
+
+- ett projekts API-detaljer
+- projektspecifika driftinstruktioner
+- ett projekts interna dataflöden
+- repo-specifika bygginvarianter.
+
+Sådant hör hemma i respektive repository.
+
+## Dokumentationsmodell
+
+Varje icke-trivialt repository bör ha:
+
+1. en kort och tydlig `README.md`;
+2. en klickbar `docs/index.md`;
+3. ämnesspecifika dokument under `docs/`;
+4. GitHub Wiki som presentations-/navigationsyta när det är rimligt.
+
+README ska hjälpa läsaren välja nästa klick, inte tvinga fram en lång scroll.
 
 ## Ärvda organisationsstandarder
 
 Följande filer fungerar som standard för organisationens publika repositories när ett repository inte har en egen motsvarighet:
 
-- `CODE_OF_CONDUCT.md` — gemensam uppförandekod.
-- `CONTRIBUTING.md` — gemensamma riktlinjer för bidrag.
-- `SECURITY.md` — gemensam policy för säkerhetsrapportering.
-- `SUPPORT.md` — gemensam vägledning för frågor och support.
-- `.github/FUNDING.yml` — GitHub Sponsors-konfiguration.
-- `.github/ISSUE_TEMPLATE/` — formulär och länkar för issues.
-- `.github/PULL_REQUEST_TEMPLATE.md` — standardmall för pull requests.
-- `.github/DISCUSSION_TEMPLATE/` — formulär för organisationens Discussions.
+- `CODE_OF_CONDUCT.md`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `SUPPORT.md`
+- `.github/FUNDING.yml`
+- `.github/ISSUE_TEMPLATE/`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/DISCUSSION_TEMPLATE/`
 
-Repository-specifika community health-filer har företräde framför motsvarande organisationsstandard.
-
-## Repo-lokal GitHub-konfiguration
-
-Följande gäller detta repository och är inte automatiskt organisationsgemensamma standarder:
-
-- `CODEOWNERS` — ägarskap för filer i detta repository.
-- `.github/labeler.yml` — labeler-regler för detta repository.
-- `.github/workflows/labeler.yml` — PR-labeler för detta repository.
-- `profile/README.md` — publik organisationsprofil på GitHub.
-- `docs/` — publik teknisk dokumentation.
-
-## Arbetsflöde
-
-Utgå från den aktuella `main`-grenen och gör ändringar i en separat arbetsgren. Automatiserade och agentdrivna arbetsgrenar använder namnformen `{agent}/{feature}/{YYYY-MM-DD}/{HH-mm}-{id}`.
-
-Pull requests öppnas mot `main`. Låt repositoryts automatiska kontroller och regler bli gröna före merge. Arbetsgrenar raderas efter merge.
+Repository-specifika community health-filer har företräde.
 
 ## Portal
 
-Portalen läser endast **publika**, ej arkiverade repositories i GitHub-organisationen.
-
-För att visa ett repository på `avkroken.denied.se`:
-
-1. Sätt repositoryts **Website**-fält till den publika webbplatsens **HTTPS-URL** (`https://...`). `http://` publiceras inte i portalen.
-2. Lägg till en kategoritopic: `project`, `tool`, `docs`, `service` eller `experiment`. Kategorin fungerar samtidigt som publiceringsmarkör för portalen.
-3. Lägg valfritt till en accenttopic: `cyan`, `blue`, `violet`, `magenta` eller `pink`.
-4. Använd repositoryts description som text på portalkortet.
-
-Äldre `portal-*`-varianter för kategori och accent stöds tills vidare för bakåtkompatibilitet, men nya ändringar bör använda de kortare topic-namnen ovan.
-
-Ta bort kategoritopicen för att dölja webbplatsen från portalen. Ingen ny deploy krävs för rena metadataändringar. Workern cachelagrar GitHub-metadata i 5 minuter.
+`portal/` innehåller Worker-projektet för `avkroken.denied.se`. Portalen läser publik repository-metadata och fungerar som projektkatalog; den ersätter inte README, docs eller Wiki.
 
 ## Integritetsgräns
 
-Portalens indexering använder GitHubs publika repository-metadata. Detta repository är också publikt, så dokumentation och konfiguration här får inte innehålla lösenord, tokens, privata nycklar, personuppgifter eller andra uppgifter som kräver konfidentialitet.
-
-Detaljer som endast behövs för privat drift eller intern säkerhetsadministration ska hållas utanför detta publika repository.
-
-## Cloudflare
-
-Använd `portal/` som Worker-projektets root.
-
-Workern serverar:
-
-- `/`
-- `/avkroken-login-logo.svg`
-- `/access-denied.svg`
-- `/access-denied/`
-- `/api/sites`
-
-D1, KV och R2 behövs inte.
-
-Ett valfritt `GITHUB_TOKEN` kan läggas till som Worker secret för autentiserade GitHub API-anrop. Det behövs inte för publik repository-metadata.
+Detta repository är publikt. Dokumentation och konfiguration får inte innehålla lösenord, tokens, privata nycklar, personuppgifter eller andra uppgifter som kräver konfidentialitet.
