@@ -26,14 +26,3 @@ jobs:
           head-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || '' }}
           retry-on-snapshot-warnings: true
           retry-on-snapshot-warnings-timeout: 300
-          # Bastion's AGP 9.4.1 buildscript requests Bouncy Castle 1.80.2, but
-          # Android/build.gradle.kts forces the resolved build-tool classpath to
-          # 1.86. GitHub's snapshot diff can still report the requested 1.80.2
-          # nodes when base/head snapshot sets differ. Allow only the three
-          # advisories currently attached to that false-positive requested
-          # build-tool graph. GHSA-3677-xxcr-wjqv and GHSA-2363-cqg2-863c are temporary bootstrap for
-          # jose4j 0.9.5 while Bastion #517 installs read-only PR graph
-          # generation plus trusted workflow_run submission. Remove all
-          # Bastion GHSA exceptions after that pipeline is live and verified.
-          # Every other advisory and dependency remains blocking.
-          allow-ghsas: ${{ github.repository == 'Avkroken/Bastion' && 'GHSA-9pwp-9qqc-pr26,GHSA-qp49-qgx5-5m26,GHSA-c3fc-8qff-9hwx,GHSA-3677-xxcr-wjqv,GHSA-2363-cqg2-863c' || '' }}
