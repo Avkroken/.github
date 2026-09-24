@@ -1,94 +1,121 @@
 # Avkrokens dokumentationsstandard
 
-**Senast verifierad:** 2026-09-23
+**Senast verifierad:** 2026-09-24
 
-Det här dokumentet definierar den organisationsgemensamma modellen för publik, versionsstyrd projektdokumentation.
+Det här dokumentet definierar den organisationsgemensamma modellen för publik projektdokumentation.
 
 ## Mål
 
-Dokumentationen ska göra det möjligt att snabbt förstå:
+Dokumentationen ska göra det möjligt att snabbt:
 
-- vad ett repository ansvarar för,
-- hur systemet är uppbyggt,
-- hur det körs och verifieras,
-- vilka drift- och säkerhetsgränser som gäller,
-- var aktuell teknisk current-state finns,
-- vilka delar som är organisationsgemensamma respektive repo-specifika.
+- förstå vad ett repository ansvarar för,
+- hitta rätt sektion utan lång README-scroll,
+- förstå arkitektur och state ownership,
+- köra och verifiera projektet,
+- hitta drift- och säkerhetsgränser,
+- skilja repo-specifik information från organisationsgemensam information.
 
-Dokumentation ska beskriva verifierad current-state. Historik finns i Git och ska inte samlas som konkurrerande varianter i samma dokument.
+## Dokumentationslager
 
-## Canonical källor
+Avkroken använder fyra kompletterande ytor:
 
-Ordningen är:
+1. **README** — kort ingång.
+2. **`docs/index.md`** — klickbar innehållskarta.
+3. **`docs/*.md`** — versionsstyrd teknisk dokumentation.
+4. **GitHub Wiki** — navigations-/presentationsyta där dokumentationsmängden motiverar den.
 
-1. live provider-state när informationen gäller GitHub/Cloudflare-inställningar,
-2. filer på repositoryts aktuella default branch,
-3. `docs/project-context.md`,
-4. övrig repositorydokumentation,
-5. äldre issues, PR:er, chattar och exporter.
-
-`README.md` och `docs/` på default branch är canonical publik projektdokumentation.
+Ingen av dessa ska behöva bli en jättelik sammanhängande sida.
 
 ## README
 
-README är en kort ingång, inte hela manualen. Den ska normalt innehålla:
+README ska normalt innehålla:
 
-- syfte och ansvar,
-- viktigaste runtime-/plattformskomponenterna,
-- hur projektet verifieras eller startas lokalt,
-- länk till `docs/` eller konkreta dokument,
+- en kort beskrivning av projektet,
+- snabbaste verifierings-/startvägen,
+- tydlig länk till `docs/index.md`,
+- några få viktiga invariants när de behövs för att undvika farliga missförstånd,
 - länk till säkerhetsrapportering när relevant.
 
-README ska använda relativa länkar till filer i samma repository.
+Detaljerad arkitektur, API-referens, migrationer och felsökning ska normalt ligga i `docs/` eller motsvarande ämnessidor.
 
-## docs/
+## docs/index.md
 
-Komplexa repositories ska normalt ha:
+Icke-triviala repositories ska ha `docs/index.md` som dokumentationskarta.
 
-- `docs/project-context.md` — levande teknisk current-state, viktiga invariants och externa kopplingar,
-- `docs/architecture.md` — komponenter, dataflöden, trust boundaries och ansvar,
-- `docs/operations.md` — verifiering, deploymentmodell, observability, migrations-/statehantering och felsökningsgränser.
+Sidan ska:
 
-Ytterligare ämnesspecifika dokument används när de tillför information utan att duplicera ovanstående.
+- länka till ämnesspecifika dokument,
+- erbjuda läsvägar efter uppgift,
+- beskriva var olika typer av information hör hemma,
+- göra det möjligt att nå viktig dokumentation med ett eller två klick från README.
 
-Små repositories behöver inte konstgjort fylla alla dokument med text. De ska däremot ha tillräcklig dokumentation för att en ny maintainer ska kunna förstå ansvar, verifiering och drift utan att rekonstruera systemet från källkod.
+## Ämnesspecifika docs
+
+Komplexa repositories ska normalt dokumentera det som faktiskt behövs, exempelvis:
+
+- project context/current-state,
+- architecture,
+- operations,
+- API,
+- auth,
+- data/schema,
+- providers/integrationer,
+- deployment,
+- security.
+
+Filer skapas efter systemets verkliga behov; alla repositories behöver inte exakt samma uppsättning.
 
 ## project-context
 
-`docs/project-context.md` ska uppdateras när en materiell ändring påverkar exempelvis:
+`docs/project-context.md` ska innehålla repo-specifik teknisk current-state som kan verifieras från repositoryts kod, config och publika kontrakt.
 
-- runtime-arkitektur,
-- integrationsgränser,
-- Custom Properties eller ruleset-koppling,
-- CI-/deploymentmodell,
-- säkerhets- eller credentialmodell,
-- lagring eller dataflöden,
-- kritiska bygg- eller driftinvarianter.
+Den ska **inte** bli en kopia av organisationsgemensam ruleset-/Custom Property-/policy-state. Sådan organisationsstate hör hemma centralt eller i provider-state.
 
-Ta bort ersatt current-state i stället för att stapla nya varianter ovanpå gammal text.
+Uppdatera project-context när exempelvis runtimearkitektur, integrationsgränser, deploymentmodell, lagring, dataflöde eller kritisk bygginvariant ändras.
 
 ## AGENTS.md
 
-`AGENTS.md` är en kort agent-facing karta, inte en kopia av projektets dokumentation. Den ska:
+`AGENTS.md` är en kort agent-facing karta.
 
-- peka till central engineering-kontext och repo-specifik project-context,
-- ange repositoryts viktigaste verifieringskommando/invariant,
-- ange säkerhets- eller scopegränser som en agent alltid behöver känna till,
-- hålla detaljer bakom länkar till `docs/` när de inte behövs för varje arbetsgren.
+Den ska:
+
+- peka på repoets dokumentationsindex och viktigaste tekniska docs,
+- ange obligatorisk verifiering,
+- ange kritiska repo-specifika invariants,
+- undvika att duplicera långa manualer eller organisationsgemensam current-state.
 
 ## GitHub Wiki
 
-GitHub Wiki är en separat Git-yta från repositoryts vanliga default branch. Därför är Wiki **inte canonical source of truth** för Avkrokens tekniska dokumentation.
+Wiki ska användas där dokumentationsmängden eller antalet ämnen gör en klickbar sidstruktur bättre än en enda README.
 
-Om Wiki används ska den vara en presentations-/navigeringsyta och får inte innehålla unik current-state som saknas i repositoryt. Rekommenderad användning är en kort Home-sida som länkar till README, `docs/`, portal eller GitHub Pages.
+För icke-triviala repositories är Wiki rekommenderad presentationsyta när den kan hållas i synk utan att skapa en separat konkurrerande sanning.
 
-Wiki ska inte användas för att kringgå PR-flöde, rulesets eller repositoryts versionsstyrda dokumentationsmodell.
+### Wiki ska
 
-## Portal och Pages
+- ha en tydlig Home-sida,
+- ha sidebar/navigation när flera sidor finns,
+- dela upp dokumentation efter ämne,
+- länka tillbaka till repository och versionsstyrda källor när relevant.
 
-Avkrokens portal kan rendera publik Markdown direkt från publika repositories. GitHub Pages är en valfri separat presentationsyta för repositories som behöver en fristående dokumentations-URL.
+### Wiki ska inte
 
-Varken portal, Pages eller Wiki ändrar vilken källa som är canonical: det är fortfarande versionerad Markdown på default branch.
+- vara enda platsen för teknisk current-state,
+- innehålla secrets eller privat driftinformation,
+- användas för att kringgå repositoryts review- eller versionsstyrningsmodell.
+
+GitHub lagrar Wiki i ett separat Git-repository. Därför ska den behandlas som presentationslager ovanpå versionsstyrd projektdokumentation, inte som enda tekniska källa.
+
+## Central nod: Avkroken/.github
+
+`Avkroken/.github` äger:
+
+- gemensamma dokumentationsstandarder,
+- central engineering-kontext,
+- gemensamma community health-filer,
+- återanvändbara workflows,
+- organisationens dokumentationsnav.
+
+Den ska länka till projektrepositories men inte duplicera deras tekniska innehåll.
 
 ## Säkerhet
 
@@ -97,12 +124,14 @@ Publik dokumentation får inte innehålla:
 - tokens eller secrets,
 - privata nycklar,
 - lösenord,
-- känsliga authorization-listor eller credential-värden,
-- privata runbooks som kräver konfidentialitet,
-- information som medför att säkerhetsgränser kringgås.
+- känsliga authorization-listor,
+- privata runbooks,
+- annan information som kräver konfidentialitet.
 
-Icke-hemliga resursnamn, bindings och arkitektur får dokumenteras när de behövs för att förstå systemet.
+Icke-hemliga resursnamn, bindings och arkitektur får dokumenteras när det behövs för att förstå den publika koden.
 
 ## Uppdateringskontrakt
 
-När implementation, arkitektur eller drift ändras ska relevant dokumentation uppdateras i samma PR eller i en direkt efterföljande PR. En förändring är inte dokumentationsmässigt komplett om README eller canonical `docs/` fortfarande beskriver den tidigare modellen.
+När implementation, arkitektur eller drift ändras ska relevant versionsstyrd dokumentation uppdateras i samma PR eller direkt efterföljande PR.
+
+README ska förbli en ingång. Om den börjar växa till en manual ska innehållet brytas ut till ämnesspecifika docs och göras nåbart från `docs/index.md` och Wiki.
