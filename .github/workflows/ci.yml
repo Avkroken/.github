@@ -17,12 +17,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
-        with:
-          base-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
-          head-ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || '' }}
-          retry-on-snapshot-warnings: true
-          retry-on-snapshot-warnings-timeout: 300
+      - name: Require dependency-free community repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name 'package.json' -o -name 'package-lock.json' -o -name 'pnpm-lock.yaml' \) | grep -q .; then
+            echo "::error::.github must not contain application dependencies."
+            exit 1
+          fi
 
   portal:
     name: Portal
@@ -31,18 +33,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Reject cross-repository workflow reuse
+      - name: Validate community-only boundary
         shell: bash
         run: |
-          if grep -R -nE --include='*.yml' --include='*.yaml' '^[[:space:]]*uses:[[:space:]]+Avkroken/\.github/\.github/workflows/' .github/workflows; then
-            echo "::error::Cross-repository workflow reuse is not allowed."
-            exit 1
-          fi
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: "24"
-      - name: Validate portal Worker
-        working-directory: portal
-        run: |
-          npm install --ignore-scripts --no-audit --no-fund
-          npx wrangler deploy --dry-run --config wrangler.jsonc
+          set -euo pipefail
+          grep -q 'community/profile' README.md
+          test ! -e portal
+          test ! -e docs
+          test ! -e assets

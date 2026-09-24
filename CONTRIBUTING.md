@@ -49,6 +49,4 @@ Genom att bidra intygar du att du har rätt att skicka in ändringen. Bidrag omf
 
 ## Repository-specifika regler
 
-Läs även [Avkrokens engineering context](https://github.com/Avkroken/.github/blob/main/docs/engineering-context.md) för organisationens levande tekniska kontext kring arbetsgrenar, Custom Properties, rulesets och central CI.
-
-Om ett repository innehåller en lokal `CONTRIBUTING.md` gäller den före den här organisationsgemensamma standarden.
+Om ett repository innehåller lokala instruktioner eller en lokal `CONTRIBUTING.md` gäller de före den här organisationsgemensamma standarden. Intern teknisk organisationskontext publiceras inte genom detta community-repository.
