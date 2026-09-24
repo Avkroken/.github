@@ -34,7 +34,7 @@ jobs:
       - name: Reject cross-repository workflow reuse
         shell: bash
         run: |
-          if grep -R -n --include='*.yml' --include='*.yaml' 'Avkroken/.github/.github/workflows/' .github/workflows; then
+          if grep -R -nE --include='*.yml' --include='*.yaml' '^[[:space:]]*uses:[[:space:]]+Avkroken/\.github/\.github/workflows/' .github/workflows; then
             echo "::error::Cross-repository workflow reuse is not allowed."
             exit 1
           fi
