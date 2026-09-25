@@ -70,11 +70,40 @@ def test_symlink_is_not_documentation():
 def test_monorepo_app_docs_are_not_mirrored():
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
-        jobb_docs = root / "apps" / "jobb" / "docs"
+        jobb = root / "apps" / "jobb"
+        jobb_docs = jobb / "docs"
         jobb_docs.mkdir(parents=True)
+
+        app_readme = jobb / "README.md"
+        app_readme.write_text("# protected app README\n", encoding="utf-8")
         protected = jobb_docs / "security.md"
         protected.write_text("# protected app docs\n", encoding="utf-8")
+
+        assert mod.documentation_file(app_readme, root) is False
         assert mod.documentation_file(protected, root) is False
+
+
+def test_only_root_readme_and_root_docs_are_mirrored():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        root_readme = root / "README.md"
+        root_readme.write_text("# root\n", encoding="utf-8")
+        docs = root / "docs"
+        docs.mkdir()
+        docs_readme = docs / "README.md"
+        docs_readme.write_text("# docs\n", encoding="utf-8")
+        nested = root / "tools" / "README.md"
+        nested.parent.mkdir()
+        nested.write_text("# nested\n", encoding="utf-8")
+
+        assert mod.documentation_file(root_readme, root) is True
+        assert mod.documentation_file(docs_readme, root) is True
+        assert mod.documentation_file(nested, root) is False
+
+
+def test_monorepo_is_excluded_from_generic_search_index():
+    assert mod.search_repository_allowed("Avkroken/Avkroken") is False
+    assert mod.search_repository_allowed("Avkroken/Bastion") is True
 
 
 def test_jekyll_config_matches_html_links():
@@ -145,6 +174,8 @@ if __name__ == "__main__":
     test_liquid_is_preserved_as_text()
     test_symlink_is_not_documentation()
     test_monorepo_app_docs_are_not_mirrored()
+    test_only_root_readme_and_root_docs_are_mirrored()
+    test_monorepo_is_excluded_from_generic_search_index()
     test_jekyll_config_matches_html_links()
     test_searchable_text_and_title()
     test_search_index_entry_preserves_canonical_source()
