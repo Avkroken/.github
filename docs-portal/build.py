@@ -378,17 +378,18 @@ def main():
 
             if search_allowed:
                 search_entries.append(
-                search_entry(
-                    entry_id=f"repository:{repo['full_name']}",
-                    kind="repository",
-                    repository=repo["full_name"],
-                    ref=branch,
-                    source_path=None,
-                    canonical_url=repo["html_url"],
-                    title=name,
-                    markdown=" ".join(
-                        part for part in [name, repo.get("description") or ""] if part
-                    ),
+                    search_entry(
+                        entry_id=f"repository:{repo['full_name']}",
+                        kind="repository",
+                        repository=repo["full_name"],
+                        ref=branch,
+                        source_path=None,
+                        canonical_url=repo["html_url"],
+                        title=name,
+                        markdown=" ".join(
+                            part for part in [name, repo.get("description") or ""] if part
+                        ),
+                    )
                 )
 
             mirrored_paths = {
