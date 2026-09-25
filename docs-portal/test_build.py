@@ -67,6 +67,16 @@ def test_symlink_is_not_documentation():
         assert mod.documentation_file(link, root) is False
 
 
+def test_monorepo_app_docs_are_not_mirrored():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        jobb_docs = root / "apps" / "jobb" / "docs"
+        jobb_docs.mkdir(parents=True)
+        protected = jobb_docs / "security.md"
+        protected.write_text("# protected app docs\n", encoding="utf-8")
+        assert mod.documentation_file(protected, root) is False
+
+
 def test_jekyll_config_matches_html_links():
     with tempfile.TemporaryDirectory() as td:
         out = Path(td)
@@ -134,6 +144,7 @@ if __name__ == "__main__":
     test_wiki_links()
     test_liquid_is_preserved_as_text()
     test_symlink_is_not_documentation()
+    test_monorepo_app_docs_are_not_mirrored()
     test_jekyll_config_matches_html_links()
     test_searchable_text_and_title()
     test_search_index_entry_preserves_canonical_source()
