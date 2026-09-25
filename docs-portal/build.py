@@ -21,6 +21,7 @@ ROOT_DOCS = {
 }
 
 LINK_RE = re.compile(r'(?P<prefix>!?\[[^\]]*\]\()(?P<target>[^)]+)(?P<suffix>\))')
+ENDRAW_RE = re.compile(r"{%-?\s*endraw\s*-?%}", re.IGNORECASE)
 
 
 def get_json(url: str):
@@ -72,6 +73,8 @@ def clone(url: str, dest: Path, branch: str | None = None) -> bool:
 
 
 def documentation_file(path: Path, root: Path) -> bool:
+    if path.is_symlink():
+        return False
     rel = path.relative_to(root)
     if ".git" in rel.parts or ".github" in rel.parts:
         return False
@@ -209,14 +212,20 @@ def rewrite_wiki_links(text: str, wiki_files: set[str], current_rel: str):
 
 def frontmatter(title: str, canonical: str, body: str) -> str:
     title = title.replace('"', '\\"')
+    body = ENDRAW_RE.sub(
+        "{% endraw %}{{ '{% endraw %}' }}{% raw %}",
+        body,
+    )
     return (
         "---\n"
         "layout: default\n"
         f'title: "{title}"\n'
-        "---\n\n'
+        "---\n\n"
         f"> **Automatisk spegel.** Canonical källa: "
         f"[{canonical}]({canonical}). Ändringar ska göras där.\n\n"
+        + "{% raw %}\n"
         + body
+        + "\n{% endraw %}\n"
     )
 
 
@@ -252,8 +261,7 @@ table{border-collapse:collapse}th,td{padding:6px 10px;border:1px solid #d0d7de}"
 
     (out / "_config.yml").write_text(
         'title: "Avkroken dokumentation"\n'
-        "markdown: kramdown\n"
-        "permalink: pretty\n",
+        "markdown: kramdown\n",
         encoding="utf-8",
     )
 
@@ -327,7 +335,7 @@ def main():
                 wiki_files = {
                     path.relative_to(wiki_src).as_posix()
                     for path in wiki_src.rglob("*.md")
-                    if ".git" not in path.parts
+                    if not path.is_symlink() and ".git" not in path.parts
                 }
                 for rel_str in sorted(wiki_files):
                     path = wiki_src / rel_str
