@@ -75,10 +75,67 @@ def test_jekyll_config_matches_html_links():
         assert "permalink: pretty" not in config
 
 
+def test_searchable_text_and_title():
+    markdown = """---
+title: ignored
+---
+
+# Search title
+
+Read **public** [documentation](https://example.invalid) safely.
+"""
+    text, truncated = mod.searchable_text(markdown)
+    assert truncated is False
+    assert "Search title" in text
+    assert "public documentation safely." in text
+    assert "https://example.invalid" not in text
+    assert mod.document_title(markdown, "Fallback") == "Search title"
+
+
+def test_search_index_entry_preserves_canonical_source():
+    entry = mod.search_entry(
+        entry_id="document:Avkroken/Example:docs/index.md",
+        kind="document",
+        repository="Avkroken/Example",
+        ref="main",
+        source_path="docs/index.md",
+        canonical_url="https://github.com/Avkroken/Example/blob/main/docs/index.md",
+        title="Example",
+        markdown="# Example\n\nPublic docs.",
+    )
+    assert entry["repository"] == "Avkroken/Example"
+    assert entry["ref"] == "main"
+    assert entry["sourcePath"] == "docs/index.md"
+    assert entry["canonicalUrl"].startswith("https://github.com/Avkroken/Example/")
+    assert entry["text"] == "Example Public docs."
+    assert entry["truncated"] is False
+
+
+def test_write_search_index_is_generated_and_versioned():
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        payload = mod.write_search_index(
+            out,
+            "Avkroken",
+            [{"id": "repository:Avkroken/Example", "kind": "repository"}],
+        )
+        stored = __import__("json").loads(
+            (out / "search-index.json").read_text(encoding="utf-8")
+        )
+        assert payload["schemaVersion"] == 1
+        assert payload["generatedMirror"] is True
+        assert payload["canonical"] == "source repositories"
+        assert payload["generatedAt"].endswith("Z")
+        assert stored == payload
+
+
 if __name__ == "__main__":
     test_repo_links()
     test_wiki_links()
     test_liquid_is_preserved_as_text()
     test_symlink_is_not_documentation()
     test_jekyll_config_matches_html_links()
+    test_searchable_text_and_title()
+    test_search_index_entry_preserves_canonical_source()
+    test_write_search_index_is_generated_and_versioned()
     print("ok")
