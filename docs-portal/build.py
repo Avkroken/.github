@@ -355,6 +355,7 @@ def main():
     write_site_shell(out)
 
     manifest = []
+    search_entries = []
     with tempfile.TemporaryDirectory(prefix="avkroken-docs-") as temp:
         work = Path(temp)
 
@@ -365,6 +366,21 @@ def main():
 
             if not clone(repo["clone_url"], src, branch):
                 raise RuntimeError(f"Could not clone {repo['full_name']}")
+
+            search_entries.append(
+                search_entry(
+                    entry_id=f"repository:{repo['full_name']}",
+                    kind="repository",
+                    repository=repo["full_name"],
+                    ref=branch,
+                    source_path=None,
+                    canonical_url=repo["html_url"],
+                    title=name,
+                    markdown=" ".join(
+                        part for part in [name, repo.get("description") or ""] if part
+                    ),
+                )
+            )
 
             mirrored_paths = {
                 path.relative_to(src).as_posix()
@@ -386,8 +402,9 @@ def main():
                         f"https://github.com/{args.org}/{name}"
                         f"/blob/{branch}/{rel_str}"
                     )
+                    raw_body = path.read_text(encoding="utf-8", errors="replace")
                     body = rewrite_repo_links(
-                        path.read_text(encoding="utf-8", errors="replace"),
+                        raw_body,
                         org=args.org,
                         repo=name,
                         branch=branch,
@@ -399,6 +416,18 @@ def main():
                         encoding="utf-8",
                     )
                     docs.append(rel_str)
+                    search_entries.append(
+                        search_entry(
+                            entry_id=f"document:{repo['full_name']}:{rel_str}",
+                            kind="document",
+                            repository=repo["full_name"],
+                            ref=branch,
+                            source_path=rel_str,
+                            canonical_url=canonical,
+                            title=document_title(raw_body, f"{name} — {rel_str}"),
+                            markdown=raw_body,
+                        )
+                    )
                 else:
                     shutil.copy2(path, dst)
 
@@ -423,8 +452,9 @@ def main():
                         f"https://github.com/{args.org}/{name}/wiki/"
                         f"{path.stem.replace(' ', '-')}"
                     )
+                    raw_body = path.read_text(encoding="utf-8", errors="replace")
                     body = rewrite_wiki_links(
-                        path.read_text(encoding="utf-8", errors="replace"),
+                        raw_body,
                         wiki_files,
                         rel_str,
                     )
@@ -433,6 +463,18 @@ def main():
                         encoding="utf-8",
                     )
                     wiki_docs.append(rel_str)
+                    search_entries.append(
+                        search_entry(
+                            entry_id=f"wiki:{repo['full_name']}:{rel_str}",
+                            kind="wiki",
+                            repository=repo["full_name"],
+                            ref=git_head_sha(wiki_src),
+                            source_path=rel_str,
+                            canonical_url=canonical,
+                            title=document_title(raw_body, f"{name} Wiki — {path.stem}"),
+                            markdown=raw_body,
+                        )
+                    )
 
             repo_index = out / "repos" / name / "index.md"
             repo_index.parent.mkdir(parents=True, exist_ok=True)
@@ -498,6 +540,8 @@ def main():
         ]
 
     (out / "index.md").write_text("\n".join(index), encoding="utf-8")
+    write_search_index(out, args.org, search_entries)
+
     (out / "mirror-manifest.json").write_text(
         json.dumps(
             {
