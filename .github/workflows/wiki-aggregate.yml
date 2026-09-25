@@ -1,0 +1,117 @@
+name: Aggregate organization Wiki index
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "README.md"
+      - ".github/workflows/wiki-aggregate.yml"
+
+concurrency:
+  group: wiki-aggregate
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Wiki
+        uses: actions/checkout@v6
+        with:
+          repository: \${{ github.repository }}.wiki
+          path: _wiki
+          token: \${{ github.token }}
+
+      - name: Generate aggregate index
+        run: |
+          python3 <<'PY'
+          import json
+          import urllib.request
+          from pathlib import Path
+
+          req = urllib.request.Request(
+              "https://api.github.com/orgs/Avkroken/repos?type=public&per_page=100",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "avkroken-wiki-aggregate/1",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=30) as response:
+              repos = json.load(response)
+
+          repos = sorted(
+              (
+                  repo
+                  for repo in repos
+                  if not repo.get("archived")
+                  and not repo.get("fork")
+                  and repo.get("visibility") == "public"
+                  and repo.get("name") != ".github"
+              ),
+              key=lambda repo: repo["name"].lower(),
+          )
+
+          lines = []
+          for repo in repos:
+              name = repo["name"]
+              url = repo["html_url"]
+              branch = repo["default_branch"]
+              lines.extend(
+                  [
+                      f"### {name}",
+                      "",
+                      f"- [Repository]({url})",
+                      f"- [README]({url}/blob/{branch}/README.md)",
+                      f"- [docs]({url}/tree/{branch}/docs)",
+                      f"- [Wiki]({url}/wiki)",
+                      f"- [Issues]({url}/issues)",
+                      f"- [Discussions]({url}/discussions)",
+                      "",
+                  ]
+              )
+
+          wiki = Path("_wiki")
+          wiki.mkdir(exist_ok=True)
+
+          home = """# Avkroken — samlad dokumentationsingång
+
+          Den här Wikin är ett automatiskt genererat index och är inte source of truth.
+
+          Varje repository äger själv sin README, versionsstyrda dokumentation, Wiki, Issues och Discussions.
+
+          ## Repositories
+
+          """ + "\n".join(lines)
+
+          (wiki / "Home.md").write_text(home.strip() + "\n", encoding="utf-8")
+
+          sidebar = """**Avkroken**
+
+          - [Home](Home)
+
+          **Princip**
+
+          - Varje repo äger sin dokumentation
+          - Den här Wikin aggregerar endast
+          """
+          (wiki / "_Sidebar.md").write_text(sidebar.strip() + "\n", encoding="utf-8")
+          PY
+
+      - name: Publish Wiki index
+        working-directory: _wiki
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Home.md _Sidebar.md
+          if git diff --cached --quiet; then
+            echo "Wiki index already up to date."
+            exit 0
+          fi
+          git commit -m "docs: refresh organization Wiki index"
+          git push
