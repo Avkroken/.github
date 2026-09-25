@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -22,6 +23,8 @@ ROOT_DOCS = {
 
 LINK_RE = re.compile(r'(?P<prefix>!?\[[^\]]*\]\()(?P<target>[^)]+)(?P<suffix>\))')
 ENDRAW_RE = re.compile(r"{%-?\s*endraw\s*-?%}", re.IGNORECASE)
+FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n?", re.DOTALL)
+SEARCH_TEXT_MAX_CHARS = 120_000
 
 
 def get_json(url: str):
@@ -84,6 +87,79 @@ def documentation_file(path: Path, root: Path) -> bool:
         return True
     return path.name.lower() == "readme.md"
 
+
+
+def searchable_text(markdown: str) -> tuple[str, bool]:
+    text = FRONTMATTER_RE.sub("", str(markdown or ""))
+    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"[#>*_`~|]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    truncated = len(text) > SEARCH_TEXT_MAX_CHARS
+    return text[:SEARCH_TEXT_MAX_CHARS], truncated
+
+
+def document_title(markdown: str, fallback: str) -> str:
+    body = FRONTMATTER_RE.sub("", str(markdown or ""))
+    for line in body.splitlines():
+        match = re.match(r"^#\s+(.+?)\s*$", line)
+        if match:
+            return re.sub(r"\s+", " ", match.group(1)).strip()
+    return fallback
+
+
+def search_entry(
+    *,
+    entry_id: str,
+    kind: str,
+    repository: str,
+    ref: str | None,
+    source_path: str | None,
+    canonical_url: str,
+    title: str,
+    markdown: str,
+):
+    text, truncated = searchable_text(markdown)
+    return {
+        "id": entry_id,
+        "kind": kind,
+        "repository": repository,
+        "ref": ref,
+        "sourcePath": source_path,
+        "canonicalUrl": canonical_url,
+        "title": title,
+        "text": text,
+        "truncated": truncated,
+    }
+
+
+def git_head_sha(path: Path) -> str | None:
+    result = subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "HEAD"],
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def write_search_index(out: Path, org: str, entries: list[dict]):
+    payload = {
+        "schemaVersion": 1,
+        "organization": org,
+        "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generatedMirror": True,
+        "canonical": "source repositories",
+        "entries": entries,
+    }
+    (out / "search-index.json").write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return payload
 
 def split_link_target(target: str):
     stripped = target.strip()
@@ -279,6 +355,7 @@ def main():
     write_site_shell(out)
 
     manifest = []
+    search_entries = []
     with tempfile.TemporaryDirectory(prefix="avkroken-docs-") as temp:
         work = Path(temp)
 
@@ -289,6 +366,21 @@ def main():
 
             if not clone(repo["clone_url"], src, branch):
                 raise RuntimeError(f"Could not clone {repo['full_name']}")
+
+            search_entries.append(
+                search_entry(
+                    entry_id=f"repository:{repo['full_name']}",
+                    kind="repository",
+                    repository=repo["full_name"],
+                    ref=branch,
+                    source_path=None,
+                    canonical_url=repo["html_url"],
+                    title=name,
+                    markdown=" ".join(
+                        part for part in [name, repo.get("description") or ""] if part
+                    ),
+                )
+            )
 
             mirrored_paths = {
                 path.relative_to(src).as_posix()
@@ -310,8 +402,9 @@ def main():
                         f"https://github.com/{args.org}/{name}"
                         f"/blob/{branch}/{rel_str}"
                     )
+                    raw_body = path.read_text(encoding="utf-8", errors="replace")
                     body = rewrite_repo_links(
-                        path.read_text(encoding="utf-8", errors="replace"),
+                        raw_body,
                         org=args.org,
                         repo=name,
                         branch=branch,
@@ -323,6 +416,18 @@ def main():
                         encoding="utf-8",
                     )
                     docs.append(rel_str)
+                    search_entries.append(
+                        search_entry(
+                            entry_id=f"document:{repo['full_name']}:{rel_str}",
+                            kind="document",
+                            repository=repo["full_name"],
+                            ref=branch,
+                            source_path=rel_str,
+                            canonical_url=canonical,
+                            title=document_title(raw_body, f"{name} — {rel_str}"),
+                            markdown=raw_body,
+                        )
+                    )
                 else:
                     shutil.copy2(path, dst)
 
@@ -347,8 +452,9 @@ def main():
                         f"https://github.com/{args.org}/{name}/wiki/"
                         f"{path.stem.replace(' ', '-')}"
                     )
+                    raw_body = path.read_text(encoding="utf-8", errors="replace")
                     body = rewrite_wiki_links(
-                        path.read_text(encoding="utf-8", errors="replace"),
+                        raw_body,
                         wiki_files,
                         rel_str,
                     )
@@ -357,6 +463,18 @@ def main():
                         encoding="utf-8",
                     )
                     wiki_docs.append(rel_str)
+                    search_entries.append(
+                        search_entry(
+                            entry_id=f"wiki:{repo['full_name']}:{rel_str}",
+                            kind="wiki",
+                            repository=repo["full_name"],
+                            ref=git_head_sha(wiki_src),
+                            source_path=rel_str,
+                            canonical_url=canonical,
+                            title=document_title(raw_body, f"{name} Wiki — {path.stem}"),
+                            markdown=raw_body,
+                        )
+                    )
 
             repo_index = out / "repos" / name / "index.md"
             repo_index.parent.mkdir(parents=True, exist_ok=True)
@@ -422,6 +540,8 @@ def main():
         ]
 
     (out / "index.md").write_text("\n".join(index), encoding="utf-8")
+    write_search_index(out, args.org, search_entries)
+
     (out / "mirror-manifest.json").write_text(
         json.dumps(
             {
