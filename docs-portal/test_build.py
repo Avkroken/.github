@@ -1,4 +1,5 @@
 import importlib.util
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -45,7 +46,39 @@ def test_wiki_links():
     assert "(Home.html)" in got
 
 
+def test_liquid_is_preserved_as_text():
+    body = "Use ${{ secrets.EXAMPLE }} and {% if example %}x{% endif %}."
+    got = mod.frontmatter("Example", "https://example.invalid", body)
+    assert "{% raw %}" in got
+    assert "${{ secrets.EXAMPLE }}" in got
+    assert "{% if example %}" in got
+
+
+def test_symlink_is_not_documentation():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        target = root / "target.md"
+        target.write_text("# secret\n", encoding="utf-8")
+        docs = root / "docs"
+        docs.mkdir()
+        link = docs / "linked.md"
+        link.symlink_to(target)
+        assert link.is_symlink()
+        assert mod.documentation_file(link, root) is False
+
+
+def test_jekyll_config_matches_html_links():
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        mod.write_site_shell(out)
+        config = (out / "_config.yml").read_text(encoding="utf-8")
+        assert "permalink: pretty" not in config
+
+
 if __name__ == "__main__":
     test_repo_links()
     test_wiki_links()
+    test_liquid_is_preserved_as_text()
+    test_symlink_is_not_documentation()
+    test_jekyll_config_matches_html_links()
     print("ok")
