@@ -33,3 +33,16 @@ jobs:
           persist-credentials: false
       - name: Validate public organization repository boundary
         run: node scripts/repository-boundary.js
+
+
+  docs-portal:
+    name: Documentation aggregate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Compile documentation tooling
+        run: python3 -m py_compile docs-portal/build.py docs-portal/test_build.py
+      - name: Run documentation tooling tests
+        run: python3 docs-portal/test_build.py
