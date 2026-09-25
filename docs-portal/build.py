@@ -25,6 +25,7 @@ LINK_RE = re.compile(r'(?P<prefix>!?\[[^\]]*\]\()(?P<target>[^)]+)(?P<suffix>\))
 ENDRAW_RE = re.compile(r"{%-?\s*endraw\s*-?%}", re.IGNORECASE)
 FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n?", re.DOTALL)
 SEARCH_TEXT_MAX_CHARS = 120_000
+SEARCH_EXCLUDED_REPOSITORIES = {"Avkroken/Avkroken"}
 
 
 def get_json(url: str):
@@ -81,11 +82,17 @@ def documentation_file(path: Path, root: Path) -> bool:
     rel = path.relative_to(root)
     if ".git" in rel.parts or ".github" in rel.parts:
         return False
+    if rel.parts and rel.parts[0] == "apps":
+        return False
     if rel.as_posix().startswith("docs/"):
         return True
-    if path.name in ROOT_DOCS:
+    if len(rel.parts) == 1 and path.name in ROOT_DOCS:
         return True
-    return path.name.lower() == "readme.md"
+    return len(rel.parts) == 1 and path.name.lower() == "readme.md"
+
+
+def search_repository_allowed(repository: str) -> bool:
+    return str(repository or "") not in SEARCH_EXCLUDED_REPOSITORIES
 
 
 
@@ -367,7 +374,10 @@ def main():
             if not clone(repo["clone_url"], src, branch):
                 raise RuntimeError(f"Could not clone {repo['full_name']}")
 
-            search_entries.append(
+            search_allowed = search_repository_allowed(repo["full_name"])
+
+            if search_allowed:
+                search_entries.append(
                 search_entry(
                     entry_id=f"repository:{repo['full_name']}",
                     kind="repository",
@@ -380,7 +390,6 @@ def main():
                         part for part in [name, repo.get("description") or ""] if part
                     ),
                 )
-            )
 
             mirrored_paths = {
                 path.relative_to(src).as_posix()
@@ -416,18 +425,19 @@ def main():
                         encoding="utf-8",
                     )
                     docs.append(rel_str)
-                    search_entries.append(
-                        search_entry(
-                            entry_id=f"document:{repo['full_name']}:{rel_str}",
-                            kind="document",
-                            repository=repo["full_name"],
-                            ref=branch,
-                            source_path=rel_str,
-                            canonical_url=canonical,
-                            title=document_title(raw_body, f"{name} — {rel_str}"),
-                            markdown=raw_body,
+                    if search_allowed:
+                        search_entries.append(
+                            search_entry(
+                                entry_id=f"document:{repo['full_name']}:{rel_str}",
+                                kind="document",
+                                repository=repo["full_name"],
+                                ref=branch,
+                                source_path=rel_str,
+                                canonical_url=canonical,
+                                title=document_title(raw_body, f"{name} — {rel_str}"),
+                                markdown=raw_body,
+                            )
                         )
-                    )
                 else:
                     shutil.copy2(path, dst)
 
@@ -463,18 +473,19 @@ def main():
                         encoding="utf-8",
                     )
                     wiki_docs.append(rel_str)
-                    search_entries.append(
-                        search_entry(
-                            entry_id=f"wiki:{repo['full_name']}:{rel_str}",
-                            kind="wiki",
-                            repository=repo["full_name"],
-                            ref=git_head_sha(wiki_src),
-                            source_path=rel_str,
-                            canonical_url=canonical,
-                            title=document_title(raw_body, f"{name} Wiki — {path.stem}"),
-                            markdown=raw_body,
+                    if search_allowed:
+                        search_entries.append(
+                            search_entry(
+                                entry_id=f"wiki:{repo['full_name']}:{rel_str}",
+                                kind="wiki",
+                                repository=repo["full_name"],
+                                ref=git_head_sha(wiki_src),
+                                source_path=rel_str,
+                                canonical_url=canonical,
+                                title=document_title(raw_body, f"{name} Wiki — {path.stem}"),
+                                markdown=raw_body,
+                            )
                         )
-                    )
 
             repo_index = out / "repos" / name / "index.md"
             repo_index.parent.mkdir(parents=True, exist_ok=True)
