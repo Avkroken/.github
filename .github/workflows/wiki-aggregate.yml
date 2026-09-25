@@ -21,11 +21,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout Wiki
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          repository: \${{ github.repository }}.wiki
+          repository: ${{ github.repository }}.wiki
           path: _wiki
-          token: \${{ github.token }}
+          token: ${{ github.token }}
+          persist-credentials: false
 
       - name: Generate aggregate index
         run: |
@@ -105,6 +106,8 @@ jobs:
 
       - name: Publish Wiki index
         working-directory: _wiki
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -114,4 +117,5 @@ jobs:
             exit 0
           fi
           git commit -m "docs: refresh organization Wiki index"
-          git push
+          auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push origin HEAD
