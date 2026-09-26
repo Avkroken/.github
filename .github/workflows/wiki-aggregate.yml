@@ -1,4 +1,4 @@
-name: Aggregate organization Wiki index
+name: Aggregate account Wiki index
 
 on:
   workflow_dispatch:
@@ -40,8 +40,8 @@ jobs:
           page = 1
           while True:
               req = urllib.request.Request(
-                  "https://api.github.com/orgs/Avkroken/repos"
-                  f"?type=public&per_page=100&page={page}",
+                  "https://api.github.com/users/blixten85/repos"
+                  f"?type=owner&per_page=100&page={page}",
                   headers={
                       "Accept": "application/vnd.github+json",
                       "User-Agent": "avkroken-wiki-aggregate/1",
@@ -127,6 +127,6 @@ jobs:
             echo "Wiki index already up to date."
             exit 0
           fi
-          git commit -m "docs: refresh organization Wiki index"
+          git commit -m "docs: refresh account Wiki index"
           auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push origin HEAD
