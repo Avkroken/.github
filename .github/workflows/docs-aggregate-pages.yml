@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Build read-only documentation mirror
-        run: python3 docs-portal/build.py --org Avkroken --output _docs-mirror
+        run: python3 docs-portal/build.py --owner blixten85 --output _docs-mirror
 
       - name: Run aggregator unit tests
         run: python3 docs-portal/test_build.py
