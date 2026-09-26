@@ -24,7 +24,7 @@ def test_repo_links():
     )
     got = mod.rewrite_repo_links(
         text,
-        org="Avkroken",
+        org="blixten85",
         repo="Example",
         branch="main",
         current_rel="docs/index.md",
@@ -32,7 +32,7 @@ def test_repo_links():
     )
     assert "(architecture.html)" in got
     assert "(../SECURITY.html)" in got
-    assert "https://github.com/Avkroken/Example/blob/main/src/app.ts" in got
+    assert "https://github.com/blixten85/Example/blob/main/src/app.ts" in got
     assert "![Image](img/a.png)" in got
 
 
@@ -102,8 +102,8 @@ def test_only_root_readme_and_root_docs_are_mirrored():
 
 
 def test_monorepo_is_excluded_from_generic_search_index():
-    assert mod.search_repository_allowed("Avkroken/Avkroken") is False
-    assert mod.search_repository_allowed("Avkroken/Bastion") is True
+    assert mod.search_repository_allowed("blixten85/Avkroken") is False
+    assert mod.search_repository_allowed("blixten85/Bastion") is True
 
 
 def test_jekyll_config_matches_html_links():
@@ -135,17 +135,17 @@ def test_search_index_entry_preserves_canonical_source():
     entry = mod.search_entry(
         entry_id="document:Avkroken/Example:docs/index.md",
         kind="document",
-        repository="Avkroken/Example",
+        repository="blixten85/Example",
         ref="main",
         source_path="docs/index.md",
-        canonical_url="https://github.com/Avkroken/Example/blob/main/docs/index.md",
+        canonical_url="https://github.com/blixten85/Example/blob/main/docs/index.md",
         title="Example",
         markdown="# Example\n\nPublic docs.",
     )
-    assert entry["repository"] == "Avkroken/Example"
+    assert entry["repository"] == "blixten85/Example"
     assert entry["ref"] == "main"
     assert entry["sourcePath"] == "docs/index.md"
-    assert entry["canonicalUrl"].startswith("https://github.com/Avkroken/Example/")
+    assert entry["canonicalUrl"].startswith("https://github.com/blixten85/Example/")
     assert entry["text"] == "Example Public docs."
     assert entry["truncated"] is False
 
