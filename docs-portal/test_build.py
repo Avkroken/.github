@@ -8,6 +8,26 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
+def test_discover_uses_current_user_owner_endpoint():
+    seen = []
+    original = mod.get_json
+
+    try:
+        def fake_get_json(url):
+            seen.append(url)
+            return []
+
+        mod.get_json = fake_get_json
+        assert mod.discover("blixten85") == []
+    finally:
+        mod.get_json = original
+
+    assert seen == [
+        "https://api.github.com/users/blixten85/repos"
+        "?type=owner&per_page=100&page=1"
+    ]
+
+
 def test_repo_links():
     mirrored = {
         "README.md",
@@ -24,7 +44,7 @@ def test_repo_links():
     )
     got = mod.rewrite_repo_links(
         text,
-        org="Avkroken",
+        org="blixten85",
         repo="Example",
         branch="main",
         current_rel="docs/index.md",
@@ -32,7 +52,7 @@ def test_repo_links():
     )
     assert "(architecture.html)" in got
     assert "(../SECURITY.html)" in got
-    assert "https://github.com/Avkroken/Example/blob/main/src/app.ts" in got
+    assert "https://github.com/blixten85/Example/blob/main/src/app.ts" in got
     assert "![Image](img/a.png)" in got
 
 
@@ -102,8 +122,8 @@ def test_only_root_readme_and_root_docs_are_mirrored():
 
 
 def test_monorepo_is_excluded_from_generic_search_index():
-    assert mod.search_repository_allowed("Avkroken/Avkroken") is False
-    assert mod.search_repository_allowed("Avkroken/Bastion") is True
+    assert mod.search_repository_allowed("blixten85/Avkroken") is False
+    assert mod.search_repository_allowed("blixten85/Bastion") is True
 
 
 def test_jekyll_config_matches_html_links():
@@ -133,19 +153,19 @@ Read **public** [documentation](https://example.invalid) safely.
 
 def test_search_index_entry_preserves_canonical_source():
     entry = mod.search_entry(
-        entry_id="document:Avkroken/Example:docs/index.md",
+        entry_id="document:blixten85/Example:docs/index.md",
         kind="document",
-        repository="Avkroken/Example",
+        repository="blixten85/Example",
         ref="main",
         source_path="docs/index.md",
-        canonical_url="https://github.com/Avkroken/Example/blob/main/docs/index.md",
+        canonical_url="https://github.com/blixten85/Example/blob/main/docs/index.md",
         title="Example",
         markdown="# Example\n\nPublic docs.",
     )
-    assert entry["repository"] == "Avkroken/Example"
+    assert entry["repository"] == "blixten85/Example"
     assert entry["ref"] == "main"
     assert entry["sourcePath"] == "docs/index.md"
-    assert entry["canonicalUrl"].startswith("https://github.com/Avkroken/Example/")
+    assert entry["canonicalUrl"].startswith("https://github.com/blixten85/Example/")
     assert entry["text"] == "Example Public docs."
     assert entry["truncated"] is False
 
@@ -155,8 +175,8 @@ def test_write_search_index_is_generated_and_versioned():
         out = Path(td)
         payload = mod.write_search_index(
             out,
-            "Avkroken",
-            [{"id": "repository:Avkroken/Example", "kind": "repository"}],
+            "blixten85",
+            [{"id": "repository:blixten85/Example", "kind": "repository"}],
         )
         stored = __import__("json").loads(
             (out / "search-index.json").read_text(encoding="utf-8")
@@ -169,6 +189,7 @@ def test_write_search_index_is_generated_and_versioned():
 
 
 if __name__ == "__main__":
+    test_discover_uses_current_user_owner_endpoint()
     test_repo_links()
     test_wiki_links()
     test_liquid_is_preserved_as_text()

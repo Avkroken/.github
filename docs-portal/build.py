@@ -25,7 +25,7 @@ LINK_RE = re.compile(r'(?P<prefix>!?\[[^\]]*\]\()(?P<target>[^)]+)(?P<suffix>\))
 ENDRAW_RE = re.compile(r"{%-?\s*endraw\s*-?%}", re.IGNORECASE)
 FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n?", re.DOTALL)
 SEARCH_TEXT_MAX_CHARS = 120_000
-SEARCH_EXCLUDED_REPOSITORIES = {"Avkroken/Avkroken"}
+SEARCH_EXCLUDED_REPOSITORY_NAMES = {"Avkroken"}
 
 
 def get_json(url: str):
@@ -41,12 +41,12 @@ def get_json(url: str):
         return json.load(response)
 
 
-def discover(org: str):
+def discover(owner: str):
     repos, page = [], 1
     while True:
         batch = get_json(
-            f"https://api.github.com/orgs/{org}/repos"
-            f"?type=public&per_page=100&page={page}"
+            f"https://api.github.com/users/{owner}/repos"
+            f"?type=owner&per_page=100&page={page}"
         )
         if not batch:
             break
@@ -92,7 +92,8 @@ def documentation_file(path: Path, root: Path) -> bool:
 
 
 def search_repository_allowed(repository: str) -> bool:
-    return str(repository or "") not in SEARCH_EXCLUDED_REPOSITORIES
+    parts = str(repository or "").split("/", 1)
+    return len(parts) != 2 or parts[1] not in SEARCH_EXCLUDED_REPOSITORY_NAMES
 
 
 
@@ -351,7 +352,7 @@ table{border-collapse:collapse}th,td{padding:6px 10px;border:1px solid #d0d7de}"
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--org", required=True)
+    parser.add_argument("--owner", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -366,7 +367,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="avkroken-docs-") as temp:
         work = Path(temp)
 
-        for repo in discover(args.org):
+        for repo in discover(args.owner):
             name = repo["name"]
             branch = repo["default_branch"]
             src = work / name
@@ -409,13 +410,13 @@ def main():
 
                 if path.suffix.lower() == ".md":
                     canonical = (
-                        f"https://github.com/{args.org}/{name}"
+                        f"https://github.com/{args.owner}/{name}"
                         f"/blob/{branch}/{rel_str}"
                     )
                     raw_body = path.read_text(encoding="utf-8", errors="replace")
                     body = rewrite_repo_links(
                         raw_body,
-                        org=args.org,
+                        org=args.owner,
                         repo=name,
                         branch=branch,
                         current_rel=rel_str,
@@ -447,7 +448,7 @@ def main():
             wiki_out = out / "repos" / name / "wiki"
             wiki_out.mkdir(parents=True, exist_ok=True)
 
-            if clone(f"https://github.com/{args.org}/{name}.wiki.git", wiki_src):
+            if clone(f"https://github.com/{args.owner}/{name}.wiki.git", wiki_src):
                 wiki_files = {
                     path.relative_to(wiki_src).as_posix()
                     for path in wiki_src.rglob("*.md")
@@ -460,7 +461,7 @@ def main():
                     dst = wiki_out / rel_str
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     canonical = (
-                        f"https://github.com/{args.org}/{name}/wiki/"
+                        f"https://github.com/{args.owner}/{name}/wiki/"
                         f"{path.stem.replace(' ', '-')}"
                     )
                     raw_body = path.read_text(encoding="utf-8", errors="replace")
@@ -552,12 +553,12 @@ def main():
         ]
 
     (out / "index.md").write_text("\n".join(index), encoding="utf-8")
-    write_search_index(out, args.org, search_entries)
+    write_search_index(out, args.owner, search_entries)
 
     (out / "mirror-manifest.json").write_text(
         json.dumps(
             {
-                "organization": args.org,
+                "organization": args.owner,
                 "canonical": "source repositories",
                 "generated_mirror": True,
                 "repositories": manifest,

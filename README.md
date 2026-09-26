@@ -1,10 +1,10 @@
 # Avkroken/.github
 
-Det här repositoryt är Avkrokens publika GitHub-organisationsyta.
+Det här repositoryt innehåller Avkrokens gemensamma GitHub-filer.
 
 Det innehåller sådant som är gemensamt på GitHub:
 
-- organisationsprofil i `profile/README.md`,
+- README-innehåll i `profile/README.md`,
 - community health-filer,
 - issue-/discussion-/pull request-mallar där GitHub kan ärva dem,
 - implementationen för den automatiskt genererade dokumentationsspegeln.
