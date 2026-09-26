@@ -8,6 +8,26 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
+def test_discover_uses_current_user_owner_endpoint():
+    seen = []
+    original = mod.get_json
+
+    try:
+        def fake_get_json(url):
+            seen.append(url)
+            return []
+
+        mod.get_json = fake_get_json
+        assert mod.discover("blixten85") == []
+    finally:
+        mod.get_json = original
+
+    assert seen == [
+        "https://api.github.com/users/blixten85/repos"
+        "?type=owner&per_page=100&page=1"
+    ]
+
+
 def test_repo_links():
     mirrored = {
         "README.md",
@@ -133,7 +153,7 @@ Read **public** [documentation](https://example.invalid) safely.
 
 def test_search_index_entry_preserves_canonical_source():
     entry = mod.search_entry(
-        entry_id="document:Avkroken/Example:docs/index.md",
+        entry_id="document:blixten85/Example:docs/index.md",
         kind="document",
         repository="blixten85/Example",
         ref="main",
@@ -155,8 +175,8 @@ def test_write_search_index_is_generated_and_versioned():
         out = Path(td)
         payload = mod.write_search_index(
             out,
-            "Avkroken",
-            [{"id": "repository:Avkroken/Example", "kind": "repository"}],
+            "blixten85",
+            [{"id": "repository:blixten85/Example", "kind": "repository"}],
         )
         stored = __import__("json").loads(
             (out / "search-index.json").read_text(encoding="utf-8")
@@ -169,6 +189,7 @@ def test_write_search_index_is_generated_and_versioned():
 
 
 if __name__ == "__main__":
+    test_discover_uses_current_user_owner_endpoint()
     test_repo_links()
     test_wiki_links()
     test_liquid_is_preserved_as_text()
