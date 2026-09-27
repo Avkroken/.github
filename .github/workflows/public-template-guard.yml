@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       forbidden_fingerprints:
-        description: Newline-separated SHA-256 fingerprints of installation-specific values.
+        description: Newline-separated SHA-256 fingerprints of lowercase canonical installation-specific values.
         required: true
         type: string
 
@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout caller repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Reject installation-specific values
         env:
@@ -26,66 +28,92 @@ jobs:
         run: |
           python3 - <<'PY'
           from hashlib import sha256
-          from pathlib import Path
           import os
           import re
+          import subprocess
 
-          root = Path(".").resolve()
-          forbidden = {
-              line.strip().lower()
+          fingerprint_re = re.compile(r"^[0-9a-fA-F]{64}$")
+          configured = [
+              line.strip()
               for line in os.environ["FORBIDDEN_FINGERPRINTS"].splitlines()
               if line.strip()
-          }
-          if not forbidden:
+          ]
+          if not configured:
               raise SystemExit("No forbidden fingerprints were configured.")
 
-          skip_dirs = {
-              ".git",
-              "node_modules",
-              ".wrangler",
-              "__pycache__",
-              ".pytest_cache",
-              ".venv",
-              "venv",
-          }
-          token_re = re.compile(r"[A-Za-z0-9][A-Za-z0-9._@:-]{2,}")
+          invalid = [value for value in configured if not fingerprint_re.fullmatch(value)]
+          if invalid:
+              raise SystemExit(
+                  "Every forbidden fingerprint must be exactly 64 hexadecimal SHA-256 characters."
+              )
+          forbidden = {value.lower() for value in configured}
 
-          def digest(value: str) -> str:
-              return sha256(value.lower().encode()).hexdigest()
+          token_re = re.compile(rb"[A-Za-z0-9][A-Za-z0-9._@:-]{2,}")
 
-          def candidates(token: str) -> set[str]:
-              token = token.lower().strip("._:@-")
+          def digest(value: bytes) -> str:
+              # Fingerprints are defined over lowercase canonical values.
+              return sha256(value.lower()).hexdigest()
+
+          def candidates(token: bytes) -> set[bytes]:
+              token = token.lower().strip(b"._:@-")
               values = {token} if token else set()
 
-              if "@" in token:
-                  local, _, domain = token.partition("@")
+              if b"@" in token:
+                  local, _, domain = token.partition(b"@")
                   if local:
                       values.add(local)
                   if domain:
                       values.add(domain)
 
-              domainish = token.rsplit("@", 1)[-1]
-              parts = [part for part in domainish.split(".") if part]
+              domainish = token.rsplit(b"@", 1)[-1]
+              parts = [part for part in domainish.split(b".") if part]
               for index in range(max(0, len(parts) - 4), len(parts)):
-                  suffix = ".".join(parts[index:])
+                  suffix = b".".join(parts[index:])
                   if suffix:
                       values.add(suffix)
 
               return values
 
+          def contains_forbidden(data: bytes) -> bool:
+              for token in token_re.findall(data):
+                  if any(digest(candidate) in forbidden for candidate in candidates(token)):
+                      return True
+              return False
+
+          entries = subprocess.run(
+              ["git", "ls-files", "-s", "-z"],
+              check=True,
+              capture_output=True,
+          ).stdout.split(b"\0")
+
           violations = []
-          for path in root.rglob("*"):
-              if not path.is_file() or any(part in skip_dirs for part in path.parts):
+          seen_blobs = {}
+          for entry in entries:
+              if not entry:
                   continue
-              try:
-                  text = path.read_text(encoding="utf-8")
-              except (UnicodeDecodeError, OSError):
+              metadata, path = entry.split(b"\t", 1)
+              mode, blob_sha, stage = metadata.split()
+
+              # A public path name is repository content too.
+              if contains_forbidden(path):
+                  violations.append(f"path: {os.fsdecode(path)}")
+
+              # Submodule entries point at commits rather than blobs. Their path
+              # is checked above; the nested repository has its own guard.
+              if mode == b"160000" or stage != b"0":
                   continue
 
-              for token in token_re.findall(text):
-                  if any(digest(candidate) in forbidden for candidate in candidates(token)):
-                      violations.append(str(path.relative_to(root)))
-                      break
+              if blob_sha not in seen_blobs:
+                  seen_blobs[blob_sha] = subprocess.run(
+                      ["git", "cat-file", "blob", blob_sha.decode("ascii")],
+                      check=True,
+                      capture_output=True,
+                  ).stdout
+
+              # Reading Git blobs directly covers binary/non-UTF-8 files,
+              # tracked .wrangler state, and symlink target strings.
+              if contains_forbidden(seen_blobs[blob_sha]):
+                  violations.append(f"content: {os.fsdecode(path)}")
 
           if violations:
               raise SystemExit(
