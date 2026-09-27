@@ -1,0 +1,97 @@
+name: Reusable public template guard
+
+on:
+  workflow_call:
+    inputs:
+      forbidden_fingerprints:
+        description: Newline-separated SHA-256 fingerprints of installation-specific values.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Public template guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Reject installation-specific values
+        env:
+          FORBIDDEN_FINGERPRINTS: ${{ inputs.forbidden_fingerprints }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import os
+          import re
+
+          root = Path(".").resolve()
+          forbidden = {
+              line.strip().lower()
+              for line in os.environ["FORBIDDEN_FINGERPRINTS"].splitlines()
+              if line.strip()
+          }
+          if not forbidden:
+              raise SystemExit("No forbidden fingerprints were configured.")
+
+          skip_dirs = {
+              ".git",
+              "node_modules",
+              ".wrangler",
+              "__pycache__",
+              ".pytest_cache",
+              ".venv",
+              "venv",
+          }
+          token_re = re.compile(r"[A-Za-z0-9][A-Za-z0-9._@:-]{2,}")
+
+          def digest(value: str) -> str:
+              return sha256(value.lower().encode()).hexdigest()
+
+          def candidates(token: str) -> set[str]:
+              token = token.lower().strip("._:@-")
+              values = {token} if token else set()
+
+              if "@" in token:
+                  local, _, domain = token.partition("@")
+                  if local:
+                      values.add(local)
+                  if domain:
+                      values.add(domain)
+
+              domainish = token.rsplit("@", 1)[-1]
+              parts = [part for part in domainish.split(".") if part]
+              for index in range(max(0, len(parts) - 4), len(parts)):
+                  suffix = ".".join(parts[index:])
+                  if suffix:
+                      values.add(suffix)
+
+              return values
+
+          violations = []
+          for path in root.rglob("*"):
+              if not path.is_file() or any(part in skip_dirs for part in path.parts):
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except (UnicodeDecodeError, OSError):
+                  continue
+
+              for token in token_re.findall(text):
+                  if any(digest(candidate) in forbidden for candidate in candidates(token)):
+                      violations.append(str(path.relative_to(root)))
+                      break
+
+          if violations:
+              raise SystemExit(
+                  "Installation-specific value fingerprint found in:\n"
+                  + "\n".join(sorted(set(violations)))
+              )
+
+          print("Public-template contamination check passed.")
+          PY
