@@ -67,10 +67,12 @@ jobs:
 
               domainish = token.rsplit(b"@", 1)[-1]
               parts = [part for part in domainish.split(b".") if part]
-              for index in range(max(0, len(parts) - 4), len(parts)):
-                  suffix = b".".join(parts[index:])
-                  if suffix:
-                      values.add(suffix)
+              # Generate bounded contiguous dot-separated spans. This catches
+              # a forbidden domain/name inside subdomains and filenames such
+              # as "private.example.backup" without quadratic blow-ups.
+              for start in range(len(parts)):
+                  for end in range(start + 1, min(len(parts), start + 8) + 1):
+                      values.add(b".".join(parts[start:end]))
 
               return values
 
