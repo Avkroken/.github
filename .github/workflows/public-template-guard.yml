@@ -48,7 +48,7 @@ jobs:
               )
           forbidden = {value.lower() for value in configured}
 
-          token_re = re.compile(rb"[A-Za-z0-9][A-Za-z0-9._@:-]{2,}")
+          token_re = re.compile(rb"[A-Za-z0-9][A-Za-z0-9._@:+-]{2,}")
 
           def digest(value: bytes) -> str:
               # Fingerprints are defined over lowercase canonical values.
@@ -89,7 +89,7 @@ jobs:
           ).stdout.split(b"\0")
 
           violations = []
-          seen_blobs = {}
+          blob_matches = {}
           for entry in entries:
               if not entry:
                   continue
@@ -105,16 +105,19 @@ jobs:
               if mode == b"160000" or stage != b"0":
                   continue
 
-              if blob_sha not in seen_blobs:
-                  seen_blobs[blob_sha] = subprocess.run(
+              if blob_sha not in blob_matches:
+                  blob = subprocess.run(
                       ["git", "cat-file", "blob", blob_sha.decode("ascii")],
                       check=True,
                       capture_output=True,
                   ).stdout
+                  # Cache only the boolean result, not potentially large blob
+                  # contents, so memory does not grow with repository size.
+                  blob_matches[blob_sha] = contains_forbidden(blob)
 
               # Reading Git blobs directly covers binary/non-UTF-8 files,
               # tracked .wrangler state, and symlink target strings.
-              if contains_forbidden(seen_blobs[blob_sha]):
+              if blob_matches[blob_sha]:
                   violations.append(f"content: {os.fsdecode(path)}")
 
           if violations:
