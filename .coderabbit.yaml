@@ -1,10 +1,11 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
 inheritance: true
 
 reviews:
-  request_changes_workflow: true
-  auto_review:
-    enabled: true
-    auto_incremental_review: true
+  # CodeRabbit currently lacks Pull requests: write on this installation.
+  # Keep docstring enforcement on CodeRabbit's check surface without requesting writes.
+  request_changes_workflow: false
   finishing_touches:
     docstrings:
       enabled: true
@@ -13,7 +14,3 @@ reviews:
     docstrings:
       mode: error
       threshold: 100
-
-code_generation:
-  docstrings:
-    language: en-US
