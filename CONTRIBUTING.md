@@ -12,14 +12,17 @@ Tack för att du vill bidra till Avkrokens projekt. Den här guiden gäller som 
 ## Arbetsflöde
 
 1. Utgå från repositoryts aktuella default branch.
-2. Gör ändringen i en separat arbetsgren.
-3. Håll ändringen så liten och fokuserad som möjligt.
+2. Gör ändringen i en separat arbetsgren enligt `{agent}/{feature}/{date}`, där `date` skrivs som `YYYY-MM-DD`.
+3. Håll ändringen så liten, semantisk och fokuserad som möjligt.
 4. Kör relevanta tester, linting, byggsteg och andra kontroller som finns i repositoryt.
 5. Öppna en pull request mot aktuell default branch och beskriv vad som ändras och varför.
 6. Läs hela review-state, inklusive kommentarer och trådar som GitHub markerar som `outdated`, och verifiera att grundproblemen är lösta i aktuell kod.
 7. Låt automatiska kontroller och repository-regler bli gröna innan merge.
+8. Färdigställ den öppna arbetsgrenen, draften eller PR:n innan agenten påbörjar nästa uppgift i samma repository. Om arbetet inte kan slutföras ska det uttryckligen avslutas eller markeras med konkret blocker.
 
-När automatiserade verktyg eller kodagenter skapar arbetsgrenar används namnformen `{agent}/{feature}/{YYYY-MM-DD}`.
+Arbetet ska vara seriellt och semantiskt per repository. En arbetsgren/PR motsvarar en sammanhängande feature eller uppgift och `feature`-delen ska beskriva arbetet semantiskt.
+
+Om `{agent}/{feature}/{date}` redan finns för uppgiften ska agenten fortsätta den arbetslinjen. Skapa inte tids-/ID-suffix eller parallella branchvarianter för att kringgå ett upptaget namn.
 
 Commits ska använda Conventional Commits eller motsvarande tydlig typ, till exempel `feat:`, `fix:`, `docs:`, `chore:`, `ci:`, `build:`, `refactor:` eller `test:`.
 
