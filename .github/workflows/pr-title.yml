@@ -4,6 +4,8 @@ on:
   pull_request:
     branches: [main]
     types: [opened, edited, reopened, synchronize]
+  merge_group:
+    types: [checks_requested]
 
 permissions: {}
 
@@ -12,12 +14,17 @@ jobs:
     name: Conventional PR title
     runs-on: ubuntu-latest
     env:
-      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_TITLE: ${{ github.event.pull_request.title || '' }}
+      EVENT_NAME: ${{ github.event_name }}
     steps:
       - name: Validate Conventional Commit title
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${EVENT_NAME}" == "merge_group" ]]; then
+            echo "PR title was validated on the pull request; merge-group check passes through."
+            exit 0
+          fi
           python3 - <<'PY'
           import os
           import re
