@@ -12,7 +12,7 @@ Publika projekt, verktyg, data och experiment från Avkroken.
 
 ## GitHub
 
-Publika repositories visas i portalen när de har en portalkategori (`tool`, `project`, `docs`, `service` eller `experiment`; motsvarande `portal-*`-prefix stöds också) och en publik HTTPS-homepage. Pensionerade källrepositories filtreras bort av portalen. Projekt kan ha egna riktlinjer, men gemensamma issue- och säkerhetsstandarder hanteras centralt i organisationens `.github`-repository.
+Publika repositories visas i portalen när de har en portalkategori (`tool`, `project`, `docs`, `service` eller `experiment`; motsvarande `portal-*`-prefix stöds också) och en publik HTTPS-homepage. Pensionerade källrepositories filtreras bort av portalen. Projekt kan ha egna riktlinjer; gemensamma issue-, bidrags- och säkerhetsfiler ligger i Avkrokens `.github`-repository där GitHub stöder sådan delning eller återanvändning. Varje repository äger fortsatt sin tekniska current-state.
 
 ## Säkerhet
 
