@@ -17,3 +17,13 @@ Det här är Avkrokens publika GitHub-specialrepository för kontoprofil, commun
 - Commits ska använda Conventional Commits eller motsvarande tydlig typ, exempelvis `docs:`, `fix:`, `chore:` eller `ci:`.
 - Läs hela PR-review-state före merge, inklusive kommentarer och trådar som GitHub markerar som `outdated`; verifiera att grundproblemet faktiskt är löst.
 - Försvaga inte repositoryts ruleset eller säkerhetskrav för att få en ändring att passera.
+## Agent skills
+
+### Issue tracker
+
+Use this repository's GitHub Issues for issues and specifications. Read `docs/agents/issue-tracker.md` before reading, creating, or publishing tickets.
+
+### Domain docs
+
+Use the single-context domain-documentation convention described in `docs/agents/domain.md`.
+
