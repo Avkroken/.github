@@ -21,6 +21,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           HEAD_REF: ${{ github.head_ref }}
           PR_CREATED_AT: ${{ github.event.pull_request.created_at }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -38,7 +39,9 @@ jobs:
               r"(?P<feature>[a-z0-9][a-z0-9._-]*)/"
               r"(?P<date>\d{4}-\d{2}-\d{2})$"
           )
-          system_prefixes = ("dependabot/", "renovate/", "github-actions/")
+          trusted_system_branches = {
+              "dependabot/": "dependabot[bot]",
+          }
           cutover = dt.datetime(2026, 9, 28, tzinfo=dt.timezone.utc)
 
           title = os.environ.get("PR_TITLE", "").strip()
@@ -63,9 +66,14 @@ jobs:
               print(f"Legacy PR branch accepted before branch-policy cutover: {head}")
               sys.exit(0)
 
-          if head.startswith(system_prefixes):
-              print(f"System branch exempt from agent branch policy: {head}")
-              sys.exit(0)
+          author = os.environ.get("PR_AUTHOR", "").strip()
+          for prefix, trusted_actor in trusted_system_branches.items():
+              if head.startswith(prefix) and author == trusted_actor:
+                  print(
+                      "Trusted system branch exempt from working-branch policy: "
+                      f"{head} / {author}"
+                  )
+                  sys.exit(0)
 
           match = branch_pattern.fullmatch(head)
           if not match:
