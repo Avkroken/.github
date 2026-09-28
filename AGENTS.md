@@ -17,13 +17,16 @@ Det här är Avkrokens publika GitHub-specialrepository för kontoprofil, commun
 - Commits ska använda Conventional Commits eller motsvarande tydlig typ, exempelvis `docs:`, `fix:`, `chore:` eller `ci:`.
 - Läs hela PR-review-state före merge, inklusive kommentarer och trådar som GitHub markerar som `outdated`; verifiera att grundproblemet faktiskt är löst.
 - Försvaga inte repositoryts ruleset eller säkerhetskrav för att få en ändring att passera.
+
 ## Agent skills
+
+This repository is a deliberate exception to the normal `docs/agents/*` layout because its public repository-boundary check forbids a root `docs/` tree.
 
 ### Issue tracker
 
-Use this repository's GitHub Issues for issues and specifications. Read `docs/agents/issue-tracker.md` before reading, creating, or publishing tickets.
+GitHub Issues is the canonical issue and specification tracker for this repository. Read the full issue, labels, comments, linked pull requests, sub-issues, and native dependencies before acting. Pull requests remain implementation/review artifacts rather than a replacement issue tracker.
 
 ### Domain docs
 
-Use the single-context domain-documentation convention described in `docs/agents/domain.md`.
+Treat this repository as a single-context metadata repository. Use the established vocabulary in `AGENTS.md`, `README.md`, and other allowed root/profile documentation. If a change conflicts with an existing recorded decision, surface the conflict explicitly. Do not create placeholder `CONTEXT.md` or forbidden `docs/` content merely to satisfy a generic skill convention.
 
