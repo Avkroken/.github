@@ -10,7 +10,10 @@ Det här är Avkrokens publika GitHub-specialrepository för kontoprofil, commun
 - Fristående repositories äger själva sin tekniska current-state, README, `docs/`, workflows och repo-specifika instruktioner.
 - Extern GitHub-governance är provider-state. Anta inte organization-scope, organization secrets eller andra org-funktioner utan live-verifiering.
 - Lägg aldrig credentials, privata hostinventeringar eller andra interna operativa detaljer här.
-- Utgå från aktuell default branch och arbeta i separat gren enligt `{agent}/{feature}/{YYYY-MM-DD}`.
+- Utgå från aktuell default branch och arbeta i separat gren enligt `{agent}/{feature}/{date}`, där `date` skrivs som `YYYY-MM-DD`.
+- Arbetet ska vara seriellt och semantiskt per repository: en arbetsgren/PR motsvarar en sammanhängande feature eller uppgift, och `feature`-delen ska beskriva arbetet semantiskt.
+- Innan agenten påbörjar nästa uppgift i samma repository ska befintlig öppen arbetsgren, draft eller PR färdigställas genom relevanta checks, reviews och merge, eller uttryckligen avslutas/blockeras. Skapa inte tids-/ID-suffix eller parallella branchvarianter för att kringgå ett upptaget namn.
+- Om `{agent}/{feature}/{date}` redan finns för uppgiften ska agenten fortsätta den befintliga arbetslinjen i stället för att skapa en ny.
 - Commits ska använda Conventional Commits eller motsvarande tydlig typ, exempelvis `docs:`, `fix:`, `chore:` eller `ci:`.
 - Läs hela PR-review-state före merge, inklusive kommentarer och trådar som GitHub markerar som `outdated`; verifiera att grundproblemet faktiskt är löst.
 - Försvaga inte repositoryts ruleset eller säkerhetskrav för att få en ändring att passera.
