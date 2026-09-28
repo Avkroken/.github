@@ -1,0 +1,19 @@
+inheritance: true
+
+reviews:
+  request_changes_workflow: true
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+  finishing_touches:
+    docstrings:
+      enabled: true
+  pre_merge_checks:
+    override_requested_reviewers_only: true
+    docstrings:
+      mode: error
+      threshold: 100
+
+code_generation:
+  docstrings:
+    language: en-US
