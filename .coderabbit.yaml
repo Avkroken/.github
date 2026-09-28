@@ -4,13 +4,76 @@ inheritance: true
 
 reviews:
   # CodeRabbit currently lacks Pull requests: write on this installation.
-  # Keep docstring enforcement on CodeRabbit's check surface without requesting writes.
+  # Keep enforcement on the check surface without requesting additional writes.
   request_changes_workflow: false
+  path_instructions:
+    - path: ".github/workflows/**"
+      instructions: |
+        Review GitHub Actions for least-privilege permissions, safe event choice,
+        pinned/controlled external actions, concurrency behavior, artifact boundaries,
+        fork safety, and consistency with repository-owned release/deployment contracts.
+        Do not introduce pull_request_target unless a documented requirement cannot be
+        met safely with pull_request or another lower-risk event.
+    - path: ".github/scripts/**"
+      instructions: |
+        Treat release/check scripts as repository-governance code.
+        Review tag ancestry, race conditions, check registration/settling, pagination,
+        timeout budgets, Conventional Commit parsing, and fail-closed publication behavior.
+    - path: "docs/**"
+      instructions: |
+        Keep this repository limited to shared/public GitHub context.
+        Do not move repository-specific technical current-state or private operational
+        details here; canonical technical state stays with each repository.
+    - path: "profile/**"
+      instructions: |
+        Treat profile content as public-facing account metadata.
+        Flag private infrastructure details, credentials, private host inventories,
+        or claims about live repository/provider state that are not sourced here.
   finishing_touches:
     docstrings:
+      enabled: true
+    unit_tests:
+      enabled: true
+    simplify:
+      enabled: true
+    autofix:
+      enabled: true
+    fix_ci:
+      enabled: true
+    resolve_merge_conflict:
       enabled: true
   pre_merge_checks:
     override_requested_reviewers_only: true
     docstrings:
       mode: error
       threshold: 100
+
+code_generation:
+  docstrings:
+    path_instructions:
+      - path: ".github/scripts/**/*.py"
+        instructions: |
+          Use concise Python docstrings for non-trivial functions.
+          Use Google-style Args, Returns, and Raises sections when they add information.
+          Document GitHub API/process side effects, tag/check semantics, timeout behavior,
+          release safety assumptions, and fail-closed conditions.
+      - path: ".github/scripts/**/*.{js,mjs}"
+        instructions: |
+          Use JSDoc for non-trivial reusable functions.
+          Document GitHub/API side effects, environment inputs, failure behavior,
+          and any repository mutation or publication boundary.
+      - path: "**/*test*.py"
+        instructions: |
+          Keep test docstrings concise and describe the governance/release regression
+          or failure mode being protected.
+  unit_tests:
+    path_instructions:
+      - path: ".github/scripts/**/*.py"
+        instructions: |
+          Prefer deterministic unit tests around Conventional Commit/trailer parsing,
+          tag ancestry and target selection, pagination, duplicate check identities,
+          failed/pending checks, timeout boundaries, and concurrent tag creation.
+      - path: ".github/workflows/**"
+        instructions: |
+          Prefer source-contract tests for permissions, triggers, concurrency,
+          required checks, release targets, and repository-owned workflow behavior.
