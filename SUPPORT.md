@@ -4,7 +4,7 @@ Avkroken använder olika GitHub-funktioner beroende på vilken typ av hjälp ell
 
 ## Frågor och hjälp
 
-Använd organisationens GitHub Discussions för frågor om användning, arbetssätt eller sådant som ännu inte är ett konkret fel eller ändringsförslag.
+Använd Avkrokens GitHub Discussions för frågor om användning, arbetssätt eller sådant som ännu inte är ett konkret fel eller ändringsförslag.
 
 ## Fel
 
@@ -12,7 +12,7 @@ Använd GitHub Issues i det repository där problemet finns när du kan beskriva
 
 ## Förbättringar och idéer
 
-Konkreta förbättringsförslag kan lämnas som issues i berört repository. Tidiga idéer och öppna resonemang hör hemma i organisationens Discussions.
+Konkreta förbättringsförslag kan lämnas som issues i berört repository. Tidiga idéer och öppna resonemang hör hemma i Avkrokens Discussions.
 
 ## Säkerhetsproblem
 
@@ -20,7 +20,7 @@ Rapportera aldrig sårbarheter, tokens, privata nycklar eller andra känsliga up
 
 ## Bidrag
 
-För kod- och dokumentationsändringar, följ `CONTRIBUTING.md` och repositoryts lokala instruktioner. Lokala regler har företräde framför denna organisationsgemensamma supportpolicy.
+För kod- och dokumentationsändringar, följ `CONTRIBUTING.md` och repositoryts lokala instruktioner. Lokala regler har företräde framför denna gemensamma supportpolicy.
 
 ## Omfattning
 
