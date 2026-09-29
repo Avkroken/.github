@@ -1,35 +1,80 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 language: sv
+tone_instructions: |-
+  Svara på svenska. Var teknisk, saklig och koncis. Prioritera korrekthet, säkerhet, regressionsrisk, testbarhet och repositoryts dokumenterade kontrakt. Undvik skämt, dikter och utfyllnad.
+early_access: false
+enable_free_tier: true
 inheritance: true
-
 reviews:
-  # CodeRabbit saknar för närvarande Pull requests: write för den här installationen.
-  # Behåll enforcement via checks utan att begära ytterligare skrivbehörigheter.
+  profile: assertive
   request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_instructions: |-
+    Sammanfatta syfte, beteendeförändring, säkerhets- eller behörighetseffekt, tester/verifiering och dokumentationspåverkan. Skilj verifierade fakta från antaganden och hitta inte på saknade resultat.
+  high_level_summary_placeholder: '@coderabbitai summary'
+  high_level_summary_in_walkthrough: true
+  auto_title_placeholder: '@coderabbitai'
+  auto_title_instructions: |-
+    Följ Conventional Commits-formatet som repositoryt kräver: feat|fix|perf|refactor|docs|test|build|ci|chore|revert, valfri scope, valfritt ! och därefter en kort svensk beskrivning.
+  review_status: true
+  review_details: true
+  commit_status: true
+  fail_commit_status: true
+  collapse_walkthrough: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: false
+  labeling_instructions: []
+  mutually_exclusive_groups: {}
+  auto_apply_labels: false
+  suggested_reviewers: false
+  auto_assign_reviewers: false
+  suggested_reviewers_instructions: []
+  in_progress_fortune: false
+  poem: false
+  enable_prompt_for_ai_agents: true
+  path_filters: []
   path_instructions:
-    - path: ".github/workflows/**"
-      instructions: |
-        Granska GitHub Actions utifrån minsta möjliga behörighet, säkert val av event,
-        pinnade/kontrollerade externa actions, concurrency-beteende, artifact-gränser,
-        fork-säkerhet och överensstämmelse med repository-ägda release-/deploymentkontrakt.
-        Inför inte pull_request_target om ett dokumenterat krav inte kan uppfyllas säkert
-        med pull_request eller ett annat event med lägre risk.
-    - path: ".github/scripts/**"
-      instructions: |
-        Behandla release-/checkscript som repository-governance-kod.
-        Granska tag ancestry, race conditions, registrering/settling av checks, pagination,
-        timeout-budgetar, parsning av Conventional Commits och fail-closed-publicering.
-    - path: "docs/**"
-      instructions: |
-        Begränsa det här repositoryt till delad/publik GitHub-kontext.
-        Flytta inte repository-specifik teknisk current-state eller privata operativa
-        detaljer hit; kanonisk teknisk state stannar i respektive repository.
-    - path: "profile/**"
-      instructions: |
-        Behandla profilinnehåll som publik kontometadata.
-        Flagga privata infrastrukturdetaljer, credentials, privata hostinventeringar
-        eller påståenden om live repository-/provider-state som inte har stöd här.
+  - path: .github/workflows/**
+    instructions: |-
+      Granska GitHub Actions utifrån minsta möjliga behörighet, säkra events, pinnade externa actions, concurrency, artifact-gränser, fork-säkerhet och repositoryts release-/deploymentkontrakt. pull_request_target får bara användas när behovet är dokumenterat och implementationen inte exponerar privilegier för otrusted kod.
+  - path: .github/scripts/**/*.py
+    instructions: |-
+      Behandla release- och checkscript som governance-kod. Granska tag ancestry, race conditions, API-pagination, check-registrering och settling, timeout-budgetar, Conventional Commit-parsning, felhantering och fail-closed-beteende.
+  - path: docs-portal/**/*.py
+    instructions: |-
+      Skydda principen att portalen är en genererad lässpegel och att respektive repository är canonical källa. Granska repository-discovery, filtrering av privat eller otillåtet innehåll, länkrewrites, sökindex, nätverks- och filsystemsidoeffekter samt deterministiska tester.
+  - path: scripts/**/*.js
+    instructions: |-
+      Behandla skript som skyddar den publika repositorygränsen som säkerhetskritiska. Granska fail-closed-beteende, paths, filsystemskontroller och risken att privat eller repository-specifik intern kontext kan publiceras.
+  - path: '*.md'
+    instructions: |-
+      Behandla root-dokumentation som publik organisationsgemensam GitHub-kontext. Flagga credentials, personuppgifter, privata hostinventeringar, intern driftdata och repository-specifik teknisk current-state som hör hemma i respektive repository.
+  - path: profile/**
+    instructions: |-
+      Behandla profilinnehåll som publik kontometadata. Kontrollera att påståenden om live provider- eller repository-state är källbundna och att privata operativa detaljer eller credentials inte exponeras.
+  - path: CODEOWNERS
+    instructions: |-
+      Granska ownership-förändringar som governance. Säkerställ minsta nödvändiga scope och att kritiska paths inte tappar avsedd ägare utan dokumenterat skäl.
+  abort_on_close: true
+  disable_cache: false
+  slop_detection:
+    enabled: true
+  auto_review:
+    enabled: true
+    description_keyword: ''
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 0
+    ignore_title_keywords: []
+    labels: []
+    drafts: false
+    base_branches: []
+    ignore_usernames: []
   finishing_touches:
     docstrings:
       enabled: true
@@ -37,45 +82,218 @@ reviews:
       enabled: true
     simplify:
       enabled: true
-    autofix:
-      enabled: true
-    fix_ci:
-      enabled: true
-    resolve_merge_conflict:
-      enabled: true
+    custom: []
   pre_merge_checks:
     override_requested_reviewers_only: true
     docstrings:
       mode: error
       threshold: 100
-
+    title:
+      mode: error
+      requirements: |-
+        Titeln ska följa repositoryts Conventional Commits-regel: feat|fix|perf|refactor|docs|test|build|ci|chore|revert, valfri scope, valfritt ! och en konkret beskrivning efter kolon.
+    description:
+      mode: warning
+    issue_assessment:
+      mode: warning
+    custom_checks: []
+  tools:
+    ast-grep:
+      rule_dirs: []
+      util_dirs: []
+      essential_rules: true
+      packages: []
+    shellcheck:
+      enabled: false
+    ruff:
+      enabled: true
+    markdownlint:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 180000
+    languagetool:
+      enabled: true
+      enabled_rules: []
+      disabled_rules: []
+      enabled_categories: []
+      disabled_categories: []
+      enabled_only: false
+      level: default
+    biome:
+      enabled: false
+    hadolint:
+      enabled: false
+    swiftlint:
+      enabled: false
+    phpstan:
+      enabled: false
+      level: default
+    phpmd:
+      enabled: false
+    phpcs:
+      enabled: false
+    golangci-lint:
+      enabled: false
+    yamllint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    trufflehog:
+      enabled: true
+    checkov:
+      enabled: false
+    tflint:
+      enabled: false
+    detekt:
+      enabled: false
+    eslint:
+      enabled: false
+    flake8:
+      enabled: false
+    fbinfer:
+      enabled: false
+      enable_java: false
+    fortitudeLint:
+      enabled: false
+    rubocop:
+      enabled: false
+    buf:
+      enabled: false
+    regal:
+      enabled: false
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    pmd:
+      enabled: false
+    clang:
+      enabled: false
+    cppcheck:
+      enabled: false
+    opengrep:
+      enabled: true
+    semgrep:
+      enabled: false
+    circleci:
+      enabled: false
+    clippy:
+      enabled: false
+    sqlfluff:
+      enabled: false
+    trivy:
+      enabled: false
+    prismaLint:
+      enabled: false
+    pylint:
+      enabled: false
+    oxc:
+      enabled: true
+    shopifyThemeCheck:
+      enabled: false
+    luacheck:
+      enabled: false
+    brakeman:
+      enabled: false
+    dotenvLint:
+      enabled: false
+    htmlhint:
+      enabled: false
+    stylelint:
+      enabled: false
+    checkmake:
+      enabled: false
+    osvScanner:
+      enabled: false
+    oasdiff:
+      enabled: false
+    reactDoctor:
+      enabled: false
+    presidio:
+      enabled: true
+    blinter:
+      enabled: false
+    smartyLint:
+      enabled: false
+    emberTemplateLint:
+      enabled: false
+    skillspector:
+      enabled: false
+    psscriptanalyzer:
+      enabled: false
+chat:
+  art: false
+  allow_non_org_members: false
+  auto_reply: false
+  integrations:
+    jira:
+      usage: disabled
+    linear:
+      usage: disabled
+knowledge_base:
+  opt_out: false
+  web_search:
+    enabled: true
+  code_guidelines:
+    enabled: true
+    filePatterns:
+    - AGENTS.md
+    - CONTRIBUTING.md
+    - SECURITY.md
+  learnings:
+    scope: local
+    approval_delay: 30
+  issues:
+    scope: local
+  jira:
+    usage: disabled
+    project_keys: []
+  linear:
+    usage: disabled
+    team_keys: []
+  pull_requests:
+    scope: local
+  mcp:
+    usage: disabled
+    disabled_servers: []
+  automatic_repository_linking: false
+  linked_repositories: []
 code_generation:
   docstrings:
     language: sv
     path_instructions:
-      - path: ".github/scripts/**/*.py"
-        instructions: |
-          Använd koncisa Python-docstrings för icke-triviala funktioner.
-          Använd Google-style-sektionerna Args, Returns och Raises när de tillför information.
-          Dokumentera sidoeffekter från GitHub API/processer, tag-/checksemantik,
-          timeout-beteende, antaganden för releasesäkerhet och fail-closed-villkor.
-      - path: ".github/scripts/**/*.{js,mjs}"
-        instructions: |
-          Använd JSDoc för icke-triviala återanvändbara funktioner.
-          Dokumentera GitHub-/API-sidoeffekter, miljövariabler, felbeteende
-          samt varje repository-mutation eller publiceringsgräns.
-      - path: "**/*test*.py"
-        instructions: |
-          Håll test-docstrings koncisa och beskriv den governance-/release-regression
-          eller feltyp som testet skyddar mot.
+    - path: .github/scripts/**/*.py
+      instructions: |-
+        Skriv svenska, koncisa docstrings för icke-triviala funktioner. Använd Google-style Args, Returns och Raises när de tillför faktisk information. Dokumentera GitHub API- och subprocess-sidoeffekter, filskrivning, timeout- och felbeteende, release-/checksemantik samt fail-closed-villkor.
+    - path: docs-portal/**/*.py
+      instructions: |-
+        Skriv svenska docstrings som beskriver funktionens kontrakt, input/output och relevanta nätverks- eller filsystemsidoeffekter. Dokumentera särskilt canonical-source-principen, publiceringsgränser, filtrering, länkrewrites, sökindex och felbeteende när funktionen ansvarar för dessa.
+    - path: scripts/**/*.js
+      instructions: |-
+        Använd svensk JSDoc för icke-triviala återanvändbara funktioner. Beskriv repositorygränser, filsystemsidoeffekter, failure mode och säkerhetsinvarianter. Dokumentera inte trivial top-level-kod enbart för att öka täckningen.
+    - path: '**/*test*.py'
+      instructions: |-
+        Använd korta svenska test-docstrings endast när testets avsikt inte framgår tydligt av namnet. Beskriv regressionen eller invarianten som skyddas, inte rad-för-rad-mekaniken.
   unit_tests:
     path_instructions:
-      - path: ".github/scripts/**/*.py"
-        instructions: |
-          Föredra deterministiska enhetstester för parsning av Conventional Commits/trailers,
-          tag ancestry och target selection, pagination, duplicerade check-identiteter,
-          failed/pending checks, timeout-gränser och samtidig tag creation.
-      - path: ".github/workflows/**"
-        instructions: |
-          Föredra source-contract-tester för permissions, triggers, concurrency,
-          required checks, release targets och repository-ägda workflow-beteenden.
+    - path: .github/scripts/**/*.py
+      instructions: |-
+        Föredra deterministiska tester för Conventional Commit- och trailerparsning, tag ancestry och target selection, pagination, duplicerade checkidentiteter, failed/pending checks, timeout-gränser och concurrent tag creation. Mocka GitHub API, subprocess och tid där det behövs; gör inga live-mutationer.
+    - path: docs-portal/**/*.py
+      instructions: |-
+        Föredra deterministiska tester med temporära kataloger och mockade nätverksanrop. Täck repository-discovery, public/private-filtrering, symlink-säkerhet, länkrewrites, canonical URLs, sökindex och felhantering.
+    - path: scripts/**/*.js
+      instructions: |-
+        Använd Node.js inbyggda testverktyg när nya tester behövs och undvik nya beroenden. Täck required/forbidden paths, fail-closed-beteende och edge cases för repositorygränsen utan att skriva utanför temporära testkataloger.
+issue_enrichment:
+  auto_enrich:
+    enabled: false
+  planning:
+    enabled: false
+    auto_planning:
+      enabled: false
+      labels: []
+  labeling:
+    labeling_instructions: []
+    auto_apply_labels: false
