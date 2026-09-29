@@ -42,25 +42,25 @@ reviews:
   path_instructions:
   - path: .github/workflows/**
     instructions: |-
-      Granska GitHub Actions utifrån minsta möjliga behörighet, säkra events, pinnade externa actions, concurrency, artifact-gränser, fork-säkerhet och repositoryts release-/deploymentkontrakt. pull_request_target får bara användas när behovet är dokumenterat och implementationen inte exponerar privilegier för otrusted kod.
+      Granska GitHub Actions utifrån minsta möjliga behörighet, säkra events, pinnade externa actions, concurrency, artifact-gränser, fork-säkerhet och repositoryts release-/deploymentkontrakt. pull_request_target får bara användas när behovet är dokumenterat och implementationen inte exponerar privilegier för otillförlitlig kod.
   - path: .github/scripts/**/*.py
     instructions: |-
-      Behandla release- och checkscript som governance-kod. Granska tag ancestry, race conditions, API-pagination, check-registrering och settling, timeout-budgetar, Conventional Commit-parsning, felhantering och fail-closed-beteende.
+      Behandla release- och checkscript som governance-kod. Granska taggars härkomst, samtidighetsfel, API-pagination, check-registrering och stabilisering, timeout-budgetar, Conventional Commit-parsning, felhantering och fail-closed-beteende.
   - path: docs-portal/**/*.py
     instructions: |-
-      Skydda principen att portalen är en genererad lässpegel och att respektive repository är canonical källa. Granska repository-discovery, filtrering av privat eller otillåtet innehåll, länkrewrites, sökindex, nätverks- och filsystemsidoeffekter samt deterministiska tester.
+      Skydda principen att portalen är en genererad lässpegel och att respektive repo är kanonisk källa. Granska repoidentifiering, filtrering av privat eller otillåtet innehåll, länkrewrites, sökindex, nätverks- och filsystemsidoeffekter samt deterministiska tester.
   - path: scripts/**/*.js
     instructions: |-
-      Behandla skript som skyddar den publika repositorygränsen som säkerhetskritiska. Granska fail-closed-beteende, paths, filsystemskontroller och risken att privat eller repository-specifik intern kontext kan publiceras.
+      Behandla skript som skyddar den publika repositorygränsen som säkerhetskritiska. Granska fail-closed-beteende, sökvägar, filsystemskontroller och risken att privat eller repository-specifik intern kontext kan publiceras.
   - path: '*.md'
     instructions: |-
-      Behandla root-dokumentation som publik organisationsgemensam GitHub-kontext. Flagga credentials, personuppgifter, privata hostinventeringar, intern driftdata och repository-specifik teknisk current-state som hör hemma i respektive repository.
+      Behandla root-dokumentation som publik organisationsgemensam GitHub-kontext. Flagga autentiseringsuppgifter, personuppgifter, privata hostinventeringar, intern driftdata och repo-specifik aktuell teknisk status som hör hemma i respektive repository.
   - path: profile/**
     instructions: |-
-      Behandla profilinnehåll som publik kontometadata. Kontrollera att påståenden om live provider- eller repository-state är källbundna och att privata operativa detaljer eller credentials inte exponeras.
+      Behandla profilinnehåll som publik kontometadata. Kontrollera att påståenden om aktuell provider- eller repo-status är källbundna och att privata operativa detaljer eller autentiseringsuppgifter inte exponeras.
   - path: CODEOWNERS
     instructions: |-
-      Granska ownership-förändringar som governance. Säkerställ minsta nödvändiga scope och att kritiska paths inte tappar avsedd ägare utan dokumenterat skäl.
+      Granska ändringar av ägarskap som governance. Säkerställ minsta nödvändiga omfattning och att kritiska sökvägar inte tappar avsedd ägare utan dokumenterat skäl.
   abort_on_close: true
   disable_cache: false
   slop_detection:
@@ -268,10 +268,10 @@ code_generation:
         Skriv svenska, koncisa docstrings för icke-triviala funktioner. Använd Google-style Args, Returns och Raises när de tillför faktisk information. Dokumentera GitHub API- och subprocess-sidoeffekter, filskrivning, timeout- och felbeteende, release-/checksemantik samt fail-closed-villkor.
     - path: docs-portal/**/*.py
       instructions: |-
-        Skriv svenska docstrings som beskriver funktionens kontrakt, input/output och relevanta nätverks- eller filsystemsidoeffekter. Dokumentera särskilt canonical-source-principen, publiceringsgränser, filtrering, länkrewrites, sökindex och felbeteende när funktionen ansvarar för dessa.
+        Skriv svenska docstrings som beskriver funktionens kontrakt, input/output och relevanta nätverks- eller filsystemsidoeffekter. Dokumentera särskilt principen om kanonisk källa, publiceringsgränser, filtrering, länkrewrites, sökindex och felbeteende när funktionen ansvarar för dessa.
     - path: scripts/**/*.js
       instructions: |-
-        Använd svensk JSDoc för icke-triviala återanvändbara funktioner. Beskriv repositorygränser, filsystemsidoeffekter, failure mode och säkerhetsinvarianter. Dokumentera inte trivial top-level-kod enbart för att öka täckningen.
+        Använd svensk JSDoc för icke-triviala återanvändbara funktioner. Beskriv repositorygränser, filsystemsidoeffekter, felbeteende och säkerhetsinvarianter. Dokumentera inte trivial top-level-kod enbart för att öka täckningen.
     - path: '**/*test*.py'
       instructions: |-
         Använd korta svenska test-docstrings endast när testets avsikt inte framgår tydligt av namnet. Beskriv regressionen eller invarianten som skyddas, inte rad-för-rad-mekaniken.
@@ -279,13 +279,13 @@ code_generation:
     path_instructions:
     - path: .github/scripts/**/*.py
       instructions: |-
-        Föredra deterministiska tester för Conventional Commit- och trailerparsning, tag ancestry och target selection, pagination, duplicerade checkidentiteter, failed/pending checks, timeout-gränser och concurrent tag creation. Mocka GitHub API, subprocess och tid där det behövs; gör inga live-mutationer.
+        Föredra deterministiska tester för Conventional Commit- och trailerparsning, taggars härkomst och val av mål, pagination, duplicerade checkidentiteter, misslyckade/pågående checks, timeout-gränser och samtidig taggskapning. Mocka GitHub API, subprocess och tid där det behövs; gör inga live-mutationer.
     - path: docs-portal/**/*.py
       instructions: |-
-        Föredra deterministiska tester med temporära kataloger och mockade nätverksanrop. Täck repository-discovery, public/private-filtrering, symlink-säkerhet, länkrewrites, canonical URLs, sökindex och felhantering.
+        Föredra deterministiska tester med temporära kataloger och mockade nätverksanrop. Täck repoidentifiering, filtrering av publikt/privat innehåll, symlink-säkerhet, länkrewrites, kanoniska URL:er, sökindex och felhantering.
     - path: scripts/**/*.js
       instructions: |-
-        Använd Node.js inbyggda testverktyg när nya tester behövs och undvik nya beroenden. Täck required/forbidden paths, fail-closed-beteende och edge cases för repositorygränsen utan att skriva utanför temporära testkataloger.
+        Använd Node.js inbyggda testverktyg när nya tester behövs och undvik nya beroenden. Täck obligatoriska/förbjudna sökvägar, fail-closed-beteende och gränsfall för repositorygränsen utan att skriva utanför temporära testkataloger.
 issue_enrichment:
   auto_enrich:
     enabled: false
