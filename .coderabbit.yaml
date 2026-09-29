@@ -1,34 +1,35 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
+language: sv
 inheritance: true
 
 reviews:
-  # CodeRabbit currently lacks Pull requests: write on this installation.
-  # Keep enforcement on the check surface without requesting additional writes.
+  # CodeRabbit saknar för närvarande Pull requests: write för den här installationen.
+  # Behåll enforcement via checks utan att begära ytterligare skrivbehörigheter.
   request_changes_workflow: false
   path_instructions:
     - path: ".github/workflows/**"
       instructions: |
-        Review GitHub Actions for least-privilege permissions, safe event choice,
-        pinned/controlled external actions, concurrency behavior, artifact boundaries,
-        fork safety, and consistency with repository-owned release/deployment contracts.
-        Do not introduce pull_request_target unless a documented requirement cannot be
-        met safely with pull_request or another lower-risk event.
+        Granska GitHub Actions utifrån minsta möjliga behörighet, säkert val av event,
+        pinnade/kontrollerade externa actions, concurrency-beteende, artifact-gränser,
+        fork-säkerhet och överensstämmelse med repository-ägda release-/deploymentkontrakt.
+        Inför inte pull_request_target om ett dokumenterat krav inte kan uppfyllas säkert
+        med pull_request eller ett annat event med lägre risk.
     - path: ".github/scripts/**"
       instructions: |
-        Treat release/check scripts as repository-governance code.
-        Review tag ancestry, race conditions, check registration/settling, pagination,
-        timeout budgets, Conventional Commit parsing, and fail-closed publication behavior.
+        Behandla release-/checkscript som repository-governance-kod.
+        Granska tag ancestry, race conditions, registrering/settling av checks, pagination,
+        timeout-budgetar, parsning av Conventional Commits och fail-closed-publicering.
     - path: "docs/**"
       instructions: |
-        Keep this repository limited to shared/public GitHub context.
-        Do not move repository-specific technical current-state or private operational
-        details here; canonical technical state stays with each repository.
+        Begränsa det här repositoryt till delad/publik GitHub-kontext.
+        Flytta inte repository-specifik teknisk current-state eller privata operativa
+        detaljer hit; kanonisk teknisk state stannar i respektive repository.
     - path: "profile/**"
       instructions: |
-        Treat profile content as public-facing account metadata.
-        Flag private infrastructure details, credentials, private host inventories,
-        or claims about live repository/provider state that are not sourced here.
+        Behandla profilinnehåll som publik kontometadata.
+        Flagga privata infrastrukturdetaljer, credentials, privata hostinventeringar
+        eller påståenden om live repository-/provider-state som inte har stöd här.
   finishing_touches:
     docstrings:
       enabled: true
@@ -50,30 +51,31 @@ reviews:
 
 code_generation:
   docstrings:
+    language: sv
     path_instructions:
       - path: ".github/scripts/**/*.py"
         instructions: |
-          Use concise Python docstrings for non-trivial functions.
-          Use Google-style Args, Returns, and Raises sections when they add information.
-          Document GitHub API/process side effects, tag/check semantics, timeout behavior,
-          release safety assumptions, and fail-closed conditions.
+          Använd koncisa Python-docstrings för icke-triviala funktioner.
+          Använd Google-style-sektionerna Args, Returns och Raises när de tillför information.
+          Dokumentera sidoeffekter från GitHub API/processer, tag-/checksemantik,
+          timeout-beteende, antaganden för releasesäkerhet och fail-closed-villkor.
       - path: ".github/scripts/**/*.{js,mjs}"
         instructions: |
-          Use JSDoc for non-trivial reusable functions.
-          Document GitHub/API side effects, environment inputs, failure behavior,
-          and any repository mutation or publication boundary.
+          Använd JSDoc för icke-triviala återanvändbara funktioner.
+          Dokumentera GitHub-/API-sidoeffekter, miljövariabler, felbeteende
+          samt varje repository-mutation eller publiceringsgräns.
       - path: "**/*test*.py"
         instructions: |
-          Keep test docstrings concise and describe the governance/release regression
-          or failure mode being protected.
+          Håll test-docstrings koncisa och beskriv den governance-/release-regression
+          eller feltyp som testet skyddar mot.
   unit_tests:
     path_instructions:
       - path: ".github/scripts/**/*.py"
         instructions: |
-          Prefer deterministic unit tests around Conventional Commit/trailer parsing,
-          tag ancestry and target selection, pagination, duplicate check identities,
-          failed/pending checks, timeout boundaries, and concurrent tag creation.
+          Föredra deterministiska enhetstester för parsning av Conventional Commits/trailers,
+          tag ancestry och target selection, pagination, duplicerade check-identiteter,
+          failed/pending checks, timeout-gränser och samtidig tag creation.
       - path: ".github/workflows/**"
         instructions: |
-          Prefer source-contract tests for permissions, triggers, concurrency,
-          required checks, release targets, and repository-owned workflow behavior.
+          Föredra source-contract-tester för permissions, triggers, concurrency,
+          required checks, release targets och repository-ägda workflow-beteenden.
