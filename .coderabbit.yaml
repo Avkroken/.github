@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+inheritance: true
+reviews:
+  path_instructions:
+  - path: .github/workflows/**
+    instructions: Granska GitHub Actions utifrån minsta möjliga behörighet, säkra events, pinnade externa actions, concurrency,
+      artifact-gränser, fork-säkerhet och repositoryts release-/deploymentkontrakt. pull_request_target får bara användas
+      när behovet är dokumenterat och implementationen inte exponerar privilegier för otillförlitlig kod.
+  - path: '*.md'
+    instructions: Behandla root-dokumentation som publik organisationsgemensam GitHub-kontext. Flagga autentiseringsuppgifter,
+      personuppgifter, privata hostinventeringar, intern driftdata och repo-specifik aktuell teknisk status som hör hemma
+      i respektive repository.
+  - path: profile/**
+    instructions: Behandla profilinnehåll som publik kontometadata. Kontrollera att påståenden om aktuell provider- eller
+      repo-status är källbundna och att privata operativa detaljer eller autentiseringsuppgifter inte exponeras.
+  - path: CODEOWNERS
+    instructions: Granska ändringar av ägarskap som governance. Säkerställ minsta nödvändiga omfattning och att kritiska sökvägar
+      inte tappar avsedd ägare utan dokumenterat skäl.
