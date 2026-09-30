@@ -36,6 +36,8 @@ jobs:
           persist-credentials: false
       - name: Validate public organization repository boundary
         run: node scripts/repository-boundary.js
+      - name: Validate agent auto-merge policy
+        run: node scripts/agent-automerge-policy.test.js
 
 
   docs-portal:
