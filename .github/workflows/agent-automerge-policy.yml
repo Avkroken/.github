@@ -1,21 +1,163 @@
-name: Agent auto-merge policy
+name: Agent PR lifecycle policy
 
 on:
   workflow_call:
 
+concurrency:
+  group: agent-pr-lifecycle-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
-  enable-auto-merge:
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.user.login == 'gamnacken[bot]' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.base.ref == github.event.repository.default_branch &&
-      startsWith(github.event.pull_request.head.ref, 'codex/') &&
-      github.event.pull_request.draft == false
+  reconcile:
+    name: Reconcile trusted agent PRs
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Enable native auto-merge
+      - name: Update and enable native auto-merge
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --merge "$PR_URL"
+          REPOSITORY: ${{ github.repository }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+        run: |
+          set -euo pipefail
+
+          owner="${REPOSITORY%%/*}"
+          repo_name="${REPOSITORY#*/}"
+          default_branch="$(gh api "repos/${REPOSITORY}" --jq '.default_branch')"
+
+          log() {
+            printf '[agent-pr-lifecycle] %s\n' "$*"
+          }
+
+          review_gate() {
+            local number="$1"
+            local review_json unresolved changes_requested review_decision
+            review_json="$(gh api graphql \
+              -F owner="$owner" \
+              -F name="$repo_name" \
+              -F number="$number" \
+              -f query='
+                query($owner:String!, $name:String!, $number:Int!) {
+                  repository(owner:$owner, name:$name) {
+                    pullRequest(number:$number) {
+                      reviewDecision
+                      reviewThreads(first:100) {
+                        nodes { isResolved }
+                        pageInfo { hasNextPage }
+                      }
+                      reviews(first:100) {
+                        nodes { author { login } state submittedAt }
+                        pageInfo { hasNextPage }
+                      }
+                    }
+                  }
+                }'
+            )"
+
+            if [[ "$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$review_json")" == "true" ||
+                  "$(jq -r '.data.repository.pullRequest.reviews.pageInfo.hasNextPage' <<<"$review_json")" == "true" ]]; then
+              log "PR #$number has more than 100 review items; leaving it for manual review."
+              return 1
+            fi
+
+            unresolved="$(jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length' <<<"$review_json")"
+            changes_requested="$(jq '
+              [.data.repository.pullRequest.reviews.nodes[] | select(.author.login != null)]
+              | group_by(.author.login)
+              | map(sort_by(.submittedAt) | last)
+              | map(select(.state == "CHANGES_REQUESTED"))
+              | length
+            ' <<<"$review_json")"
+            review_decision="$(jq -r '.data.repository.pullRequest.reviewDecision // ""' <<<"$review_json")"
+
+            (( unresolved == 0 )) || { log "PR #$number has unresolved review threads."; return 1; }
+            (( changes_requested == 0 )) || { log "PR #$number has an active changes-requested review."; return 1; }
+            [[ "$review_decision" != "CHANGES_REQUESTED" ]] || { log "PR #$number review decision requests changes."; return 1; }
+          }
+
+          reconcile_pr() {
+            local number="$1"
+            local pr_json state author head_repo head_ref base_ref draft
+            local head_sha mergeable mergeable_state new_sha repo_json method pr_url
+
+            pr_json="$(gh api "repos/${REPOSITORY}/pulls/$number")"
+            state="$(jq -r '.state' <<<"$pr_json")"
+            author="$(jq -r '.user.login' <<<"$pr_json")"
+            head_repo="$(jq -r '.head.repo.full_name // ""' <<<"$pr_json")"
+            head_ref="$(jq -r '.head.ref' <<<"$pr_json")"
+            base_ref="$(jq -r '.base.ref' <<<"$pr_json")"
+            draft="$(jq -r '.draft' <<<"$pr_json")"
+
+            if [[ "$state" != "open" ||
+                  "$author" != "gamnacken[bot]" ||
+                  "$head_repo" != "$REPOSITORY" ||
+                  "$base_ref" != "$default_branch" ||
+                  "$head_ref" != codex/* ||
+                  "$draft" == "true" ]]; then
+              return 0
+            fi
+
+            review_gate "$number" || return 0
+
+            for _ in 1 2 3; do
+              pr_json="$(gh api "repos/${REPOSITORY}/pulls/$number")"
+              head_sha="$(jq -r '.head.sha' <<<"$pr_json")"
+              mergeable="$(jq -r 'if .mergeable == null then "unknown" else (.mergeable|tostring) end' <<<"$pr_json")"
+              mergeable_state="$(jq -r '.mergeable_state // "unknown"' <<<"$pr_json")"
+
+              if [[ "$mergeable_state" == "dirty" || "$mergeable" == "false" ]]; then
+                log "PR #$number has a real merge conflict; leaving it unmerged."
+                return 0
+              fi
+              if [[ "$mergeable_state" == "behind" ]]; then
+                log "PR #$number is behind $default_branch; updating the branch."
+                gh api --method PUT "repos/${REPOSITORY}/pulls/$number/update-branch" \
+                  -f expected_head_sha="$head_sha" >/dev/null || return 0
+                new_sha="$head_sha"
+                for _ in $(seq 1 20); do
+                  sleep 3
+                  new_sha="$(gh api "repos/${REPOSITORY}/pulls/$number" --jq '.head.sha')"
+                  [[ "$new_sha" != "$head_sha" ]] && break
+                done
+                [[ "$new_sha" != "$head_sha" ]] || { log "PR #$number branch update did not settle."; return 0; }
+                review_gate "$number" || return 0
+                continue
+              fi
+              [[ "$mergeable_state" != "unknown" && "$mergeable" != "unknown" ]] && break
+              sleep 3
+            done
+
+            pr_json="$(gh api "repos/${REPOSITORY}/pulls/$number")"
+            mergeable_state="$(jq -r '.mergeable_state // "unknown"' <<<"$pr_json")"
+            mergeable="$(jq -r 'if .mergeable == null then "unknown" else (.mergeable|tostring) end' <<<"$pr_json")"
+            [[ "$mergeable_state" != "dirty" && "$mergeable" != "false" ]] || return 0
+            review_gate "$number" || return 0
+
+            repo_json="$(gh api "repos/${REPOSITORY}")"
+            if [[ "$(jq -r '.allow_merge_commit' <<<"$repo_json")" == "true" ]]; then
+              method="--merge"
+            elif [[ "$(jq -r '.allow_squash_merge' <<<"$repo_json")" == "true" ]]; then
+              method="--squash"
+            elif [[ "$(jq -r '.allow_rebase_merge' <<<"$repo_json")" == "true" ]]; then
+              method="--rebase"
+            else
+              log "Repository has no supported merge method enabled."
+              return 0
+            fi
+
+            pr_url="$(jq -r '.html_url' <<<"$pr_json")"
+            log "Enabling native auto-merge for PR #$number."
+            gh pr merge --auto "$method" "$pr_url"
+          }
+
+          if [[ -n "$EVENT_PR_NUMBER" ]]; then
+            candidates="$EVENT_PR_NUMBER"
+          else
+            candidates="$(gh api --paginate "repos/${REPOSITORY}/pulls?state=open&base=${default_branch}&per_page=100" --jq '.[].number')"
+          fi
+
+          [[ -n "$candidates" ]] || { log "No open pull requests need reconciliation."; exit 0; }
+          while read -r number; do
+            [[ -n "$number" ]] && reconcile_pr "$number"
+          done <<<"$candidates"
