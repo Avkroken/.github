@@ -16,6 +16,7 @@ Det här är Avkrokens publika GitHub-specialrepository för kontoprofil, commun
 - Om `{agent}/{feature}/{date}` redan finns för uppgiften ska agenten fortsätta den befintliga arbetslinjen i stället för att skapa en ny.
 - Commits ska använda Conventional Commits eller motsvarande tydlig typ, exempelvis `docs:`, `fix:`, `chore:` eller `ci:`.
 - Läs hela PR-review-state före merge, inklusive kommentarer och trådar som GitHub markerar som `outdated`; verifiera att grundproblemet faktiskt är löst.
+- Avkrokens aktiva repositories ska använda den centrala agent-auto-merge-policyn i `.github/workflows/agent-automerge-policy.yml`. Repo-caller får endast ge `contents: write` och `pull-requests: write`; policyn ska bara aktivera GitHubs native auto-merge för `gamnacken[bot]`-skapade same-repo `codex/*`-PR:er mot default branch.
 - Försvaga inte repositoryts ruleset eller säkerhetskrav för att få en ändring att passera.
 
 ## Agent skills
