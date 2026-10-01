@@ -27,3 +27,7 @@ Varje repository äger själv sin:
 Ändringar görs därför alltid i ursprungsrepositoryt. Den centrala portalen ska visa canonical-länk och uppdateras automatiskt från källorna.
 
 Applikationskod, repo-specifik engineering-current-state och privata driftuppgifter hör inte hemma här.
+
+## Repositoryrelease
+
+Även detta specialrepository har ett repo-lokalt releaseflöde. Den deterministiska changelogen är auktoritativ; när repository-secret `COPILOT_GITHUB_TOKEN` finns kan workflown lägga till en supplemental Copilot-sammanfattning via den SHA-pinnade `github/copilot-release-notes`-actionen. Saknad credential eller Copilot-fel blockerar inte releasen och skapar ingen ny credential.
