@@ -30,4 +30,4 @@ Applikationskod, repo-specifik engineering-current-state och privata driftuppgif
 
 ## Repositoryrelease
 
-Även detta specialrepository har ett repo-lokalt releaseflöde. Den deterministiska changelogen är auktoritativ; när repository-secret `COPILOT_GITHUB_TOKEN` finns kan workflown lägga till en supplemental Copilot-sammanfattning via den SHA-pinnade `github/copilot-release-notes`-actionen. Saknad credential eller Copilot-fel blockerar inte releasen och skapar ingen ny credential.
+Även detta specialrepository har ett repo-lokalt releaseflöde. Den deterministiska changelogen är auktoritativ. När `COPILOT_GITHUB_TOKEN` finns körs den SHA-pinnade `github/copilot-release-notes`-actionen i ett separat read-only-jobb med exakt pinnad Copilot CLI; resultatet visas endast rådgivande i run summary och ändrar aldrig GitHub Release-body:n. Saknad credential eller Copilot-fel blockerar inte releasen.
