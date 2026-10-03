@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const policy = fs.readFileSync(".github/workflows/agent-automerge-policy.yml", "utf8");
 const caller = fs.readFileSync(".github/workflows/agent-automerge.yml", "utf8");
+const signal = fs.readFileSync(".github/workflows/agent-lifecycle-signal.yml", "utf8");
 
 assert.match(policy, /workflow_call:/);
 assert.match(policy, /gamnacken\[bot\]/);
@@ -42,6 +43,11 @@ assert.doesNotMatch(policy, /pull_request_target/);
 assert.match(caller, /pull_request:/);
 assert.doesNotMatch(caller, /pull_request_review:/);
 assert.doesNotMatch(caller, /pull_request_review_comment:/);
+assert.match(caller, /workflow_run:/);
+assert.match(caller, /workflows: \["Agent lifecycle signal"\]/);
+assert.match(signal, /pull_request_review:/);
+assert.match(signal, /pull_request_review_comment:/);
+assert.match(signal, /permissions:\s*\{\}/);
 assert.match(caller, /check_run:/);
 assert.match(caller, /types: \[completed\]/);
 assert.match(caller, /push:/);
