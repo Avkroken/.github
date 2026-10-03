@@ -40,8 +40,8 @@ assert.doesNotMatch(policy, /actions\/checkout/);
 assert.doesNotMatch(policy, /pull_request_target/);
 
 assert.match(caller, /pull_request:/);
-assert.match(caller, /pull_request_review:/);
-assert.match(caller, /pull_request_review_comment:/);
+assert.doesNotMatch(caller, /pull_request_review:/);
+assert.doesNotMatch(caller, /pull_request_review_comment:/);
 assert.match(caller, /check_run:/);
 assert.match(caller, /types: \[completed\]/);
 assert.match(caller, /push:/);
