@@ -30,17 +30,21 @@ jobs:
           persist-credentials: false
 
       - name: Generate aggregate index
+        env:
+          ACCOUNT_OWNER: ${{ github.repository_owner }}
         run: |
           python3 <<'PY'
           import json
+          import os
           import urllib.request
           from pathlib import Path
 
+          owner = os.environ["ACCOUNT_OWNER"]
           repos = []
           page = 1
           while True:
               req = urllib.request.Request(
-                  "https://api.github.com/users/blixten85/repos"
+                  f"https://api.github.com/users/{owner}/repos"
                   f"?type=owner&per_page=100&page={page}",
                   headers={
                       "Accept": "application/vnd.github+json",
